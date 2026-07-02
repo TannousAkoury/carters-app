@@ -155,6 +155,65 @@ export type ProductDetails = {
   variants: ProductVariant[];
 };
 
+export type ShopifyCustomer = {
+  id: string;
+  displayName: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  email?: string | null;
+  numberOfOrders: string;
+};
+
+export async function createShopifyCustomer(input: {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+}) {
+  const mutation = `
+    mutation createCustomer($input: CustomerCreateInput!) {
+      customerCreate(input: $input) {
+        customer { id firstName lastName email }
+        customerUserErrors { field message code }
+      }
+    }
+  `;
+  const data = await requestStorefront<any>(mutation, { input });
+  const errors = data?.customerCreate?.customerUserErrors ?? [];
+  if (errors.length) throw new Error(errors.map((error: any) => error.message).join("\n"));
+  if (!data?.customerCreate?.customer) throw new Error("Shopify could not create the account.");
+  return data.customerCreate.customer;
+}
+
+export async function signInShopifyCustomer(email: string, password: string) {
+  const mutation = `
+    mutation signInCustomer($input: CustomerAccessTokenCreateInput!) {
+      customerAccessTokenCreate(input: $input) {
+        customerAccessToken { accessToken expiresAt }
+        customerUserErrors { field message code }
+      }
+    }
+  `;
+  const data = await requestStorefront<any>(mutation, { input: { email, password } });
+  const errors = data?.customerAccessTokenCreate?.customerUserErrors ?? [];
+  if (errors.length) throw new Error(errors.map((error: any) => error.message).join("\n"));
+  const token = data?.customerAccessTokenCreate?.customerAccessToken;
+  if (!token) throw new Error("Unable to sign in to Shopify.");
+  return token as { accessToken: string; expiresAt: string };
+}
+
+export async function getShopifyCustomer(customerAccessToken: string): Promise<ShopifyCustomer | null> {
+  const query = `
+    query getCustomer($customerAccessToken: String!) {
+      customer(customerAccessToken: $customerAccessToken) {
+        id displayName firstName lastName email numberOfOrders
+      }
+    }
+  `;
+  const data = await requestStorefront<any>(query, { customerAccessToken });
+  return data?.customer ?? null;
+}
+
 export type HomepagePromoItem = {
   id: string;
   title: string;
