@@ -22,7 +22,8 @@ import {
   View,
 } from "react-native";
 
-const { width: SCREEN_W } = Dimensions.get("window");
+const DEVICE_WIDTH = Dimensions.get("window").width;
+const SCREEN_W = Platform.OS === "web" ? Math.min(DEVICE_WIDTH, 480) : DEVICE_WIDTH;
 
 const COLORS = {
   blue: "#4b7fb9",
@@ -1315,7 +1316,11 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+    width: "100%",
+    maxWidth: Platform.OS === "web" ? 480 : undefined,
+    alignSelf: "center",
     backgroundColor: COLORS.white,
+    overflow: "hidden",
   },
 
   header: {
