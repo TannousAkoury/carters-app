@@ -4,9 +4,11 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import * as SecureStore from "expo-secure-store";
 import { useEffect, useMemo, useState } from "react";
+import { useCart } from "@/components/cart-context";
 import { ActivityIndicator, Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function ProductScreen() {
+  const { setCount } = useCart();
   const router = useRouter();
   const params = useLocalSearchParams<{ handle: string }>();
   const handle = Array.isArray(params.handle) ? params.handle[0] : params.handle;
@@ -53,6 +55,7 @@ export default function ProductScreen() {
       const cartId = await SecureStore.getItemAsync("shopify_cart_id");
       const cart = await addToShopifyCart(cartId, selected.id);
       await SecureStore.setItemAsync("shopify_cart_id", cart.id);
+      setCount(cart.totalQuantity);
       setAdded(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to add this item to your cart.");

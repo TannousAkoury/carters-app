@@ -4,11 +4,13 @@ import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useCart } from '@/components/cart-context';
 import { ActivityIndicator, FlatList, Image, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const money = (value?: { amount: string; currencyCode: string }) => value ? `${value.currencyCode === 'USD' ? '$' : `${value.currencyCode} `}${Number(value.amount).toFixed(2)}` : '';
 
 export default function CartScreen() {
+  const { setCount } = useCart();
   const router = useRouter();
   const [cart, setCart] = useState<ShopifyCart | null>(null);
   const [loading, setLoading] = useState(true);
@@ -19,15 +21,16 @@ export default function CartScreen() {
     try {
       setLoading(true); setError('');
       const id = await SecureStore.getItemAsync('shopify_cart_id');
-      setCart(id ? await getShopifyCart(id) : null);
+      const nextCart = id ? await getShopifyCart(id) : null;
+      setCart(nextCart); setCount(nextCart?.totalQuantity ?? 0);
     } catch { setError('Unable to load your cart.'); }
     finally { setLoading(false); }
-  }, []);
+  }, [setCount]);
   useFocusEffect(useCallback(() => { loadCart(); }, [loadCart]));
 
   const changeQuantity = async (lineId: string, quantity: number) => {
     if (!cart) return;
-    try { setUpdating(lineId); setCart(await updateShopifyCartLine(cart.id, lineId, quantity)); }
+    try { setUpdating(lineId); const nextCart = await updateShopifyCartLine(cart.id, lineId, quantity); setCart(nextCart); setCount(nextCart.totalQuantity); }
     catch { setError('Unable to update this item.'); }
     finally { setUpdating(''); }
   };

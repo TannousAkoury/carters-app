@@ -1,4 +1,5 @@
 import { getHomepageContent, getStorefrontNavigation, type StorefrontMenuItem } from "@/services/shopify";
+import { useCart } from "@/components/cart-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
@@ -1022,12 +1023,14 @@ function BottomNavigation({
   onShop,
   onAccount,
   onCart,
+  cartCount,
 }: {
   active: TabId;
   onHome: () => void;
   onShop: () => void;
   onAccount: () => void;
   onCart: () => void;
+  cartCount: number;
 }) {
   const items: { id: string; label: string; icon: IconName; activeIcon: IconName; onPress: () => void }[] = [
     { id: "home", label: "Home", icon: "home-outline", activeIcon: "home", onPress: onHome },
@@ -1041,7 +1044,7 @@ function BottomNavigation({
         const selected = active === item.id;
         return (
           <TouchableOpacity key={item.id} style={styles.bottomNavItem} onPress={item.onPress} accessibilityRole="button" accessibilityLabel={item.label}>
-            <Ionicons name={selected ? item.activeIcon : item.icon} size={22} color={selected ? COLORS.blue : COLORS.textLight} />
+            <View><Ionicons name={selected ? item.activeIcon : item.icon} size={22} color={selected ? COLORS.blue : COLORS.textLight} />{item.id === "cart" && cartCount > 0 ? <View style={styles.bottomCartBadge}><Text style={styles.bottomCartBadgeText}>{cartCount > 99 ? "99+" : cartCount}</Text></View> : null}</View>
             <Text style={[styles.bottomNavLabel, selected && styles.bottomNavLabelActive]}>{item.label}</Text>
           </TouchableOpacity>
         );
@@ -1151,12 +1154,12 @@ function NavigationMenu({
 }
 
 export default function HomeScreen() {
+  const { count: cartCount } = useCart();
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
   const [activeTab, setActiveTab] = useState<TabId>("home");
   const [menuVisible, setMenuVisible] = useState(false);
   const [shopifyMenu, setShopifyMenu] = useState<StorefrontMenuItem[]>([]);
-  const [cartCount] = useState(0);
   const [isHeaderScrolled, setIsHeaderScrolled] = useState(false);
   const [homepageError, setHomepageError] = useState<string | null>(null);
   const [homepageLoading, setHomepageLoading] = useState(true);
@@ -1367,6 +1370,7 @@ export default function HomeScreen() {
         onShop={() => handleTab("shop")}
         onAccount={() => handleTab("account")}
         onCart={openCart}
+        cartCount={cartCount}
       />
     </View>
   );
@@ -2551,6 +2555,8 @@ const styles = StyleSheet.create({
   bottomNavItem: { flex: 1, minHeight: 48, alignItems: "center", justifyContent: "center", gap: 4 },
   bottomNavLabel: { color: COLORS.textLight, fontSize: 10, fontWeight: "700", fontFamily: FONT },
   bottomNavLabelActive: { color: COLORS.blue, fontWeight: "900" },
+  bottomCartBadge: { position: "absolute", right: -10, top: -8, minWidth: 17, height: 17, paddingHorizontal: 3, borderRadius: 9, backgroundColor: COLORS.pinkAccent, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: COLORS.white },
+  bottomCartBadgeText: { color: COLORS.white, fontSize: 8, fontWeight: "900" },
   navigationMenu: { width: "86%", maxWidth: 360, height: "100%", backgroundColor: COLORS.white, paddingTop: Platform.OS === "ios" ? 54 : 34, paddingHorizontal: 18, shadowColor: "#000", shadowOffset: { width: 5, height: 0 }, shadowOpacity: 0.18, shadowRadius: 16, elevation: 20 },
   menuHeader: { height: 60, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: COLORS.border, marginBottom: 12 },
   menuTitle: { color: COLORS.textDark, fontSize: 22, fontWeight: "900", fontFamily: FONT },
