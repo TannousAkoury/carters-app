@@ -12,6 +12,7 @@ export default function AccountScreen() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [customer, setCustomer] = useState<ShopifyCustomer | null>(null);
   const [loading, setLoading] = useState(true);
@@ -26,14 +27,15 @@ export default function AccountScreen() {
   }, []);
 
   const submit = async () => {
-    if (!email.trim() || password.length < 5 || (mode === 'create' && (!firstName.trim() || !lastName.trim()))) {
+    const normalizedPhone = normalizeLebanesePhone(phone);
+    if (!email.trim() || password.length < 5 || (mode === 'create' && (!firstName.trim() || !lastName.trim() || !normalizedPhone))) {
       setError('Please complete every field. Password must contain at least 5 characters.');
       return;
     }
     try {
       setLoading(true);
       setError('');
-      if (mode === 'create') await createShopifyCustomer({ firstName: firstName.trim(), lastName: lastName.trim(), email: email.trim(), password });
+      if (mode === 'create') await createShopifyCustomer({ firstName: firstName.trim(), lastName: lastName.trim(), email: email.trim(), phone: normalizedPhone, password });
       const session = await signInShopifyCustomer(email.trim(), password);
       await SecureStore.setItemAsync(TOKEN_KEY, session.accessToken);
       const profile = await getShopifyCustomer(session.accessToken);
@@ -61,6 +63,7 @@ export default function AccountScreen() {
           <>
             <Text style={styles.title}>Hello, {customer.displayName}</Text>
             <Text style={styles.copy}>{customer.email}</Text>
+            {customer.phone ? <Text style={styles.customerPhone}>{customer.phone}</Text> : null}
             <View style={styles.summary}><Text style={styles.summaryNumber}>{customer.numberOfOrders}</Text><Text style={styles.summaryLabel}>Shopify orders</Text></View>
             <TouchableOpacity style={styles.secondaryButton} onPress={signOut}><Text style={styles.secondaryText}>Sign out</Text></TouchableOpacity>
           </>
@@ -74,6 +77,7 @@ export default function AccountScreen() {
             </View>
             {mode === 'create' ? <View style={styles.nameRow}><TextInput style={[styles.input, styles.nameInput]} placeholder="First name" value={firstName} onChangeText={setFirstName} /><TextInput style={[styles.input, styles.nameInput]} placeholder="Last name" value={lastName} onChangeText={setLastName} /></View> : null}
             <TextInput style={styles.input} placeholder="Email address" keyboardType="email-address" autoCapitalize="none" autoComplete="email" value={email} onChangeText={setEmail} />
+            {mode === 'create' ? <TextInput style={styles.input} placeholder="Phone number (e.g. 03 123 456)" keyboardType="phone-pad" autoComplete="tel" value={phone} onChangeText={setPhone} /> : null}
             <TextInput style={styles.input} placeholder="Password" secureTextEntry autoComplete={mode === 'create' ? 'new-password' : 'current-password'} value={password} onChangeText={setPassword} />
             {error ? <Text style={styles.error}>{error}</Text> : null}
             <TouchableOpacity style={styles.primaryButton} disabled={loading} onPress={submit}>{loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryText}>{mode === 'create' ? 'Create account' : 'Sign in'}</Text>}</TouchableOpacity>
@@ -94,4 +98,15 @@ const styles = StyleSheet.create({
   error: { width: '100%', maxWidth: 360, color: '#c5524a', lineHeight: 19, marginBottom: 12 }, primaryButton: { width: '100%', maxWidth: 360, height: 52, borderRadius: 7, alignItems: 'center', justifyContent: 'center', backgroundColor: '#174f86' }, primaryText: { color: '#fff', fontSize: 16, fontWeight: '900' },
   secondaryButton: { width: '100%', maxWidth: 340, height: 50, borderWidth: 1, borderColor: '#174f86', borderRadius: 7, alignItems: 'center', justifyContent: 'center', marginTop: 22 }, secondaryText: { color: '#174f86', fontWeight: '800' }, link: { color: '#174f86', fontWeight: '700', marginTop: 20, padding: 10 },
   summary: { width: 150, padding: 20, borderRadius: 12, backgroundColor: '#eaf3f4', alignItems: 'center' }, summaryNumber: { color: '#174f86', fontSize: 28, fontWeight: '900' }, summaryLabel: { color: '#657083', marginTop: 4, fontWeight: '700' },
+  customerPhone: { color: '#657083', marginTop: -12, marginBottom: 20, fontWeight: '700' },
 });
+
+function normalizeLebanesePhone(value: string) {
+  const trimmed = value.trim();
+  const digits = trimmed.replace(/\D/g, '');
+  if (digits.length < 7) return '';
+  if (trimmed.startsWith('+')) return `+${digits}`;
+  if (digits.startsWith('961')) return `+${digits}`;
+  if (digits.startsWith('0')) return `+961${digits.slice(1)}`;
+  return `+961${digits}`;
+}

@@ -161,6 +161,7 @@ export type ShopifyCustomer = {
   firstName?: string | null;
   lastName?: string | null;
   email?: string | null;
+  phone?: string | null;
   numberOfOrders: string;
 };
 
@@ -168,6 +169,7 @@ export async function createShopifyCustomer(input: {
   firstName: string;
   lastName: string;
   email: string;
+  phone: string;
   password: string;
 }) {
   const mutation = `
@@ -206,7 +208,7 @@ export async function getShopifyCustomer(customerAccessToken: string): Promise<S
   const query = `
     query getCustomer($customerAccessToken: String!) {
       customer(customerAccessToken: $customerAccessToken) {
-        id displayName firstName lastName email numberOfOrders
+        id displayName firstName lastName email phone numberOfOrders
       }
     }
   `;
