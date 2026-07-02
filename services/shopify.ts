@@ -1163,7 +1163,11 @@ export async function createCheckout(variantId: string): Promise<string> {
     }
   `;
   const data = await requestStorefront<any>(mutation, {
-    input: { lines: [{ merchandiseId: variantId, quantity: 1 }] },
+    input: {
+      lines: [{ merchandiseId: variantId, quantity: 1 }],
+      attributes: [{ key: "Order source", value: "Carter Mobile App" }],
+      note: "Order placed from Carter mobile app",
+    },
   });
   const error = data?.cartCreate?.userErrors?.[0]?.message;
   if (error) throw new Error(error);
@@ -1188,7 +1192,15 @@ const CART_FIELDS = `
 
 export async function addToShopifyCart(cartId: string | null, variantId: string) {
   const mutation = cartId ? `mutation add($cartId: ID!, $lines: [CartLineInput!]!) { cartLinesAdd(cartId: $cartId, lines: $lines) { cart { ${CART_FIELDS} } userErrors { message } } }` : `mutation create($input: CartInput!) { cartCreate(input: $input) { cart { ${CART_FIELDS} } userErrors { message } } }`;
-  const variables = cartId ? { cartId, lines: [{ merchandiseId: variantId, quantity: 1 }] } : { input: { lines: [{ merchandiseId: variantId, quantity: 1 }] } };
+  const variables = cartId
+    ? { cartId, lines: [{ merchandiseId: variantId, quantity: 1 }] }
+    : {
+        input: {
+          lines: [{ merchandiseId: variantId, quantity: 1 }],
+          attributes: [{ key: "Order source", value: "Carter Mobile App" }],
+          note: "Order placed from Carter mobile app",
+        },
+      };
   const data = await requestStorefront<any>(mutation, variables);
   const payload = cartId ? data?.cartLinesAdd : data?.cartCreate;
   if (payload?.userErrors?.length) throw new Error(payload.userErrors[0].message);
@@ -1206,6 +1218,25 @@ export async function updateShopifyCartLine(cartId: string, lineId: string, quan
   const payload = quantity > 0 ? data?.cartLinesUpdate : data?.cartLinesRemove;
   if (payload?.userErrors?.length) throw new Error(payload.userErrors[0].message);
   return payload?.cart as ShopifyCart;
+}
+
+export async function markShopifyCartAsAppOrder(cartId: string) {
+  const mutation = `
+    mutation markAppCart($cartId: ID!, $attributes: [AttributeInput!]!, $note: String!) {
+      cartAttributesUpdate(cartId: $cartId, attributes: $attributes) { userErrors { message } }
+      cartNoteUpdate(cartId: $cartId, note: $note) { userErrors { message } }
+    }
+  `;
+  const data = await requestStorefront<any>(mutation, {
+    cartId,
+    attributes: [{ key: "Order source", value: "Carter Mobile App" }],
+    note: "Order placed from Carter mobile app",
+  });
+  const errors = [
+    ...(data?.cartAttributesUpdate?.userErrors ?? []),
+    ...(data?.cartNoteUpdate?.userErrors ?? []),
+  ];
+  if (errors.length) throw new Error(errors[0].message);
 }
 
 function parseAdminPayload(data: any): HomepageContent | null {

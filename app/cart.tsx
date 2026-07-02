@@ -1,4 +1,4 @@
-import { getShopifyCart, ShopifyCart, updateShopifyCartLine } from '@/services/shopify';
+import { getShopifyCart, markShopifyCartAsAppOrder, ShopifyCart, updateShopifyCartLine } from '@/services/shopify';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
@@ -35,7 +35,15 @@ export default function CartScreen() {
     finally { setUpdating(''); }
   };
 
-  const checkout = () => cart && WebBrowser.openBrowserAsync(cart.checkoutUrl, { presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET, controlsColor: '#174f86', toolbarColor: '#fff' });
+  const checkout = async () => {
+    if (!cart) return;
+    try {
+      setLoading(true);
+      await markShopifyCartAsAppOrder(cart.id);
+      await WebBrowser.openBrowserAsync(cart.checkoutUrl, { presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET, controlsColor: '#174f86', toolbarColor: '#fff' });
+    } catch { setError('Unable to prepare checkout. Please try again.'); }
+    finally { setLoading(false); }
+  };
 
   return (
     <SafeAreaView style={styles.screen}>
