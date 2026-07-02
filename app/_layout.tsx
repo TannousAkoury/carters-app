@@ -21,14 +21,14 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <CartProvider>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="modal"
-          options={{ presentation: "modal", title: "Modal" }}
-        />
-      </Stack>
-      <GlobalCartButton />
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="account"
+            options={{ presentation: "modal", title: "Carter's Oshkosh B'Gosh Account" }}
+          />
+        </Stack>
+        <GlobalCartButton />
       </CartProvider>
       <StatusBar style="auto" />
     </ThemeProvider>

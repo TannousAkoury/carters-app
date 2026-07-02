@@ -1,7 +1,8 @@
 import { getCollectionDetails, getProducts, type ShopifyCollectionDetails } from "@/services/shopify";
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { useProductFilters } from "@/features/collection/use-product-filters";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { ActivityIndicator, FlatList, Image, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
@@ -30,34 +31,7 @@ export default function CollectionScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filterVisible, setFilterVisible] = useState(false);
-  const [availability, setAvailability] = useState<"all" | "in-stock">("all");
-  const [sort, setSort] = useState<"featured" | "price-low" | "price-high" | "az">("featured");
-  const [minimumPrice, setMinimumPrice] = useState("");
-  const [maximumPrice, setMaximumPrice] = useState("");
-  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
-  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
-
-  const brands = useMemo(() => [...new Set(products.map((product) => product.brand).filter(Boolean) as string[])].sort(), [products]);
-  const sizes = useMemo(() => [...new Set(products.flatMap((product) => product.sizes ?? []))], [products]);
-
-  const visibleProducts = useMemo(() => {
-    const price = (value: string) => Number(value.replace(/[^0-9.]/g, "")) || 0;
-    const minimum = minimumPrice ? Number(minimumPrice) : 0;
-    const maximum = maximumPrice ? Number(maximumPrice) : Number.POSITIVE_INFINITY;
-    const items = products.filter((product) =>
-      (availability === "all" || product.availableForSale) &&
-      (product.minPrice ?? price(product.price)) >= minimum &&
-      (product.minPrice ?? price(product.price)) <= maximum &&
-      (selectedBrands.length === 0 || (product.brand && selectedBrands.includes(product.brand))) &&
-      (selectedSizes.length === 0 || product.sizes?.some((size) => selectedSizes.includes(size))),
-    );
-    if (sort === "price-low") return [...items].sort((a, b) => price(a.price) - price(b.price));
-    if (sort === "price-high") return [...items].sort((a, b) => price(b.price) - price(a.price));
-    if (sort === "az") return [...items].sort((a, b) => a.title.localeCompare(b.title));
-    return items;
-  }, [availability, maximumPrice, minimumPrice, products, selectedBrands, selectedSizes, sort]);
-
-  const toggleValue = (value: string, values: string[], setter: (next: string[]) => void) => setter(values.includes(value) ? values.filter((item) => item !== value) : [...values, value]);
+  const { availability, setAvailability, sort, setSort, minimumPrice, setMinimumPrice, maximumPrice, setMaximumPrice, selectedBrands, selectedSizes, brands, sizes, visibleProducts, toggleBrand, toggleSize, clearFilters } = useProductFilters(products);
 
   useEffect(() => {
     let mounted = true;
@@ -160,12 +134,12 @@ export default function CollectionScreen() {
             <View style={styles.optionRow}>{([['all', 'All products'], ['in-stock', 'In stock']] as const).map(([value, label]) => <TouchableOpacity key={value} style={[styles.chip, availability === value && styles.chipActive]} onPress={() => setAvailability(value)}><Text style={[styles.chipText, availability === value && styles.chipTextActive]}>{label}</Text></TouchableOpacity>)}</View>
             <Text style={styles.optionHeading}>Price range</Text>
             <View style={styles.priceInputs}><View style={styles.priceInputWrap}><Text style={styles.currency}>$</Text><TextInput style={styles.priceInput} placeholder="Min" keyboardType="decimal-pad" value={minimumPrice} onChangeText={(value) => setMinimumPrice(value.replace(/[^0-9.]/g, ""))} /></View><Text style={styles.priceDash}>—</Text><View style={styles.priceInputWrap}><Text style={styles.currency}>$</Text><TextInput style={styles.priceInput} placeholder="Max" keyboardType="decimal-pad" value={maximumPrice} onChangeText={(value) => setMaximumPrice(value.replace(/[^0-9.]/g, ""))} /></View></View>
-            {brands.length ? <><Text style={styles.optionHeading}>Brand</Text><View style={styles.wrapOptions}>{brands.map((brand) => <TouchableOpacity key={brand} style={[styles.chip, selectedBrands.includes(brand) && styles.chipActive]} onPress={() => toggleValue(brand, selectedBrands, setSelectedBrands)}><Text style={[styles.chipText, selectedBrands.includes(brand) && styles.chipTextActive]}>{brand}</Text></TouchableOpacity>)}</View></> : null}
-            {sizes.length ? <><Text style={styles.optionHeading}>Size</Text><View style={styles.wrapOptions}>{sizes.map((size) => <TouchableOpacity key={size} style={[styles.sizeChip, selectedSizes.includes(size) && styles.chipActive]} onPress={() => toggleValue(size, selectedSizes, setSelectedSizes)}><Text style={[styles.chipText, selectedSizes.includes(size) && styles.chipTextActive]}>{size}</Text></TouchableOpacity>)}</View></> : null}
+            {brands.length ? <><Text style={styles.optionHeading}>Brand</Text><View style={styles.wrapOptions}>{brands.map((brand) => <TouchableOpacity key={brand} style={[styles.chip, selectedBrands.includes(brand) && styles.chipActive]} onPress={() => toggleBrand(brand)}><Text style={[styles.chipText, selectedBrands.includes(brand) && styles.chipTextActive]}>{brand}</Text></TouchableOpacity>)}</View></> : null}
+            {sizes.length ? <><Text style={styles.optionHeading}>Size</Text><View style={styles.wrapOptions}>{sizes.map((size) => <TouchableOpacity key={size} style={[styles.sizeChip, selectedSizes.includes(size) && styles.chipActive]} onPress={() => toggleSize(size)}><Text style={[styles.chipText, selectedSizes.includes(size) && styles.chipTextActive]}>{size}</Text></TouchableOpacity>)}</View></> : null}
             <Text style={styles.optionHeading}>Sort by</Text>
             {([['featured', 'Featured'], ['price-low', 'Price: low to high'], ['price-high', 'Price: high to low'], ['az', 'Name: A–Z']] as const).map(([value, label]) => <TouchableOpacity key={value} style={styles.sortOption} onPress={() => setSort(value)}><Text style={[styles.sortText, sort === value && styles.sortTextActive]}>{label}</Text>{sort === value ? <Ionicons name="checkmark-circle" size={21} color="#174f86" /> : null}</TouchableOpacity>)}
             </ScrollView>
-            <View style={styles.sheetActions}><TouchableOpacity style={styles.clearButton} onPress={() => { setAvailability("all"); setMinimumPrice(""); setMaximumPrice(""); setSelectedBrands([]); setSelectedSizes([]); setSort("featured"); }}><Text style={styles.clearText}>Clear</Text></TouchableOpacity><TouchableOpacity style={styles.applyButton} onPress={() => setFilterVisible(false)}><Text style={styles.applyText}>Show {visibleProducts.length}</Text></TouchableOpacity></View>
+            <View style={styles.sheetActions}><TouchableOpacity style={styles.clearButton} onPress={clearFilters}><Text style={styles.clearText}>Clear</Text></TouchableOpacity><TouchableOpacity style={styles.applyButton} onPress={() => setFilterVisible(false)}><Text style={styles.applyText}>Show {visibleProducts.length}</Text></TouchableOpacity></View>
           </View>
         </TouchableOpacity>
       </Modal>

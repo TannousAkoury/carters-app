@@ -1,5 +1,6 @@
 import { getHomepageContent, getStorefrontNavigation, type StorefrontMenuItem } from "@/services/shopify";
 import { useCart } from "@/components/cart-context";
+import type { AgeCategory, ExploreStyle, HeroBannerItem, HomeProduct as Product, OurBrand, PromoFeature, ShopCategory, TinyEssential } from "@/features/home/types";
 import { Ionicons } from "@expo/vector-icons";
 import { Image as ExpoImage } from "expo-image";
 import * as WebBrowser from "expo-web-browser";
@@ -9,7 +10,6 @@ import {
   ActivityIndicator,
   Dimensions,
   Image,
-  type ImageSourcePropType,
   Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -48,87 +48,6 @@ const FONT = Platform.select({ ios: "System", android: "Roboto" });
 
 type IconName = ComponentProps<typeof Ionicons>["name"];
 type TabId = "home" | "categories" | "shop" | "account";
-
-type HeroBannerItem = {
-  id: string;
-  title: string;
-  subtitle: string;
-  description?: string;
-  categories?: string[];
-  features?: string[];
-  cta: string;
-  bg: string;
-  softColor: string;
-  accentColor: string;
-  image: string;
-  fullWidth?: boolean;
-  handle?: string;
-  url?: string;
-};
-
-type AgeCategory = {
-  id: string;
-  label: string;
-  sub: string;
-  bg: string;
-  image: string;
-  handle: string;
-};
-
-type ShopCategory = {
-  id: string;
-  label: string;
-  eyebrow?: string;
-  subtitle?: string;
-  cta?: string;
-  image: string;
-  bg: string;
-  handle: string;
-};
-
-type ExploreStyle = {
-  id: string;
-  label: string;
-  image: string | ImageSourcePropType;
-  handle: string;
-  accentColor: string;
-};
-
-type TinyEssential = {
-  id: string;
-  title: string;
-  image: string;
-  handle: string;
-  accentColor: string;
-};
-
-type OurBrand = {
-  id: string;
-  label: string;
-  logoText: string;
-  tagline: string;
-  handle: string;
-  image: string;
-  bg: string;
-  color: string;
-};
-
-type Product = {
-  id: string;
-  title: string;
-  price: string;
-  oldPrice: string | null;
-  image: string;
-  wishlist: boolean;
-  tag: "NEW" | "SALE" | null;
-  handle?: string;
-};
-
-type PromoFeature = {
-  id: string;
-  title: string;
-  text?: string;
-};
 
 type HeaderProps = {
   cartCount?: number;
@@ -1277,7 +1196,7 @@ export default function HomeScreen() {
     if (tab === "home") scrollRef.current?.scrollTo({ y: 0, animated: true });
     if (tab === "categories") setMenuVisible(true);
     if (tab === "shop") showCollection("new-collection-ss26", "Shop");
-    if (tab === "account") router.push("/modal");
+    if (tab === "account") router.push("/account");
   };
 
   const openCart = () => {
