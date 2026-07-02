@@ -57,6 +57,8 @@ export default function ProductScreen() {
       await SecureStore.setItemAsync("shopify_cart_id", cart.id);
       setCount(cart.totalQuantity);
       setAdded(true);
+      await new Promise((resolve) => setTimeout(resolve, 450));
+      router.back();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to add this item to your cart.");
     } finally { setAdding(false); }
