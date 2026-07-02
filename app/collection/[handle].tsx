@@ -3,7 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { useVideoPlayer, VideoView } from "expo-video";
-import { ActivityIndicator, FlatList, Image, Modal, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, FlatList, Image, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 type Product = {
   id: string;
@@ -14,6 +14,10 @@ type Product = {
   tag: "NEW" | "SALE" | null;
   handle?: string;
   availableForSale?: boolean;
+  brand?: string;
+  sizes?: string[];
+  minPrice?: number;
+  maxPrice?: number;
 };
 
 export default function CollectionScreen() {
@@ -28,15 +32,32 @@ export default function CollectionScreen() {
   const [filterVisible, setFilterVisible] = useState(false);
   const [availability, setAvailability] = useState<"all" | "in-stock">("all");
   const [sort, setSort] = useState<"featured" | "price-low" | "price-high" | "az">("featured");
+  const [minimumPrice, setMinimumPrice] = useState("");
+  const [maximumPrice, setMaximumPrice] = useState("");
+  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
+  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+
+  const brands = useMemo(() => [...new Set(products.map((product) => product.brand).filter(Boolean) as string[])].sort(), [products]);
+  const sizes = useMemo(() => [...new Set(products.flatMap((product) => product.sizes ?? []))], [products]);
 
   const visibleProducts = useMemo(() => {
     const price = (value: string) => Number(value.replace(/[^0-9.]/g, "")) || 0;
-    const items = products.filter((product) => availability === "all" || product.availableForSale);
+    const minimum = minimumPrice ? Number(minimumPrice) : 0;
+    const maximum = maximumPrice ? Number(maximumPrice) : Number.POSITIVE_INFINITY;
+    const items = products.filter((product) =>
+      (availability === "all" || product.availableForSale) &&
+      (product.minPrice ?? price(product.price)) >= minimum &&
+      (product.minPrice ?? price(product.price)) <= maximum &&
+      (selectedBrands.length === 0 || (product.brand && selectedBrands.includes(product.brand))) &&
+      (selectedSizes.length === 0 || product.sizes?.some((size) => selectedSizes.includes(size))),
+    );
     if (sort === "price-low") return [...items].sort((a, b) => price(a.price) - price(b.price));
     if (sort === "price-high") return [...items].sort((a, b) => price(b.price) - price(a.price));
     if (sort === "az") return [...items].sort((a, b) => a.title.localeCompare(b.title));
     return items;
-  }, [availability, products, sort]);
+  }, [availability, maximumPrice, minimumPrice, products, selectedBrands, selectedSizes, sort]);
+
+  const toggleValue = (value: string, values: string[], setter: (next: string[]) => void) => setter(values.includes(value) ? values.filter((item) => item !== value) : [...values, value]);
 
   useEffect(() => {
     let mounted = true;
@@ -134,11 +155,17 @@ export default function CollectionScreen() {
         <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setFilterVisible(false)}>
           <View style={styles.filterSheet} onStartShouldSetResponder={() => true}>
             <View style={styles.sheetHeader}><Text style={styles.sheetTitle}>Filter & Sort</Text><TouchableOpacity onPress={() => setFilterVisible(false)}><Ionicons name="close" size={25} color="#26364d" /></TouchableOpacity></View>
+            <ScrollView showsVerticalScrollIndicator={false}>
             <Text style={styles.optionHeading}>Availability</Text>
             <View style={styles.optionRow}>{([['all', 'All products'], ['in-stock', 'In stock']] as const).map(([value, label]) => <TouchableOpacity key={value} style={[styles.chip, availability === value && styles.chipActive]} onPress={() => setAvailability(value)}><Text style={[styles.chipText, availability === value && styles.chipTextActive]}>{label}</Text></TouchableOpacity>)}</View>
+            <Text style={styles.optionHeading}>Price range</Text>
+            <View style={styles.priceInputs}><View style={styles.priceInputWrap}><Text style={styles.currency}>$</Text><TextInput style={styles.priceInput} placeholder="Min" keyboardType="decimal-pad" value={minimumPrice} onChangeText={(value) => setMinimumPrice(value.replace(/[^0-9.]/g, ""))} /></View><Text style={styles.priceDash}>—</Text><View style={styles.priceInputWrap}><Text style={styles.currency}>$</Text><TextInput style={styles.priceInput} placeholder="Max" keyboardType="decimal-pad" value={maximumPrice} onChangeText={(value) => setMaximumPrice(value.replace(/[^0-9.]/g, ""))} /></View></View>
+            {brands.length ? <><Text style={styles.optionHeading}>Brand</Text><View style={styles.wrapOptions}>{brands.map((brand) => <TouchableOpacity key={brand} style={[styles.chip, selectedBrands.includes(brand) && styles.chipActive]} onPress={() => toggleValue(brand, selectedBrands, setSelectedBrands)}><Text style={[styles.chipText, selectedBrands.includes(brand) && styles.chipTextActive]}>{brand}</Text></TouchableOpacity>)}</View></> : null}
+            {sizes.length ? <><Text style={styles.optionHeading}>Size</Text><View style={styles.wrapOptions}>{sizes.map((size) => <TouchableOpacity key={size} style={[styles.sizeChip, selectedSizes.includes(size) && styles.chipActive]} onPress={() => toggleValue(size, selectedSizes, setSelectedSizes)}><Text style={[styles.chipText, selectedSizes.includes(size) && styles.chipTextActive]}>{size}</Text></TouchableOpacity>)}</View></> : null}
             <Text style={styles.optionHeading}>Sort by</Text>
             {([['featured', 'Featured'], ['price-low', 'Price: low to high'], ['price-high', 'Price: high to low'], ['az', 'Name: A–Z']] as const).map(([value, label]) => <TouchableOpacity key={value} style={styles.sortOption} onPress={() => setSort(value)}><Text style={[styles.sortText, sort === value && styles.sortTextActive]}>{label}</Text>{sort === value ? <Ionicons name="checkmark-circle" size={21} color="#174f86" /> : null}</TouchableOpacity>)}
-            <TouchableOpacity style={styles.applyButton} onPress={() => setFilterVisible(false)}><Text style={styles.applyText}>Show {visibleProducts.length} products</Text></TouchableOpacity>
+            </ScrollView>
+            <View style={styles.sheetActions}><TouchableOpacity style={styles.clearButton} onPress={() => { setAvailability("all"); setMinimumPrice(""); setMaximumPrice(""); setSelectedBrands([]); setSelectedSizes([]); setSort("featured"); }}><Text style={styles.clearText}>Clear</Text></TouchableOpacity><TouchableOpacity style={styles.applyButton} onPress={() => setFilterVisible(false)}><Text style={styles.applyText}>Show {visibleProducts.length}</Text></TouchableOpacity></View>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -174,5 +201,5 @@ const styles = StyleSheet.create({
   price: { color: "#174f86", fontSize: 13, fontWeight: "800" },
   oldPrice: { color: "#9a8f8b", fontSize: 11, textDecorationLine: "line-through" },
   empty: { color: "#647086", textAlign: "center", marginTop: 80, width: "100%" },
-  modalBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(11,30,66,0.4)" }, filterSheet: { backgroundColor: "#fff", borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, paddingBottom: 30 }, sheetHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 22 }, sheetTitle: { color: "#17243a", fontSize: 21, fontWeight: "900" }, optionHeading: { color: "#303b4d", fontSize: 13, fontWeight: "900", marginTop: 10, marginBottom: 10 }, optionRow: { flexDirection: "row", gap: 9, marginBottom: 15 }, chip: { borderWidth: 1, borderColor: "#ccd5df", borderRadius: 20, paddingHorizontal: 17, paddingVertical: 10 }, chipActive: { backgroundColor: "#174f86", borderColor: "#174f86" }, chipText: { color: "#526074", fontWeight: "700" }, chipTextActive: { color: "#fff" }, sortOption: { height: 46, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: "#eee" }, sortText: { color: "#657083" }, sortTextActive: { color: "#174f86", fontWeight: "900" }, applyButton: { height: 52, borderRadius: 7, backgroundColor: "#174f86", alignItems: "center", justifyContent: "center", marginTop: 22 }, applyText: { color: "#fff", fontWeight: "900", fontSize: 15 },
+  modalBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(11,30,66,0.4)" }, filterSheet: { maxHeight: "92%", backgroundColor: "#fff", borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, paddingBottom: 30 }, sheetHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }, sheetTitle: { color: "#17243a", fontSize: 21, fontWeight: "900" }, optionHeading: { color: "#303b4d", fontSize: 13, fontWeight: "900", marginTop: 8, marginBottom: 8 }, optionRow: { flexDirection: "row", gap: 9, marginBottom: 8 }, wrapOptions: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginBottom: 6 }, chip: { borderWidth: 1, borderColor: "#ccd5df", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 }, sizeChip: { minWidth: 48, borderWidth: 1, borderColor: "#ccd5df", borderRadius: 7, paddingHorizontal: 10, paddingVertical: 8, alignItems: "center" }, chipActive: { backgroundColor: "#174f86", borderColor: "#174f86" }, chipText: { color: "#526074", fontWeight: "700" }, chipTextActive: { color: "#fff" }, priceInputs: { flexDirection: "row", alignItems: "center", gap: 9, marginBottom: 8 }, priceInputWrap: { flex: 1, height: 44, flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "#ccd5df", borderRadius: 7, paddingHorizontal: 11 }, currency: { color: "#526074", fontWeight: "800" }, priceInput: { flex: 1, height: "100%", paddingLeft: 6, color: "#26364d" }, priceDash: { color: "#8994a3" }, sortOption: { height: 42, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: "#eee" }, sortText: { color: "#657083" }, sortTextActive: { color: "#174f86", fontWeight: "900" }, sheetActions: { flexDirection: "row", gap: 10, marginTop: 16 }, clearButton: { width: 95, height: 50, borderRadius: 7, borderWidth: 1, borderColor: "#174f86", alignItems: "center", justifyContent: "center" }, clearText: { color: "#174f86", fontWeight: "900" }, applyButton: { flex: 1, height: 50, borderRadius: 7, backgroundColor: "#174f86", alignItems: "center", justifyContent: "center" }, applyText: { color: "#fff", fontWeight: "900", fontSize: 15 },
 });

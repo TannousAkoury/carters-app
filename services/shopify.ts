@@ -44,6 +44,8 @@ export type ShopifyProductSummary = {
   title: string;
   handle: string;
   availableForSale?: boolean;
+  vendor?: string;
+  variants?: { edges?: { node: { availableForSale?: boolean; selectedOptions?: { name: string; value: string }[] } }[] };
   featuredImage?: {
     url?: string | null;
     altText?: string | null;
@@ -136,6 +138,10 @@ export type HomepageProduct = {
   tag: "NEW" | "SALE" | null;
   handle?: string;
   availableForSale?: boolean;
+  brand?: string;
+  sizes?: string[];
+  minPrice?: number;
+  maxPrice?: number;
 };
 
 export type ProductVariant = {
@@ -564,6 +570,8 @@ const COLLECTION_PRODUCTS_QUERY = `
             title
             handle
             availableForSale
+            vendor
+            variants(first: 50) { edges { node { availableForSale selectedOptions { name value } } } }
             featuredImage {
               url
               altText
@@ -1030,6 +1038,12 @@ function mapProduct(product: ShopifyProductSummary, index = 0): HomepageProduct 
     tag: hasCompareAt ? "SALE" : index < 8 ? "NEW" : null,
     handle: product.handle,
     availableForSale: product.availableForSale,
+    brand: product.vendor,
+    sizes: [...new Set((product.variants?.edges ?? []).flatMap(({ node }) =>
+      node.availableForSale ? (node.selectedOptions ?? []).filter((option) => option.name.toLowerCase() === "size").map((option) => option.value) : [],
+    ))],
+    minPrice: Number(product.priceRange?.minVariantPrice?.amount ?? 0),
+    maxPrice: Number(product.priceRange?.maxVariantPrice?.amount ?? 0),
   };
 }
 
@@ -1604,6 +1618,8 @@ export async function getProducts(collectionHandle?: string) {
             title
             handle
             availableForSale
+            vendor
+            variants(first: 50) { edges { node { availableForSale selectedOptions { name value } } } }
             featuredImage {
               url
               altText
@@ -1648,7 +1664,8 @@ export async function searchProducts(search: string) {
     query searchProducts($query: String!) {
       products(first: 50, query: $query, sortKey: RELEVANCE) {
         edges { node {
-          id title handle availableForSale
+          id title handle availableForSale vendor
+          variants(first: 50) { edges { node { availableForSale selectedOptions { name value } } } }
           featuredImage { url altText }
           priceRange { minVariantPrice { amount currencyCode } maxVariantPrice { amount currencyCode } }
           compareAtPriceRange { minVariantPrice { amount currencyCode } }
