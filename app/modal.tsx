@@ -1,4 +1,4 @@
-import { createShopifyCustomer, getShopifyCustomer, ShopifyCustomer, signInShopifyCustomer } from '@/services/shopify';
+import { createShopifyCustomer, getShopifyCustomer, recoverShopifyCustomer, ShopifyCustomer, signInShopifyCustomer } from '@/services/shopify';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import { Link } from 'expo-router';
@@ -8,7 +8,7 @@ import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, TextInpu
 const TOKEN_KEY = 'shopify_customer_access_token';
 
 export default function AccountScreen() {
-  const [mode, setMode] = useState<'signin' | 'create'>('signin');
+  const [mode, setMode] = useState<'signin' | 'create' | 'recover'>('signin');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -17,6 +17,7 @@ export default function AccountScreen() {
   const [customer, setCustomer] = useState<ShopifyCustomer | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
     SecureStore.getItemAsync(TOKEN_KEY)
@@ -27,6 +28,16 @@ export default function AccountScreen() {
   }, []);
 
   const submit = async () => {
+    if (mode === 'recover') {
+      if (!email.trim()) { setError('Enter your email address.'); return; }
+      try {
+        setLoading(true); setError(''); setMessage('');
+        await recoverShopifyCustomer(email.trim());
+        setMessage('Shopify sent a password-reset link to your email. Please check your inbox and spam folder.');
+      } catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to send the reset email.'); }
+      finally { setLoading(false); }
+      return;
+    }
     const normalizedPhone = normalizeLebanesePhone(phone);
     if (!email.trim() || password.length < 5 || (mode === 'create' && (!firstName.trim() || !lastName.trim() || !normalizedPhone))) {
       setError('Please complete every field. Password must contain at least 5 characters.');
@@ -69,18 +80,21 @@ export default function AccountScreen() {
           </>
         ) : (
           <>
-            <Text style={styles.title}>{mode === 'create' ? 'Create your account' : 'Welcome back'}</Text>
+            <Text style={styles.title}>{mode === 'create' ? 'Create your account' : mode === 'recover' ? 'Reset your password' : 'Welcome back'}</Text>
             <Text style={styles.copy}>Your account is saved securely with Carter&apos;s Shopify store.</Text>
-            <View style={styles.tabs}>
+            {mode !== 'recover' ? <View style={styles.tabs}>
               <TouchableOpacity style={[styles.tab, mode === 'signin' && styles.tabActive]} onPress={() => { setMode('signin'); setError(''); }}><Text style={[styles.tabText, mode === 'signin' && styles.tabTextActive]}>Sign in</Text></TouchableOpacity>
               <TouchableOpacity style={[styles.tab, mode === 'create' && styles.tabActive]} onPress={() => { setMode('create'); setError(''); }}><Text style={[styles.tabText, mode === 'create' && styles.tabTextActive]}>Create account</Text></TouchableOpacity>
-            </View>
+            </View> : null}
             {mode === 'create' ? <View style={styles.nameRow}><TextInput style={[styles.input, styles.nameInput]} placeholder="First name" value={firstName} onChangeText={setFirstName} /><TextInput style={[styles.input, styles.nameInput]} placeholder="Last name" value={lastName} onChangeText={setLastName} /></View> : null}
             <TextInput style={styles.input} placeholder="Email address" keyboardType="email-address" autoCapitalize="none" autoComplete="email" value={email} onChangeText={setEmail} />
             {mode === 'create' ? <TextInput style={styles.input} placeholder="Phone number (e.g. 03 123 456)" keyboardType="phone-pad" autoComplete="tel" value={phone} onChangeText={setPhone} /> : null}
-            <TextInput style={styles.input} placeholder="Password" secureTextEntry autoComplete={mode === 'create' ? 'new-password' : 'current-password'} value={password} onChangeText={setPassword} />
+            {mode !== 'recover' ? <TextInput style={styles.input} placeholder="Password" secureTextEntry autoComplete={mode === 'create' ? 'new-password' : 'current-password'} value={password} onChangeText={setPassword} /> : null}
+            {mode === 'signin' ? <TouchableOpacity style={styles.forgotButton} onPress={() => { setMode('recover'); setError(''); setMessage(''); }}><Text style={styles.forgotText}>Forgot password?</Text></TouchableOpacity> : null}
+            {mode === 'recover' ? <TouchableOpacity style={styles.forgotButton} onPress={() => { setMode('signin'); setError(''); setMessage(''); }}><Text style={styles.forgotText}>Back to sign in</Text></TouchableOpacity> : null}
             {error ? <Text style={styles.error}>{error}</Text> : null}
-            <TouchableOpacity style={styles.primaryButton} disabled={loading} onPress={submit}>{loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryText}>{mode === 'create' ? 'Create account' : 'Sign in'}</Text>}</TouchableOpacity>
+            {message ? <Text style={styles.success}>{message}</Text> : null}
+            <TouchableOpacity style={styles.primaryButton} disabled={loading} onPress={submit}>{loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryText}>{mode === 'create' ? 'Create account' : mode === 'recover' ? 'Send reset link' : 'Sign in'}</Text>}</TouchableOpacity>
           </>
         )}
         <Link href="/" dismissTo style={styles.link}>Continue shopping</Link>
@@ -96,6 +110,7 @@ const styles = StyleSheet.create({
   tabs: { width: '100%', maxWidth: 360, flexDirection: 'row', backgroundColor: '#f3f6f8', borderRadius: 8, padding: 4, marginBottom: 16 }, tab: { flex: 1, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 6 }, tabActive: { backgroundColor: '#fff' }, tabText: { color: '#718096', fontWeight: '700' }, tabTextActive: { color: '#174f86', fontWeight: '900' },
   nameRow: { width: '100%', maxWidth: 360, flexDirection: 'row', gap: 10 }, nameInput: { flex: 1 }, input: { width: '100%', maxWidth: 360, height: 52, borderWidth: 1, borderColor: '#d7dfe7', borderRadius: 7, paddingHorizontal: 14, marginBottom: 11, color: '#17243a', backgroundColor: '#fff' },
   error: { width: '100%', maxWidth: 360, color: '#c5524a', lineHeight: 19, marginBottom: 12 }, primaryButton: { width: '100%', maxWidth: 360, height: 52, borderRadius: 7, alignItems: 'center', justifyContent: 'center', backgroundColor: '#174f86' }, primaryText: { color: '#fff', fontSize: 16, fontWeight: '900' },
+  success: { width: '100%', maxWidth: 360, color: '#287a54', lineHeight: 20, marginBottom: 12, textAlign: 'center' }, forgotButton: { width: '100%', maxWidth: 360, alignItems: 'flex-end', paddingVertical: 5, marginTop: -5, marginBottom: 8 }, forgotText: { color: '#174f86', fontWeight: '800' },
   secondaryButton: { width: '100%', maxWidth: 340, height: 50, borderWidth: 1, borderColor: '#174f86', borderRadius: 7, alignItems: 'center', justifyContent: 'center', marginTop: 22 }, secondaryText: { color: '#174f86', fontWeight: '800' }, link: { color: '#174f86', fontWeight: '700', marginTop: 20, padding: 10 },
   summary: { width: 150, padding: 20, borderRadius: 12, backgroundColor: '#eaf3f4', alignItems: 'center' }, summaryNumber: { color: '#174f86', fontSize: 28, fontWeight: '900' }, summaryLabel: { color: '#657083', marginTop: 4, fontWeight: '700' },
   customerPhone: { color: '#657083', marginTop: -12, marginBottom: 20, fontWeight: '700' },

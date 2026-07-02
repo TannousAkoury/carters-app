@@ -210,6 +210,19 @@ export async function signInShopifyCustomer(email: string, password: string) {
   return token as { accessToken: string; expiresAt: string };
 }
 
+export async function recoverShopifyCustomer(email: string) {
+  const mutation = `
+    mutation recoverCustomer($email: String!) {
+      customerRecover(email: $email) {
+        customerUserErrors { field message code }
+      }
+    }
+  `;
+  const data = await requestStorefront<any>(mutation, { email });
+  const errors = data?.customerRecover?.customerUserErrors ?? [];
+  if (errors.length) throw new Error(errors.map((error: any) => error.message).join("\n"));
+}
+
 export async function getShopifyCustomer(customerAccessToken: string): Promise<ShopifyCustomer | null> {
   const query = `
     query getCustomer($customerAccessToken: String!) {
