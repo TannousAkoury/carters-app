@@ -1640,3 +1640,27 @@ export async function getProducts(collectionHandle?: string) {
     return [];
   }
 }
+
+export async function searchProducts(search: string) {
+  const term = search.trim();
+  if (!term) return [];
+  const query = `
+    query searchProducts($query: String!) {
+      products(first: 50, query: $query, sortKey: RELEVANCE) {
+        edges { node {
+          id title handle availableForSale
+          featuredImage { url altText }
+          priceRange { minVariantPrice { amount currencyCode } maxVariantPrice { amount currencyCode } }
+          compareAtPriceRange { minVariantPrice { amount currencyCode } }
+        } }
+      }
+    }
+  `;
+  try {
+    const data = await requestStorefront<any>(query, { query: term });
+    return (data?.products?.edges ?? []).map((edge: any, index: number) => mapProduct(edge.node, index));
+  } catch (error) {
+    console.error("Unable to search products:", error);
+    return [];
+  }
+}

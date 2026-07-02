@@ -1274,7 +1274,7 @@ export default function HomeScreen() {
       <Header
         cartCount={cartCount}
         isScrolled={isHeaderScrolled}
-        onSearch={() => showCollection("new-collection-ss26", "Products")}
+        onSearch={() => router.push("/search")}
         onCart={openCart}
         onWishlist={() => showCollection("new-collection-ss26", "Wishlist")}
         onMenu={() => setMenuVisible(true)}

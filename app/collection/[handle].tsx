@@ -1,9 +1,9 @@
 import { getCollectionDetails, getProducts, type ShopifyCollectionDetails } from "@/services/shopify";
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useVideoPlayer, VideoView } from "expo-video";
-import { ActivityIndicator, FlatList, Image, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, FlatList, Image, Modal, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 type Product = {
   id: string;
@@ -13,6 +13,7 @@ type Product = {
   image: string;
   tag: "NEW" | "SALE" | null;
   handle?: string;
+  availableForSale?: boolean;
 };
 
 export default function CollectionScreen() {
@@ -24,6 +25,18 @@ export default function CollectionScreen() {
   const [collection, setCollection] = useState<ShopifyCollectionDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [filterVisible, setFilterVisible] = useState(false);
+  const [availability, setAvailability] = useState<"all" | "in-stock">("all");
+  const [sort, setSort] = useState<"featured" | "price-low" | "price-high" | "az">("featured");
+
+  const visibleProducts = useMemo(() => {
+    const price = (value: string) => Number(value.replace(/[^0-9.]/g, "")) || 0;
+    const items = products.filter((product) => availability === "all" || product.availableForSale);
+    if (sort === "price-low") return [...items].sort((a, b) => price(a.price) - price(b.price));
+    if (sort === "price-high") return [...items].sort((a, b) => price(b.price) - price(a.price));
+    if (sort === "az") return [...items].sort((a, b) => a.title.localeCompare(b.title));
+    return items;
+  }, [availability, products, sort]);
 
   useEffect(() => {
     let mounted = true;
@@ -75,11 +88,11 @@ export default function CollectionScreen() {
 
       {!loading && !error ? (
         <View style={styles.toolbar}>
-          <Text style={styles.resultCount}>{products.length} PRODUCTS</Text>
-          <View style={styles.filterLabel}>
+          <Text style={styles.resultCount}>{visibleProducts.length} PRODUCTS</Text>
+          <TouchableOpacity style={styles.filterLabel} onPress={() => setFilterVisible(true)}>
             <Ionicons name="options-outline" size={17} color="#174f86" />
             <Text style={styles.filterText}>FILTER & SORT</Text>
-          </View>
+          </TouchableOpacity>
         </View>
       ) : null}
 
@@ -92,7 +105,7 @@ export default function CollectionScreen() {
         <View style={styles.center}><Text style={styles.error}>{error}</Text></View>
       ) : (
         <FlatList
-          data={products}
+          data={visibleProducts}
           keyExtractor={(item) => item.id}
           numColumns={2}
           contentContainerStyle={styles.grid}
@@ -117,6 +130,18 @@ export default function CollectionScreen() {
           )}
         />
       )}
+      <Modal visible={filterVisible} transparent animationType="slide" onRequestClose={() => setFilterVisible(false)}>
+        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setFilterVisible(false)}>
+          <View style={styles.filterSheet} onStartShouldSetResponder={() => true}>
+            <View style={styles.sheetHeader}><Text style={styles.sheetTitle}>Filter & Sort</Text><TouchableOpacity onPress={() => setFilterVisible(false)}><Ionicons name="close" size={25} color="#26364d" /></TouchableOpacity></View>
+            <Text style={styles.optionHeading}>Availability</Text>
+            <View style={styles.optionRow}>{([['all', 'All products'], ['in-stock', 'In stock']] as const).map(([value, label]) => <TouchableOpacity key={value} style={[styles.chip, availability === value && styles.chipActive]} onPress={() => setAvailability(value)}><Text style={[styles.chipText, availability === value && styles.chipTextActive]}>{label}</Text></TouchableOpacity>)}</View>
+            <Text style={styles.optionHeading}>Sort by</Text>
+            {([['featured', 'Featured'], ['price-low', 'Price: low to high'], ['price-high', 'Price: high to low'], ['az', 'Name: A–Z']] as const).map(([value, label]) => <TouchableOpacity key={value} style={styles.sortOption} onPress={() => setSort(value)}><Text style={[styles.sortText, sort === value && styles.sortTextActive]}>{label}</Text>{sort === value ? <Ionicons name="checkmark-circle" size={21} color="#174f86" /> : null}</TouchableOpacity>)}
+            <TouchableOpacity style={styles.applyButton} onPress={() => setFilterVisible(false)}><Text style={styles.applyText}>Show {visibleProducts.length} products</Text></TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -149,4 +174,5 @@ const styles = StyleSheet.create({
   price: { color: "#174f86", fontSize: 13, fontWeight: "800" },
   oldPrice: { color: "#9a8f8b", fontSize: 11, textDecorationLine: "line-through" },
   empty: { color: "#647086", textAlign: "center", marginTop: 80, width: "100%" },
+  modalBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(11,30,66,0.4)" }, filterSheet: { backgroundColor: "#fff", borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, paddingBottom: 30 }, sheetHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 22 }, sheetTitle: { color: "#17243a", fontSize: 21, fontWeight: "900" }, optionHeading: { color: "#303b4d", fontSize: 13, fontWeight: "900", marginTop: 10, marginBottom: 10 }, optionRow: { flexDirection: "row", gap: 9, marginBottom: 15 }, chip: { borderWidth: 1, borderColor: "#ccd5df", borderRadius: 20, paddingHorizontal: 17, paddingVertical: 10 }, chipActive: { backgroundColor: "#174f86", borderColor: "#174f86" }, chipText: { color: "#526074", fontWeight: "700" }, chipTextActive: { color: "#fff" }, sortOption: { height: 46, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: "#eee" }, sortText: { color: "#657083" }, sortTextActive: { color: "#174f86", fontWeight: "900" }, applyButton: { height: 52, borderRadius: 7, backgroundColor: "#174f86", alignItems: "center", justifyContent: "center", marginTop: 22 }, applyText: { color: "#fff", fontWeight: "900", fontSize: 15 },
 });
