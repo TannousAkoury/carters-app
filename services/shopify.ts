@@ -365,13 +365,13 @@ export async function getStorefrontNavigation(): Promise<StorefrontMenuItem[]> {
 }
 
 const COLORS = {
-  blue: "#06A2E4",
-  blueMid: "#06A2E4",
-  blueLight: "#E6F6FC",
+  blue: "#4b7fb9",
+  blueMid: "#6C98C8",
+  blueLight: "#D9E7EA",
   pinkAccent: "#E0938E",
   orange: "#F6B99F",
   offWhite: "#FFF8F1",
-  textDark: "#002041",
+  textDark: "#0B1E42",
   sale: "#D65A50",
 };
 
@@ -1656,8 +1656,9 @@ export async function getProducts(collectionHandle?: string) {
   if (collectionHandle) return getAllCollectionProducts(collectionHandle);
 
   const query = `
-    query getProducts {
-      products(first: 20) {
+    query getProducts($first: Int!, $after: String) {
+      products(first: $first, after: $after) {
+        pageInfo { hasNextPage endCursor }
         edges {
           node {
             id
@@ -1693,10 +1694,18 @@ export async function getProducts(collectionHandle?: string) {
   `;
 
   try {
-    const data = await requestStorefront<any>(query);
-    return (data?.products?.edges ?? []).map((edge: any, index: number) =>
-      mapProduct(edge.node, index),
-    );
+    const products: HomepageProduct[] = [];
+    let after: string | null = null;
+    let hasNextPage = true;
+    while (hasNextPage) {
+      const data: any = await requestStorefront<any>(query, { first: 100, after });
+      const connection = data?.products;
+      products.push(...(connection?.edges ?? []).map((edge: any, index: number) => mapProduct(edge.node, products.length + index)));
+      hasNextPage = Boolean(connection?.pageInfo?.hasNextPage);
+      after = connection?.pageInfo?.endCursor ?? null;
+      if (hasNextPage && !after) break;
+    }
+    return products;
   } catch (error) {
     console.error("Error fetching products:", error);
     return [];

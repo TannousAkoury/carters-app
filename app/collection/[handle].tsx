@@ -38,7 +38,11 @@ export default function CollectionScreen() {
     setLoading(true);
     setError("");
 
-    Promise.all([getProducts(handle), getCollectionDetails(handle)])
+    const isAllProducts = handle === "all-products";
+    Promise.all([
+      getProducts(isAllProducts ? undefined : handle),
+      isAllProducts ? Promise.resolve(null) : getCollectionDetails(handle),
+    ])
       .then(([items, details]) => {
         if (mounted) { setProducts(items); setCollection(details); }
       })
