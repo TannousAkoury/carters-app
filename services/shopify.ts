@@ -1395,13 +1395,12 @@ async function getHomepageContentFromStorefront(): Promise<HomepageContent> {
           bg: COLORS.offWhite,
           softColor: "rgba(217, 231, 234, 0.78)",
           accentColor: COLORS.blue,
-          image: heroCollection
-            ? collectionImage(heroCollection, 1920)
-            : optimizeShopifyImage(
-                WEBSITE_SECTION_IMAGES[STOREFRONT_FALLBACK.heroHandle],
-                1920,
-              ),
-          fullWidth: !heroCollection,
+          image: optimizeShopifyImage(
+            WEBSITE_SECTION_IMAGES[heroCollection?.handle ?? STOREFRONT_FALLBACK.heroHandle] ??
+              collectionImage(heroCollection, 1920),
+            1920,
+          ),
+          fullWidth: true,
           handle: heroCollection?.handle ?? STOREFRONT_FALLBACK.heroHandle,
           url: collectionUrl(
             heroCollection?.handle ?? STOREFRONT_FALLBACK.heroHandle,
