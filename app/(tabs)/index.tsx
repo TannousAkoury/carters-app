@@ -2,8 +2,8 @@ import { getHomepageContent, getStorefrontNavigation, type StorefrontMenuItem } 
 import { useCart } from "@/components/cart-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Image as ExpoImage } from "expo-image";
-import { useRouter } from "expo-router";
-import { type ComponentProps, useEffect, useRef, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { type ComponentProps, useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -1178,6 +1178,12 @@ export default function HomeScreen() {
   const [tinyEssentialsState, setTinyEssentialsState] =
     useState<TinyEssential[]>([]);
   const [ourBrandsState, setOurBrandsState] = useState<OurBrand[]>([]);
+
+  useFocusEffect(
+    useCallback(() => {
+      setActiveTab("home");
+    }, []),
+  );
 
   useEffect(() => {
     let isMounted = true;
