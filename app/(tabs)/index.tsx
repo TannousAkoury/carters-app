@@ -2,6 +2,7 @@ import { getHomepageContent, getStorefrontNavigation, type StorefrontMenuItem } 
 import { useCart } from "@/components/cart-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Image as ExpoImage } from "expo-image";
+import * as WebBrowser from "expo-web-browser";
 import { useFocusEffect, useRouter } from "expo-router";
 import { type ComponentProps, useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -9,7 +10,6 @@ import {
   Dimensions,
   Image,
   type ImageSourcePropType,
-  Linking,
   Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -1258,7 +1258,14 @@ export default function HomeScreen() {
       showCollection(item.handle, item.title);
       return;
     }
-    if (item.url) Linking.openURL(item.url.startsWith("http") ? item.url : `https://carters.com.lb${item.url}`);
+    if (item.url) {
+      const url = item.url.startsWith("http") ? item.url : `https://carters.com.lb${item.url}`;
+      WebBrowser.openBrowserAsync(url, {
+        presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
+        controlsColor: "#174f86",
+        toolbarColor: "#ffffff",
+      });
+    }
   };
 
   const handleTab = (tab: TabId) => {
