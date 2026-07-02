@@ -1,6 +1,7 @@
 import { createShopifyCustomer, getShopifyCustomer, recoverShopifyCustomer, ShopifyCustomer, signInShopifyCustomer } from '@/services/shopify';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
+import * as WebBrowser from 'expo-web-browser';
 import { Link } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -29,12 +30,19 @@ export default function AccountScreen() {
 
   const submit = async () => {
     if (mode === 'recover') {
-      if (!email.trim()) { setError('Enter your email address.'); return; }
+      if (!/^\S+@\S+\.\S+$/.test(email.trim())) { setError('Enter a valid email address.'); return; }
       try {
         setLoading(true); setError(''); setMessage('');
         await recoverShopifyCustomer(email.trim());
         setMessage('Shopify sent a password-reset link to your email. Please check your inbox and spam folder.');
-      } catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to send the reset email.'); }
+      } catch {
+        setMessage('Opening Shopify’s secure password reset page…');
+        await WebBrowser.openBrowserAsync('https://carters.com.lb/account/login#recover', {
+          presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
+          controlsColor: '#174f86',
+          toolbarColor: '#ffffff',
+        });
+      }
       finally { setLoading(false); }
       return;
     }
