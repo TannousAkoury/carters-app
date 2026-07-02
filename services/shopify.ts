@@ -1146,6 +1146,42 @@ export async function createCheckout(variantId: string): Promise<string> {
   return url;
 }
 
+export type ShopifyCart = {
+  id: string;
+  checkoutUrl: string;
+  totalQuantity: number;
+  cost: { subtotalAmount: ShopifyMoney; totalAmount: ShopifyMoney };
+  lines: { edges: { node: { id: string; quantity: number; merchandise: { id: string; title: string; product: { title: string; handle: string; featuredImage?: { url: string } | null }; price: ShopifyMoney } } }[] };
+};
+
+const CART_FIELDS = `
+  id checkoutUrl totalQuantity
+  cost { subtotalAmount { amount currencyCode } totalAmount { amount currencyCode } }
+  lines(first: 100) { edges { node { id quantity merchandise { ... on ProductVariant { id title price { amount currencyCode } product { title handle featuredImage { url } } } } } } }
+`;
+
+export async function addToShopifyCart(cartId: string | null, variantId: string) {
+  const mutation = cartId ? `mutation add($cartId: ID!, $lines: [CartLineInput!]!) { cartLinesAdd(cartId: $cartId, lines: $lines) { cart { ${CART_FIELDS} } userErrors { message } } }` : `mutation create($input: CartInput!) { cartCreate(input: $input) { cart { ${CART_FIELDS} } userErrors { message } } }`;
+  const variables = cartId ? { cartId, lines: [{ merchandiseId: variantId, quantity: 1 }] } : { input: { lines: [{ merchandiseId: variantId, quantity: 1 }] } };
+  const data = await requestStorefront<any>(mutation, variables);
+  const payload = cartId ? data?.cartLinesAdd : data?.cartCreate;
+  if (payload?.userErrors?.length) throw new Error(payload.userErrors[0].message);
+  return payload?.cart as ShopifyCart;
+}
+
+export async function getShopifyCart(cartId: string) {
+  const data = await requestStorefront<any>(`query cart($id: ID!) { cart(id: $id) { ${CART_FIELDS} } }`, { id: cartId });
+  return (data?.cart ?? null) as ShopifyCart | null;
+}
+
+export async function updateShopifyCartLine(cartId: string, lineId: string, quantity: number) {
+  const mutation = quantity > 0 ? `mutation update($cartId: ID!, $lines: [CartLineUpdateInput!]!) { cartLinesUpdate(cartId: $cartId, lines: $lines) { cart { ${CART_FIELDS} } userErrors { message } } }` : `mutation remove($cartId: ID!, $lineIds: [ID!]!) { cartLinesRemove(cartId: $cartId, lineIds: $lineIds) { cart { ${CART_FIELDS} } userErrors { message } } }`;
+  const data = await requestStorefront<any>(mutation, quantity > 0 ? { cartId, lines: [{ id: lineId, quantity }] } : { cartId, lineIds: [lineId] });
+  const payload = quantity > 0 ? data?.cartLinesUpdate : data?.cartLinesRemove;
+  if (payload?.userErrors?.length) throw new Error(payload.userErrors[0].message);
+  return payload?.cart as ShopifyCart;
+}
+
 function parseAdminPayload(data: any): HomepageContent | null {
   const metafield = data?.shop?.metafield;
   const metaobject = metafield?.reference ?? data?.metaobjects?.edges?.[0]?.node;

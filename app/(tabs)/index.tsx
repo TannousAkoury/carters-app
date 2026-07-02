@@ -1,7 +1,6 @@
 import { getHomepageContent, getStorefrontNavigation, type StorefrontMenuItem } from "@/services/shopify";
 import { Ionicons } from "@expo/vector-icons";
 import { Image as ExpoImage } from "expo-image";
-import * as WebBrowser from "expo-web-browser";
 import { useRouter } from "expo-router";
 import { type ComponentProps, useEffect, useRef, useState } from "react";
 import {
@@ -1262,11 +1261,7 @@ export default function HomeScreen() {
   };
 
   const openCart = () => {
-    WebBrowser.openBrowserAsync("https://carters.com.lb/cart", {
-      presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
-      controlsColor: "#174f86",
-      toolbarColor: "#ffffff",
-    });
+    router.push("/cart");
   };
 
   return (
