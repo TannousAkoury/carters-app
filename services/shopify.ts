@@ -169,6 +169,45 @@ export type ShopifyCustomer = {
   email?: string | null;
   phone?: string | null;
   numberOfOrders: string;
+  defaultAddress?: ShopifyCustomerAddress | null;
+  addresses: { edges: { node: ShopifyCustomerAddress }[] };
+  orders: { edges: { node: ShopifyCustomerOrder }[] };
+};
+
+export type ShopifyCustomerAddress = {
+  id: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  address1?: string | null;
+  address2?: string | null;
+  city?: string | null;
+  province?: string | null;
+  country?: string | null;
+  zip?: string | null;
+  phone?: string | null;
+  formatted: string[];
+};
+
+export type ShopifyCustomerOrder = {
+  id: string;
+  name: string;
+  processedAt: string;
+  financialStatus?: string | null;
+  fulfillmentStatus: string;
+  currentTotalPrice: ShopifyMoney;
+  lineItems: { edges: { node: { title: string; quantity: number } }[] };
+};
+
+export type ShopifyAddressInput = {
+  firstName?: string;
+  lastName?: string;
+  address1: string;
+  address2?: string;
+  city: string;
+  province?: string;
+  country: string;
+  zip?: string;
+  phone?: string;
 };
 
 export async function createShopifyCustomer(input: {
@@ -228,11 +267,89 @@ export async function getShopifyCustomer(customerAccessToken: string): Promise<S
     query getCustomer($customerAccessToken: String!) {
       customer(customerAccessToken: $customerAccessToken) {
         id displayName firstName lastName email phone numberOfOrders
+        defaultAddress { id firstName lastName address1 address2 city province country zip phone formatted }
+        addresses(first: 20) {
+          edges { node { id firstName lastName address1 address2 city province country zip phone formatted } }
+        }
+        orders(first: 20, reverse: true, sortKey: PROCESSED_AT) {
+          edges {
+            node {
+              id name processedAt financialStatus fulfillmentStatus
+              currentTotalPrice { amount currencyCode }
+              lineItems(first: 10) { edges { node { title quantity } } }
+            }
+          }
+        }
       }
     }
   `;
   const data = await requestStorefront<any>(query, { customerAccessToken });
   return data?.customer ?? null;
+}
+
+export async function updateShopifyCustomer(
+  customerAccessToken: string,
+  customer: { firstName?: string; lastName?: string; phone?: string; password?: string },
+) {
+  const mutation = `
+    mutation updateCustomer($customerAccessToken: String!, $customer: CustomerUpdateInput!) {
+      customerUpdate(customerAccessToken: $customerAccessToken, customer: $customer) {
+        customer { id displayName firstName lastName email phone numberOfOrders }
+        customerAccessToken { accessToken expiresAt }
+        customerUserErrors { field message code }
+      }
+    }
+  `;
+  const data = await requestStorefront<any>(mutation, { customerAccessToken, customer });
+  const result = data?.customerUpdate;
+  throwCustomerErrors(result?.customerUserErrors);
+  if (!result?.customer) throw new Error("Shopify could not update your profile.");
+  return result as { customer: ShopifyCustomer; customerAccessToken?: { accessToken: string; expiresAt: string } | null };
+}
+
+export async function saveShopifyCustomerAddress(
+  customerAccessToken: string,
+  address: ShopifyAddressInput,
+  addressId?: string,
+) {
+  const mutation = addressId
+    ? `mutation updateAddress($customerAccessToken: String!, $id: ID!, $address: MailingAddressInput!) {
+        customerAddressUpdate(customerAccessToken: $customerAccessToken, id: $id, address: $address) {
+          customerAddress { id }
+          customerUserErrors { field message code }
+        }
+      }`
+    : `mutation createAddress($customerAccessToken: String!, $address: MailingAddressInput!) {
+        customerAddressCreate(customerAccessToken: $customerAccessToken, address: $address) {
+          customerAddress { id }
+          customerUserErrors { field message code }
+        }
+      }`;
+  const variables = addressId ? { customerAccessToken, id: addressId, address } : { customerAccessToken, address };
+  const data = await requestStorefront<any>(mutation, variables);
+  const result = addressId ? data?.customerAddressUpdate : data?.customerAddressCreate;
+  throwCustomerErrors(result?.customerUserErrors);
+  if (!result?.customerAddress) throw new Error("Shopify could not save this address.");
+  return result.customerAddress as { id: string };
+}
+
+export async function setDefaultShopifyCustomerAddress(customerAccessToken: string, addressId: string) {
+  const mutation = `
+    mutation setDefaultAddress($customerAccessToken: String!, $addressId: ID!) {
+      customerDefaultAddressUpdate(customerAccessToken: $customerAccessToken, addressId: $addressId) {
+        customer { id }
+        customerUserErrors { field message code }
+      }
+    }
+  `;
+  const data = await requestStorefront<any>(mutation, { customerAccessToken, addressId });
+  const result = data?.customerDefaultAddressUpdate;
+  throwCustomerErrors(result?.customerUserErrors);
+  if (!result?.customer) throw new Error("Shopify could not set the default address.");
+}
+
+function throwCustomerErrors(errors?: { message: string }[]) {
+  if (errors?.length) throw new Error(errors.map((error) => error.message).join("\n"));
 }
 
 export type HomepagePromoItem = {
