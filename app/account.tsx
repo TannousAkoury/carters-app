@@ -34,8 +34,13 @@ export default function AccountScreen() {
         setLoading(true); setError(''); setMessage('');
         await recoverShopifyCustomer(email.trim());
         setMessage('Shopify sent a password-reset link to your email. Please check your inbox and spam folder.');
-      } catch {
-        setError('We could not send the reset email right now. Please try again later or contact customer support.');
+      } catch (reason) {
+        const message = reason instanceof Error ? reason.message.toLowerCase() : '';
+        setError(
+          message.includes('could not find customer') || message.includes('unidentified_customer')
+            ? 'No Shopify customer account was found for this email. Check the spelling or create a new account.'
+            : 'We could not send the reset email right now. Please try again later or contact customer support.',
+        );
       }
       finally { setLoading(false); }
       return;
