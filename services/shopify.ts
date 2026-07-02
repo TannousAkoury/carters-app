@@ -365,13 +365,13 @@ export async function getStorefrontNavigation(): Promise<StorefrontMenuItem[]> {
 }
 
 const COLORS = {
-  blue: "#4b7fb9",
-  blueMid: "#6C98C8",
-  blueLight: "#D9E7EA",
+  blue: "#06A2E4",
+  blueMid: "#06A2E4",
+  blueLight: "#E6F6FC",
   pinkAccent: "#E0938E",
   orange: "#F6B99F",
   offWhite: "#FFF8F1",
-  textDark: "#0B1E42",
+  textDark: "#002041",
   sale: "#D65A50",
 };
 

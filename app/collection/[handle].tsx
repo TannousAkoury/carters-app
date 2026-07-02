@@ -62,7 +62,7 @@ export default function CollectionScreen() {
       </View>
       <View style={styles.header}>
         <TouchableOpacity style={styles.back} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={23} color="#315f99" />
+          <Ionicons name="arrow-back" size={23} color="#002041" />
         </TouchableOpacity>
         <View style={styles.heading}>
           <Text style={styles.eyebrow}>COLLECTION</Text>
@@ -85,7 +85,7 @@ export default function CollectionScreen() {
         <View style={styles.toolbar}>
           <Text style={styles.resultCount}>{visibleProducts.length} PRODUCTS</Text>
           <TouchableOpacity style={styles.filterLabel} onPress={() => setFilterVisible(true)}>
-            <Ionicons name="options-outline" size={17} color="#174f86" />
+            <Ionicons name="options-outline" size={17} color="#002041" />
             <Text style={styles.filterText}>FILTER & SORT</Text>
           </TouchableOpacity>
         </View>
@@ -93,7 +93,7 @@ export default function CollectionScreen() {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#4b7fb9" />
+          <ActivityIndicator size="large" color="#06A2E4" />
           <Text style={styles.status}>Loading products…</Text>
         </View>
       ) : error ? (
@@ -137,7 +137,7 @@ export default function CollectionScreen() {
             {brands.length ? <><Text style={styles.optionHeading}>Brand</Text><View style={styles.wrapOptions}>{brands.map((brand) => <TouchableOpacity key={brand} style={[styles.chip, selectedBrands.includes(brand) && styles.chipActive]} onPress={() => toggleBrand(brand)}><Text style={[styles.chipText, selectedBrands.includes(brand) && styles.chipTextActive]}>{brand}</Text></TouchableOpacity>)}</View></> : null}
             {sizes.length ? <><Text style={styles.optionHeading}>Size</Text><View style={styles.wrapOptions}>{sizes.map((size) => <TouchableOpacity key={size} style={[styles.sizeChip, selectedSizes.includes(size) && styles.chipActive]} onPress={() => toggleSize(size)}><Text style={[styles.chipText, selectedSizes.includes(size) && styles.chipTextActive]}>{size}</Text></TouchableOpacity>)}</View></> : null}
             <Text style={styles.optionHeading}>Sort by</Text>
-            {([['featured', 'Featured'], ['price-low', 'Price: low to high'], ['price-high', 'Price: high to low'], ['az', 'Name: A–Z']] as const).map(([value, label]) => <TouchableOpacity key={value} style={styles.sortOption} onPress={() => setSort(value)}><Text style={[styles.sortText, sort === value && styles.sortTextActive]}>{label}</Text>{sort === value ? <Ionicons name="checkmark-circle" size={21} color="#174f86" /> : null}</TouchableOpacity>)}
+            {([['featured', 'Featured'], ['price-low', 'Price: low to high'], ['price-high', 'Price: high to low'], ['az', 'Name: A–Z']] as const).map(([value, label]) => <TouchableOpacity key={value} style={styles.sortOption} onPress={() => setSort(value)}><Text style={[styles.sortText, sort === value && styles.sortTextActive]}>{label}</Text>{sort === value ? <Ionicons name="checkmark-circle" size={21} color="#002041" /> : null}</TouchableOpacity>)}
             </ScrollView>
             <View style={styles.sheetActions}><TouchableOpacity style={styles.clearButton} onPress={clearFilters}><Text style={styles.clearText}>Clear</Text></TouchableOpacity><TouchableOpacity style={styles.applyButton} onPress={() => setFilterVisible(false)}><Text style={styles.applyText}>Show {visibleProducts.length}</Text></TouchableOpacity></View>
           </View>
@@ -149,18 +149,18 @@ export default function CollectionScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#fff" },
-  announcement: { height: 27, backgroundColor: "#174f86", alignItems: "center", justifyContent: "center" },
+  announcement: { height: 27, backgroundColor: "#002041", alignItems: "center", justifyContent: "center" },
   announcementText: { color: "#fff", fontSize: 9, fontWeight: "800", letterSpacing: 0.5 },
   header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingTop: 15, paddingBottom: 18, gap: 13, borderBottomWidth: 1, borderBottomColor: "#e8e8e8" },
   back: { width: 38, height: 38, backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
   heading: { flex: 1 },
   eyebrow: { color: "#718096", fontSize: 9, fontWeight: "700", letterSpacing: 1.4 },
-  title: { color: "#174f86", fontSize: 23, fontWeight: "800", marginTop: 3 },
+  title: { color: "#002041", fontSize: 23, fontWeight: "800", marginTop: 3 },
   toolbar: { height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 17, borderBottomWidth: 1, borderBottomColor: "#e8e8e8" },
   banner: { width: "100%", aspectRatio: 2.15, backgroundColor: "#f3f5f7" },
   resultCount: { color: "#667085", fontSize: 10, fontWeight: "700", letterSpacing: 0.6 },
   filterLabel: { flexDirection: "row", alignItems: "center", gap: 6 },
-  filterText: { color: "#174f86", fontSize: 10, fontWeight: "800", letterSpacing: 0.5 },
+  filterText: { color: "#002041", fontSize: 10, fontWeight: "800", letterSpacing: 0.5 },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 30 },
   status: { color: "#647086", marginTop: 12 },
   error: { color: "#c5524a", textAlign: "center", fontSize: 15 },
@@ -169,11 +169,11 @@ const styles = StyleSheet.create({
   card: { flex: 1, marginBottom: 22, maxWidth: "48.7%" },
   imageWrap: { aspectRatio: 0.82, overflow: "hidden", backgroundColor: "#f5f5f5" },
   image: { width: "100%", height: "100%" },
-  tag: { position: "absolute", left: 7, top: 7, color: "#fff", backgroundColor: "#174f86", paddingHorizontal: 8, paddingVertical: 4, fontSize: 9, fontWeight: "900" },
+  tag: { position: "absolute", left: 7, top: 7, color: "#fff", backgroundColor: "#002041", paddingHorizontal: 8, paddingVertical: 4, fontSize: 9, fontWeight: "900" },
   productTitle: { color: "#30343b", fontSize: 12, fontWeight: "600", lineHeight: 17, marginTop: 9 },
   priceRow: { flexDirection: "row", alignItems: "center", gap: 7, marginTop: 5 },
-  price: { color: "#174f86", fontSize: 13, fontWeight: "800" },
+  price: { color: "#002041", fontSize: 13, fontWeight: "800" },
   oldPrice: { color: "#9a8f8b", fontSize: 11, textDecorationLine: "line-through" },
   empty: { color: "#647086", textAlign: "center", marginTop: 80, width: "100%" },
-  modalBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(11,30,66,0.4)" }, filterSheet: { maxHeight: "92%", backgroundColor: "#fff", borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, paddingBottom: 30 }, sheetHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }, sheetTitle: { color: "#17243a", fontSize: 21, fontWeight: "900" }, optionHeading: { color: "#303b4d", fontSize: 13, fontWeight: "900", marginTop: 8, marginBottom: 8 }, optionRow: { flexDirection: "row", gap: 9, marginBottom: 8 }, wrapOptions: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginBottom: 6 }, chip: { borderWidth: 1, borderColor: "#ccd5df", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 }, sizeChip: { minWidth: 48, borderWidth: 1, borderColor: "#ccd5df", borderRadius: 7, paddingHorizontal: 10, paddingVertical: 8, alignItems: "center" }, chipActive: { backgroundColor: "#174f86", borderColor: "#174f86" }, chipText: { color: "#526074", fontWeight: "700" }, chipTextActive: { color: "#fff" }, priceInputs: { flexDirection: "row", alignItems: "center", gap: 9, marginBottom: 8 }, priceInputWrap: { flex: 1, height: 44, flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "#ccd5df", borderRadius: 7, paddingHorizontal: 11 }, currency: { color: "#526074", fontWeight: "800" }, priceInput: { flex: 1, height: "100%", paddingLeft: 6, color: "#26364d" }, priceDash: { color: "#8994a3" }, sortOption: { height: 42, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: "#eee" }, sortText: { color: "#657083" }, sortTextActive: { color: "#174f86", fontWeight: "900" }, sheetActions: { flexDirection: "row", gap: 10, marginTop: 16 }, clearButton: { width: 95, height: 50, borderRadius: 7, borderWidth: 1, borderColor: "#174f86", alignItems: "center", justifyContent: "center" }, clearText: { color: "#174f86", fontWeight: "900" }, applyButton: { flex: 1, height: 50, borderRadius: 7, backgroundColor: "#174f86", alignItems: "center", justifyContent: "center" }, applyText: { color: "#fff", fontWeight: "900", fontSize: 15 },
+  modalBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(11,30,66,0.4)" }, filterSheet: { maxHeight: "92%", backgroundColor: "#fff", borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, paddingBottom: 30 }, sheetHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }, sheetTitle: { color: "#17243a", fontSize: 21, fontWeight: "900" }, optionHeading: { color: "#303b4d", fontSize: 13, fontWeight: "900", marginTop: 8, marginBottom: 8 }, optionRow: { flexDirection: "row", gap: 9, marginBottom: 8 }, wrapOptions: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginBottom: 6 }, chip: { borderWidth: 1, borderColor: "#ccd5df", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 }, sizeChip: { minWidth: 48, borderWidth: 1, borderColor: "#ccd5df", borderRadius: 7, paddingHorizontal: 10, paddingVertical: 8, alignItems: "center" }, chipActive: { backgroundColor: "#002041", borderColor: "#002041" }, chipText: { color: "#526074", fontWeight: "700" }, chipTextActive: { color: "#fff" }, priceInputs: { flexDirection: "row", alignItems: "center", gap: 9, marginBottom: 8 }, priceInputWrap: { flex: 1, height: 44, flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "#ccd5df", borderRadius: 7, paddingHorizontal: 11 }, currency: { color: "#526074", fontWeight: "800" }, priceInput: { flex: 1, height: "100%", paddingLeft: 6, color: "#26364d" }, priceDash: { color: "#8994a3" }, sortOption: { height: 42, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: "#eee" }, sortText: { color: "#657083" }, sortTextActive: { color: "#002041", fontWeight: "900" }, sheetActions: { flexDirection: "row", gap: 10, marginTop: 16 }, clearButton: { width: 95, height: 50, borderRadius: 7, borderWidth: 1, borderColor: "#002041", alignItems: "center", justifyContent: "center" }, clearText: { color: "#002041", fontWeight: "900" }, applyButton: { flex: 1, height: 50, borderRadius: 7, backgroundColor: "#002041", alignItems: "center", justifyContent: "center" }, applyText: { color: "#fff", fontWeight: "900", fontSize: 15 },
 });

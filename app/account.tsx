@@ -39,7 +39,7 @@ export default function AccountScreen() {
         setMessage('Opening Shopify’s secure password reset page…');
         await WebBrowser.openBrowserAsync('https://carters.com.lb/account/login#recover', {
           presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
-          controlsColor: '#174f86',
+          controlsColor: '#002041',
           toolbarColor: '#ffffff',
         });
       }
@@ -72,12 +72,12 @@ export default function AccountScreen() {
     setCustomer(null);
   };
 
-  if (loading && !customer) return <View style={styles.center}><ActivityIndicator size="large" color="#174f86" /></View>;
+  if (loading && !customer) return <View style={styles.center}><ActivityIndicator size="large" color="#002041" /></View>;
 
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <View style={styles.icon}><Ionicons name="person-outline" size={34} color="#174f86" /></View>
+        <View style={styles.icon}><Ionicons name="person-outline" size={34} color="#002041" /></View>
         {customer ? (
           <>
             <Text style={styles.title}>Hello, {customer.displayName}</Text>
@@ -114,13 +114,13 @@ export default function AccountScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#fff' }, center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
   container: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }, icon: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', backgroundColor: '#eaf3f4', marginBottom: 18 },
-  title: { color: '#0b1e42', fontSize: 25, fontWeight: '900', textAlign: 'center' }, copy: { color: '#657083', textAlign: 'center', maxWidth: 330, lineHeight: 21, marginTop: 9, marginBottom: 20 },
-  tabs: { width: '100%', maxWidth: 360, flexDirection: 'row', backgroundColor: '#f3f6f8', borderRadius: 8, padding: 4, marginBottom: 16 }, tab: { flex: 1, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 6 }, tabActive: { backgroundColor: '#fff' }, tabText: { color: '#718096', fontWeight: '700' }, tabTextActive: { color: '#174f86', fontWeight: '900' },
+  title: { color: '#002041', fontSize: 25, fontWeight: '900', textAlign: 'center' }, copy: { color: '#657083', textAlign: 'center', maxWidth: 330, lineHeight: 21, marginTop: 9, marginBottom: 20 },
+  tabs: { width: '100%', maxWidth: 360, flexDirection: 'row', backgroundColor: '#f3f6f8', borderRadius: 8, padding: 4, marginBottom: 16 }, tab: { flex: 1, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 6 }, tabActive: { backgroundColor: '#fff' }, tabText: { color: '#718096', fontWeight: '700' }, tabTextActive: { color: '#002041', fontWeight: '900' },
   nameRow: { width: '100%', maxWidth: 360, flexDirection: 'row', gap: 10 }, nameInput: { flex: 1 }, input: { width: '100%', maxWidth: 360, height: 52, borderWidth: 1, borderColor: '#d7dfe7', borderRadius: 7, paddingHorizontal: 14, marginBottom: 11, color: '#17243a', backgroundColor: '#fff' },
-  error: { width: '100%', maxWidth: 360, color: '#c5524a', lineHeight: 19, marginBottom: 12 }, primaryButton: { width: '100%', maxWidth: 360, height: 52, borderRadius: 7, alignItems: 'center', justifyContent: 'center', backgroundColor: '#174f86' }, primaryText: { color: '#fff', fontSize: 16, fontWeight: '900' },
-  success: { width: '100%', maxWidth: 360, color: '#287a54', lineHeight: 20, marginBottom: 12, textAlign: 'center' }, forgotButton: { width: '100%', maxWidth: 360, alignItems: 'flex-end', paddingVertical: 5, marginTop: -5, marginBottom: 8 }, forgotText: { color: '#174f86', fontWeight: '800' },
-  secondaryButton: { width: '100%', maxWidth: 340, height: 50, borderWidth: 1, borderColor: '#174f86', borderRadius: 7, alignItems: 'center', justifyContent: 'center', marginTop: 22 }, secondaryText: { color: '#174f86', fontWeight: '800' }, link: { color: '#174f86', fontWeight: '700', marginTop: 20, padding: 10 },
-  summary: { width: 150, padding: 20, borderRadius: 12, backgroundColor: '#eaf3f4', alignItems: 'center' }, summaryNumber: { color: '#174f86', fontSize: 28, fontWeight: '900' }, summaryLabel: { color: '#657083', marginTop: 4, fontWeight: '700' },
+  error: { width: '100%', maxWidth: 360, color: '#c5524a', lineHeight: 19, marginBottom: 12 }, primaryButton: { width: '100%', maxWidth: 360, height: 52, borderRadius: 7, alignItems: 'center', justifyContent: 'center', backgroundColor: '#002041' }, primaryText: { color: '#fff', fontSize: 16, fontWeight: '900' },
+  success: { width: '100%', maxWidth: 360, color: '#287a54', lineHeight: 20, marginBottom: 12, textAlign: 'center' }, forgotButton: { width: '100%', maxWidth: 360, alignItems: 'flex-end', paddingVertical: 5, marginTop: -5, marginBottom: 8 }, forgotText: { color: '#002041', fontWeight: '800' },
+  secondaryButton: { width: '100%', maxWidth: 340, height: 50, borderWidth: 1, borderColor: '#002041', borderRadius: 7, alignItems: 'center', justifyContent: 'center', marginTop: 22 }, secondaryText: { color: '#002041', fontWeight: '800' }, link: { color: '#002041', fontWeight: '700', marginTop: 20, padding: 10 },
+  summary: { width: 150, padding: 20, borderRadius: 12, backgroundColor: '#eaf3f4', alignItems: 'center' }, summaryNumber: { color: '#002041', fontSize: 28, fontWeight: '900' }, summaryLabel: { color: '#657083', marginTop: 4, fontWeight: '700' },
   customerPhone: { color: '#657083', marginTop: -12, marginBottom: 20, fontWeight: '700' },
 });
 

@@ -10,7 +10,7 @@ export function GlobalCartButton() {
   if (pathname === '/' || pathname === '/account' || pathname === '/cart') return null;
   return (
     <TouchableOpacity style={styles.button} onPress={() => router.push('/cart')} accessibilityLabel={`Cart, ${count} items`}>
-      <Ionicons name="cart-outline" size={24} color="#174f86" />
+      <Ionicons name="cart-outline" size={24} color="#002041" />
       {count > 0 ? <View style={styles.badge}><Text style={styles.badgeText}>{count > 99 ? '99+' : count}</Text></View> : null}
     </TouchableOpacity>
   );

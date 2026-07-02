@@ -26,9 +26,9 @@ const DEVICE_WIDTH = Dimensions.get("window").width;
 const SCREEN_W = Platform.OS === "web" ? Math.min(DEVICE_WIDTH, 480) : DEVICE_WIDTH;
 
 const COLORS = {
-  blue: "#4b7fb9",
-  blueMid: "#6C98C8",
-  blueLight: "#D9E7EA",
+  blue: "#06A2E4",
+  blueMid: "#06A2E4",
+  blueLight: "#E6F6FC",
   softBlue: "#D9E7EA",
   pink: "#E0938E",
   pinkAccent: "#E0938E",
@@ -39,13 +39,13 @@ const COLORS = {
   offWhite: "#FFF8F1",
   card: "#FFFCF8",
   border: "#F1DED6",
-  textDark: "#0B1E42",
-  textMid: "#4D5668",
+  textDark: "#002041",
+  textMid: "#555555",
   textLight: "#9A8F8B",
   sale: "#D65A50",
 };
 
-const FONT = Platform.select({ ios: "System", android: "Roboto" });
+const FONT = "Jost_400Regular";
 
 type IconName = ComponentProps<typeof Ionicons>["name"];
 type TabId = "home" | "categories" | "shop" | "account";
@@ -1186,7 +1186,7 @@ export default function HomeScreen() {
       const url = item.url.startsWith("http") ? item.url : `https://carters.com.lb${item.url}`;
       WebBrowser.openBrowserAsync(url, {
         presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
-        controlsColor: "#174f86",
+        controlsColor: "#002041",
         toolbarColor: "#ffffff",
       });
     }
@@ -1345,7 +1345,7 @@ const styles = StyleSheet.create({
   },
   announcementBar: {
     height: 27,
-    backgroundColor: "#174f86",
+    backgroundColor: "#002041",
     alignItems: "center",
     justifyContent: "center",
   },
