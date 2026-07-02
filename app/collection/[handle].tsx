@@ -110,7 +110,7 @@ export default function CollectionScreen() {
             <TouchableOpacity
               style={styles.card}
               activeOpacity={0.86}
-              onPress={() => item.handle && router.push({ pathname: "/product/[handle]", params: { handle: item.handle } })}
+              onPress={() => item.handle && router.push({ pathname: "/product/[handle]", params: { handle: item.handle, size: selectedSizes.length === 1 ? selectedSizes[0] : undefined } })}
             >
               <View style={styles.imageWrap}>
                 <Image source={{ uri: item.image }} style={styles.image} resizeMode="cover" />

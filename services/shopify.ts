@@ -1203,7 +1203,11 @@ export async function addToShopifyCart(cartId: string | null, variantId: string)
       };
   const data = await requestStorefront<any>(mutation, variables);
   const payload = cartId ? data?.cartLinesAdd : data?.cartCreate;
+  if (cartId && (payload?.userErrors?.length || !payload?.cart)) {
+    return addToShopifyCart(null, variantId);
+  }
   if (payload?.userErrors?.length) throw new Error(payload.userErrors[0].message);
+  if (!payload?.cart) throw new Error("Shopify could not create a cart.");
   return payload?.cart as ShopifyCart;
 }
 

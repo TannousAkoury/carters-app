@@ -10,8 +10,9 @@ import { ActivityIndicator, Image, SafeAreaView, ScrollView, StyleSheet, Text, T
 export default function ProductScreen() {
   const { setCount } = useCart();
   const router = useRouter();
-  const params = useLocalSearchParams<{ handle: string }>();
+  const params = useLocalSearchParams<{ handle: string; size?: string }>();
   const handle = Array.isArray(params.handle) ? params.handle[0] : params.handle;
+  const requestedSize = Array.isArray(params.size) ? params.size[0] : params.size;
   const [product, setProduct] = useState<ProductDetails | null>(null);
   const [selected, setSelected] = useState<ProductVariant | null>(null);
   const [loading, setLoading] = useState(true);
@@ -25,10 +26,13 @@ export default function ProductScreen() {
     getProduct(handle).then((item) => {
       if (!mounted) return;
       setProduct(item);
-      setSelected(item?.variants.find((v) => v.availableForSale) ?? null);
+      const requestedVariant = requestedSize
+        ? item?.variants.find((variant) => variant.availableForSale && variant.selectedOptions.some((option) => option.name.toLowerCase() === "size" && option.value === requestedSize))
+        : null;
+      setSelected(requestedVariant ?? item?.variants.find((variant) => variant.availableForSale) ?? null);
     }).catch(() => mounted && setError("Unable to load this product.")).finally(() => mounted && setLoading(false));
     return () => { mounted = false; };
-  }, [handle]);
+  }, [handle, requestedSize]);
 
   const hasSizes = useMemo(() => product?.variants.some((v) => v.selectedOptions.some((o) => o.name.toLowerCase() === "size")), [product]);
   const label = (variant: ProductVariant) => variant.selectedOptions.find((o) => o.name.toLowerCase() === "size")?.value ?? variant.title;
