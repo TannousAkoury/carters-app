@@ -147,6 +147,7 @@ export type HomepageProduct = {
 export type ProductVariant = {
   id: string;
   title: string;
+  sku?: string | null;
   availableForSale: boolean;
   price: string;
   selectedOptions: { name: string; value: string }[];
@@ -1243,7 +1244,7 @@ export async function getProduct(handle: string): Promise<ProductDetails | null>
         variants(first: 100) {
           edges {
             node {
-              id title availableForSale
+              id title sku availableForSale
               selectedOptions { name value }
               price { amount currencyCode }
             }
@@ -1263,6 +1264,7 @@ export async function getProduct(handle: string): Promise<ProductDetails | null>
     variants: (data.product.variants?.edges ?? []).map(({ node }: any) => ({
       id: node.id,
       title: node.title,
+      sku: node.sku,
       availableForSale: node.availableForSale,
       price: formatMoney(node.price),
       selectedOptions: node.selectedOptions ?? [],
@@ -1270,7 +1272,7 @@ export async function getProduct(handle: string): Promise<ProductDetails | null>
   };
 }
 
-export async function createCheckout(variantId: string): Promise<string> {
+export async function createCheckout(variantId: string, isGift = false): Promise<string> {
   const mutation = `
     mutation createCart($input: CartInput!) {
       cartCreate(input: $input) {
@@ -1281,7 +1283,7 @@ export async function createCheckout(variantId: string): Promise<string> {
   `;
   const data = await requestStorefront<any>(mutation, {
     input: {
-      lines: [{ merchandiseId: variantId, quantity: 1 }],
+      lines: [{ merchandiseId: variantId, quantity: 1, ...(isGift ? { attributes: [{ key: "Gift", value: "Yes" }] } : {}) }],
       attributes: [{ key: "Order source", value: "Carter Mobile App" }],
       note: "Order placed from Carter mobile app",
     },
@@ -1307,13 +1309,14 @@ const CART_FIELDS = `
   lines(first: 100) { edges { node { id quantity merchandise { ... on ProductVariant { id title price { amount currencyCode } product { title handle featuredImage { url } } } } } } }
 `;
 
-export async function addToShopifyCart(cartId: string | null, variantId: string) {
+export async function addToShopifyCart(cartId: string | null, variantId: string, isGift = false) {
+  const line = { merchandiseId: variantId, quantity: 1, ...(isGift ? { attributes: [{ key: "Gift", value: "Yes" }] } : {}) };
   const mutation = cartId ? `mutation add($cartId: ID!, $lines: [CartLineInput!]!) { cartLinesAdd(cartId: $cartId, lines: $lines) { cart { ${CART_FIELDS} } userErrors { message } } }` : `mutation create($input: CartInput!) { cartCreate(input: $input) { cart { ${CART_FIELDS} } userErrors { message } } }`;
   const variables = cartId
-    ? { cartId, lines: [{ merchandiseId: variantId, quantity: 1 }] }
+    ? { cartId, lines: [line] }
     : {
         input: {
-          lines: [{ merchandiseId: variantId, quantity: 1 }],
+          lines: [line],
           attributes: [{ key: "Order source", value: "Carter Mobile App" }],
           note: "Order placed from Carter mobile app",
         },
@@ -1321,7 +1324,7 @@ export async function addToShopifyCart(cartId: string | null, variantId: string)
   const data = await requestStorefront<any>(mutation, variables);
   const payload = cartId ? data?.cartLinesAdd : data?.cartCreate;
   if (cartId && (payload?.userErrors?.length || !payload?.cart)) {
-    return addToShopifyCart(null, variantId);
+    return addToShopifyCart(null, variantId, isGift);
   }
   if (payload?.userErrors?.length) throw new Error(payload.userErrors[0].message);
   if (!payload?.cart) throw new Error("Shopify could not create a cart.");

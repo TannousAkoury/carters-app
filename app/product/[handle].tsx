@@ -19,6 +19,7 @@ export default function ProductScreen() {
   const [buying, setBuying] = useState(false);
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
+  const [isGift, setIsGift] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -41,7 +42,7 @@ export default function ProductScreen() {
     if (!selected) return;
     try {
       setBuying(true); setError("");
-      const checkoutUrl = await createCheckout(selected.id);
+      const checkoutUrl = await createCheckout(selected.id, isGift);
       await WebBrowser.openBrowserAsync(checkoutUrl, {
         presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
         controlsColor: "#002041",
@@ -57,7 +58,7 @@ export default function ProductScreen() {
     try {
       setAdding(true); setError(""); setAdded(false);
       const cartId = await SecureStore.getItemAsync("shopify_cart_id");
-      const cart = await addToShopifyCart(cartId, selected.id);
+      const cart = await addToShopifyCart(cartId, selected.id, isGift);
       await SecureStore.setItemAsync("shopify_cart_id", cart.id);
       setCount(cart.totalQuantity);
       setAdded(true);
@@ -83,6 +84,7 @@ export default function ProductScreen() {
         <Image source={{ uri: product.image }} style={styles.image} resizeMode="cover" />
         <Text style={styles.title}>{product.title}</Text>
         <Text style={styles.price}>{selected?.price ?? product.variants[0]?.price}</Text>
+        {selected?.sku ? <Text style={styles.sku}>SKU: {selected.sku}</Text> : null}
         <Text style={styles.sectionTitle}>{hasSizes ? "Select a size" : "Select an option"}</Text>
         <View style={styles.sizes}>
           {product.variants.map((variant) => (
@@ -91,6 +93,10 @@ export default function ProductScreen() {
             </TouchableOpacity>
           ))}
         </View>
+        <TouchableOpacity style={styles.giftOption} activeOpacity={0.75} onPress={() => setIsGift((value) => !value)} accessibilityRole="checkbox" accessibilityState={{ checked: isGift }}>
+          <View style={[styles.checkbox, isGift && styles.checkboxSelected]}>{isGift ? <Ionicons name="checkmark" size={17} color="#fff" /> : null}</View>
+          <View style={styles.giftCopy}><Text style={styles.giftTitle}>This item is a gift</Text><Text style={styles.giftHint}>The gift selection will be included with your Shopify order.</Text></View>
+        </TouchableOpacity>
         {product.description ? <Text style={styles.description}>{product.description}</Text> : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
@@ -111,8 +117,9 @@ const styles = StyleSheet.create({
   header: { height: 58, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: "#eee", paddingHorizontal: 12 },
   icon: { width: 40, height: 40, alignItems: "center", justifyContent: "center" }, headerTitle: { color: "#002041", fontWeight: "800", fontSize: 17 },
   content: { paddingBottom: 28 }, image: { width: "100%", aspectRatio: 0.88, backgroundColor: "#f4f4f4" },
-  title: { fontSize: 22, lineHeight: 29, fontWeight: "800", color: "#18243b", margin: 18, marginBottom: 7 }, price: { color: "#002041", fontSize: 19, fontWeight: "800", marginHorizontal: 18 },
+  title: { fontSize: 22, lineHeight: 29, fontWeight: "800", color: "#18243b", margin: 18, marginBottom: 7 }, price: { color: "#002041", fontSize: 19, fontWeight: "800", marginHorizontal: 18 }, sku: { color: "#657083", fontSize: 13, fontWeight: "700", marginHorizontal: 18, marginTop: 7 },
   sectionTitle: { marginHorizontal: 18, marginTop: 24, marginBottom: 11, fontSize: 14, fontWeight: "800", color: "#30343b" }, sizes: { flexDirection: "row", flexWrap: "wrap", gap: 9, marginHorizontal: 18 },
   size: { minWidth: 54, paddingHorizontal: 14, height: 42, borderWidth: 1, borderColor: "#ccd5df", alignItems: "center", justifyContent: "center", borderRadius: 5 }, sizeSelected: { backgroundColor: "#002041", borderColor: "#002041" }, sizeDisabled: { opacity: 0.35 }, sizeText: { color: "#26364d", fontWeight: "700" }, sizeTextSelected: { color: "#fff" },
+  giftOption: { flexDirection: "row", alignItems: "center", marginHorizontal: 18, marginTop: 22, padding: 14, borderWidth: 1, borderColor: "#d7dfe7", borderRadius: 8, backgroundColor: "#f8fafb" }, checkbox: { width: 24, height: 24, borderRadius: 4, borderWidth: 2, borderColor: "#7b8797", alignItems: "center", justifyContent: "center", marginRight: 12 }, checkboxSelected: { backgroundColor: "#002041", borderColor: "#002041" }, giftCopy: { flex: 1 }, giftTitle: { color: "#002041", fontWeight: "900" }, giftHint: { color: "#657083", fontSize: 12, lineHeight: 17, marginTop: 3 },
   description: { color: "#657083", lineHeight: 22, margin: 18, marginTop: 24 }, error: { color: "#c5524a", textAlign: "center", margin: 16 }, footer: { padding: 14, borderTopWidth: 1, borderTopColor: "#eee", gap: 9 }, addCart: { height: 50, borderRadius: 6, borderWidth: 1, borderColor: "#002041", alignItems: "center", justifyContent: "center" }, addCartText: { color: "#002041", fontSize: 15, fontWeight: "900" }, buy: { height: 54, borderRadius: 6, backgroundColor: "#002041", alignItems: "center", justifyContent: "center" }, buyDisabled: { opacity: 0.5 }, buyText: { color: "#fff", fontSize: 16, fontWeight: "900" },
 });
