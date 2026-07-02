@@ -1254,6 +1254,10 @@ export default function HomeScreen() {
 
   const openShopifyMenuItem = (item: StorefrontMenuItem) => {
     setMenuVisible(false);
+    if (item.title.trim().toLowerCase() === "special prices") {
+      showCollection("special-prices", "Special Prices");
+      return;
+    }
     if (item.handle) {
       showCollection(item.handle, item.title);
       return;

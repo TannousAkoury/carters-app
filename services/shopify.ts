@@ -323,13 +323,6 @@ export async function getStorefrontNavigation(): Promise<StorefrontMenuItem[]> {
         url: "",
         items: [take("Girl", "kid-girl"), take("Boy", "kid-boy")],
       },
-          {
-        id: "theme-special-prices",
-        title: "Special Prices",
-        url: "",
-        // url: `${PUBLIC_SITE_URL}/pages/special-prices`,
-        items: [],
-      },
     ];
     const items = groupedItems;
     const themeItems: StorefrontMenuItem[] = [
@@ -349,7 +342,13 @@ export async function getStorefrontNavigation(): Promise<StorefrontMenuItem[]> {
         image: "https://cdn.shopify.com/s/files/1/0112/1327/5202/files/PurelySoft_RGB_431C.png?v=1744274342",
         items: [],
       },
-  
+      {
+        id: "theme-special-prices",
+        title: "Special Prices",
+        url: `${PUBLIC_SITE_URL}/collections/special-prices`,
+        handle: "special-prices",
+        items: [],
+      },
     ];
     for (const themeItem of themeItems) {
       const existing = items.find((item) =>
