@@ -10,6 +10,8 @@ import "react-native-reanimated";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { CartProvider } from "@/components/cart-context";
 import { GlobalCartButton } from "@/components/global-cart-button";
+import { CurrencyProvider } from "@/components/currency-context";
+import { WhatsAppButton } from "@/components/whatsapp-button";
 
 export const unstable_settings = {
   anchor: "(tabs)",
@@ -20,16 +22,19 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <CartProvider>
-        <Stack>
+      <CurrencyProvider>
+        <CartProvider>
+          <Stack>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen
             name="account"
             options={{ presentation: "modal", title: "Carter's Oshkosh B'Gosh Account" }}
           />
-        </Stack>
-        <GlobalCartButton />
-      </CartProvider>
+          </Stack>
+          <GlobalCartButton />
+          <WhatsAppButton />
+        </CartProvider>
+      </CurrencyProvider>
       <StatusBar style="auto" />
     </ThemeProvider>
   );

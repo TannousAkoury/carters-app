@@ -1,5 +1,6 @@
 import { getHomepageContent, getStorefrontNavigation, type StorefrontMenuItem } from "@/services/shopify";
 import { useCart } from "@/components/cart-context";
+import { useCurrency, type DisplayCurrency } from "@/components/currency-context";
 import type { AgeCategory, ExploreStyle, HeroBannerItem, HomeProduct as Product, OurBrand, PromoFeature, ShopCategory, TinyEssential } from "@/features/home/types";
 import { Ionicons } from "@expo/vector-icons";
 import { Image as ExpoImage } from "expo-image";
@@ -52,7 +53,9 @@ type TabId = "home" | "categories" | "shop" | "account";
 
 type HeaderProps = {
   cartCount?: number;
+  currency: DisplayCurrency;
   isScrolled: boolean;
+  onCurrency?: () => void;
   onSearch?: () => void;
   onCart?: () => void;
   onWishlist?: () => void;
@@ -61,7 +64,9 @@ type HeaderProps = {
 
 function Header({
   cartCount = 0,
+  currency,
   isScrolled,
+  onCurrency,
   onSearch,
   onCart,
   onWishlist,
@@ -70,7 +75,7 @@ function Header({
   return (
     <View style={[styles.header, isScrolled && styles.headerScrolled]}>
       <View style={styles.announcementBar}>
-        <Text style={styles.announcementText}>
+        <Text style={styles.announcementText} numberOfLines={1}>
           DELIVERY IN 2–4 BUSINESS DAYS · FREE OVER $150
         </Text>
       </View>
@@ -109,6 +114,17 @@ function Header({
           activeOpacity={0.75}
         >
           <Ionicons name="search-outline" size={21} color={COLORS.blue} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.headerCurrencyBtn}
+          onPress={onCurrency}
+          accessibilityRole="button"
+          accessibilityLabel={`Currency is ${currency}. Switch to ${currency === "USD" ? "LBP" : "USD"}`}
+          activeOpacity={0.75}
+        >
+          <Text style={styles.headerCurrencyText}>{currency}</Text>
+          <Ionicons name="swap-horizontal" size={12} color={COLORS.blue} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -435,7 +451,12 @@ function ProductCard({
   onWishlistToggle?: (id: string, value: boolean) => void;
   onPress?: (product: Product) => void;
 }) {
+  const { formatMoney } = useCurrency();
   const [wished, setWished] = useState(item.wishlist);
+  const fallbackAmount = Number(item.price.replace(/[^0-9.]/g, ""));
+  const displayedPrice = formatMoney({ amount: String(item.minPrice ?? fallbackAmount), currencyCode: "USD" });
+  const oldAmount = item.oldPrice ? Number(item.oldPrice.replace(/[^0-9.]/g, "")) : 0;
+  const displayedOldPrice = item.oldPrice ? formatMoney({ amount: String(oldAmount), currencyCode: "USD" }) : null;
 
   const toggleWishlist = () => {
     const nextValue = !wished;
@@ -499,11 +520,11 @@ function ProductCard({
               item.oldPrice ? { color: COLORS.sale } : null,
             ]}
           >
-            {item.price}
+            {displayedPrice}
           </Text>
 
           {item.oldPrice && (
-            <Text style={styles.productOldPrice}>{item.oldPrice}</Text>
+            <Text style={styles.productOldPrice}>{displayedOldPrice}</Text>
           )}
         </View>
       </View>
@@ -1075,6 +1096,7 @@ function NavigationMenu({
 
 export default function HomeScreen() {
   const { count: cartCount } = useCart();
+  const { currency, toggleCurrency } = useCurrency();
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
   const [activeTab, setActiveTab] = useState<TabId>("home");
@@ -1210,7 +1232,9 @@ export default function HomeScreen() {
 
       <Header
         cartCount={cartCount}
+        currency={currency}
         isScrolled={isHeaderScrolled}
+        onCurrency={toggleCurrency}
         onSearch={() => router.push("/search")}
         onCart={openCart}
         onWishlist={() => showCollection("new-collection-ss26", "Wishlist")}
@@ -1354,6 +1378,7 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: "800",
     letterSpacing: 0.45,
+    paddingHorizontal: 8,
   },
   headerMain: {
     height: 60,
@@ -1383,6 +1408,22 @@ const styles = StyleSheet.create({
   },
   headerCircleTransparent: {
     backgroundColor: "transparent",
+  },
+  headerCurrencyBtn: {
+    height: 32,
+    minWidth: 45,
+    paddingHorizontal: 5,
+    borderRadius: 16,
+    backgroundColor: "#EEF5FA",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+  },
+  headerCurrencyText: {
+    color: COLORS.blue,
+    fontSize: 10,
+    fontWeight: "900",
   },
   logoWrap: {
     alignItems: "flex-start",

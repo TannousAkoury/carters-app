@@ -6,5 +6,5 @@ export type ShopCategory = { id: string; label: string; eyebrow?: string; subtit
 export type ExploreStyle = { id: string; label: string; image: string | ImageSourcePropType; handle: string; accentColor: string };
 export type TinyEssential = { id: string; title: string; image: string; handle: string; accentColor: string };
 export type OurBrand = { id: string; label: string; logoText: string; tagline: string; handle: string; image: string; bg: string; color: string };
-export type HomeProduct = { id: string; title: string; price: string; oldPrice: string | null; image: string; wishlist: boolean; tag: 'NEW' | 'SALE' | null; handle?: string };
+export type HomeProduct = { id: string; title: string; price: string; oldPrice: string | null; image: string; wishlist: boolean; tag: 'NEW' | 'SALE' | null; handle?: string; minPrice?: number; maxPrice?: number };
 export type PromoFeature = { id: string; title: string; text?: string };

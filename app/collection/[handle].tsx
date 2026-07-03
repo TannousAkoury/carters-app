@@ -3,6 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { useProductFilters } from "@/features/collection/use-product-filters";
+import { useCurrency } from "@/components/currency-context";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { ActivityIndicator, FlatList, Image, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
@@ -22,6 +23,7 @@ type Product = {
 };
 
 export default function CollectionScreen() {
+  const { formatMoney } = useCurrency();
   const router = useRouter();
   const params = useLocalSearchParams<{ handle: string; title?: string }>();
   const handle = Array.isArray(params.handle) ? params.handle[0] : params.handle;
@@ -122,8 +124,8 @@ export default function CollectionScreen() {
               </View>
               <Text style={styles.productTitle} numberOfLines={2}>{item.title}</Text>
               <View style={styles.priceRow}>
-                <Text style={styles.price}>{item.price}</Text>
-                {item.oldPrice ? <Text style={styles.oldPrice}>{item.oldPrice}</Text> : null}
+                <Text style={styles.price}>{formatMoney({ amount: String(item.minPrice ?? Number(item.price.replace(/[^0-9.]/g, ""))), currencyCode: "USD" })}</Text>
+                {item.oldPrice ? <Text style={styles.oldPrice}>{formatMoney({ amount: String(Number(item.oldPrice.replace(/[^0-9.]/g, ""))), currencyCode: "USD" })}</Text> : null}
               </View>
             </TouchableOpacity>
           )}

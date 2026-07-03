@@ -150,6 +150,7 @@ export type ProductVariant = {
   sku?: string | null;
   availableForSale: boolean;
   price: string;
+  money: ShopifyMoney;
   selectedOptions: { name: string; value: string }[];
 };
 
@@ -174,6 +175,36 @@ export type ShopifyCustomer = {
   addresses: { edges: { node: ShopifyCustomerAddress }[] };
   orders: { edges: { node: ShopifyCustomerOrder }[] };
 };
+
+export type GiftChoice = "none" | "wrap" | "box";
+export type GiftOptions = {
+  wrapImage: string;
+  boxImage: string;
+  boxVariantId: string;
+  boxPrice: ShopifyMoney;
+};
+
+export async function getGiftOptions(): Promise<GiftOptions | null> {
+  const query = `
+    query getGiftOptions {
+      product(handle: "gift-box") {
+        images(first: 2) { edges { node { url } } }
+        variants(first: 10) { edges { node { id availableForSale price { amount currencyCode } } } }
+      }
+    }
+  `;
+  const data = await requestStorefront<any>(query);
+  const product = data?.product;
+  const variant = product?.variants?.edges?.map(({ node }: any) => node).find((item: any) => item.availableForSale);
+  if (!variant) return null;
+  const images = product?.images?.edges?.map(({ node }: any) => node.url) ?? [];
+  return {
+    wrapImage: images[0] ?? "",
+    boxImage: images[1] ?? images[0] ?? "",
+    boxVariantId: variant.id,
+    boxPrice: variant.price,
+  };
+}
 
 export type ShopifyCustomerAddress = {
   id: string;
@@ -1267,12 +1298,13 @@ export async function getProduct(handle: string): Promise<ProductDetails | null>
       sku: node.sku,
       availableForSale: node.availableForSale,
       price: formatMoney(node.price),
+      money: node.price,
       selectedOptions: node.selectedOptions ?? [],
     })),
   };
 }
 
-export async function createCheckout(variantId: string, isGift = false): Promise<string> {
+export async function createCheckout(variantId: string, giftChoice: GiftChoice = "none", giftBoxVariantId?: string): Promise<string> {
   const mutation = `
     mutation createCart($input: CartInput!) {
       cartCreate(input: $input) {
@@ -1283,7 +1315,10 @@ export async function createCheckout(variantId: string, isGift = false): Promise
   `;
   const data = await requestStorefront<any>(mutation, {
     input: {
-      lines: [{ merchandiseId: variantId, quantity: 1, ...(isGift ? { attributes: [{ key: "Gift", value: "Yes" }] } : {}) }],
+      lines: [
+        { merchandiseId: variantId, quantity: 1, ...(giftChoice !== "none" ? { attributes: [{ key: "Gift packaging", value: giftChoice === "box" ? "Gift Box" : "Gift Wrap" }] } : {}) },
+        ...(giftChoice === "box" && giftBoxVariantId ? [{ merchandiseId: giftBoxVariantId, quantity: 1, attributes: [{ key: "For", value: "Gift packaging" }] }] : []),
+      ],
       attributes: [{ key: "Order source", value: "Carter Mobile App" }],
       note: "Order placed from Carter mobile app",
     },
@@ -1300,23 +1335,26 @@ export type ShopifyCart = {
   checkoutUrl: string;
   totalQuantity: number;
   cost: { subtotalAmount: ShopifyMoney; totalAmount: ShopifyMoney };
-  lines: { edges: { node: { id: string; quantity: number; merchandise: { id: string; title: string; product: { title: string; handle: string; featuredImage?: { url: string } | null }; price: ShopifyMoney } } }[] };
+  lines: { edges: { node: { id: string; quantity: number; attributes: { key: string; value: string }[]; merchandise: { id: string; title: string; product: { title: string; handle: string; featuredImage?: { url: string } | null }; price: ShopifyMoney } } }[] };
 };
 
 const CART_FIELDS = `
   id checkoutUrl totalQuantity
   cost { subtotalAmount { amount currencyCode } totalAmount { amount currencyCode } }
-  lines(first: 100) { edges { node { id quantity merchandise { ... on ProductVariant { id title price { amount currencyCode } product { title handle featuredImage { url } } } } } } }
+  lines(first: 100) { edges { node { id quantity attributes { key value } merchandise { ... on ProductVariant { id title price { amount currencyCode } product { title handle featuredImage { url } } } } } } }
 `;
 
-export async function addToShopifyCart(cartId: string | null, variantId: string, isGift = false) {
-  const line = { merchandiseId: variantId, quantity: 1, ...(isGift ? { attributes: [{ key: "Gift", value: "Yes" }] } : {}) };
+export async function addToShopifyCart(cartId: string | null, variantId: string, giftChoice: GiftChoice = "none", giftBoxVariantId?: string) {
+  const lines = [
+    { merchandiseId: variantId, quantity: 1, ...(giftChoice !== "none" ? { attributes: [{ key: "Gift packaging", value: giftChoice === "box" ? "Gift Box" : "Gift Wrap" }] } : {}) },
+    ...(giftChoice === "box" && giftBoxVariantId ? [{ merchandiseId: giftBoxVariantId, quantity: 1, attributes: [{ key: "For", value: "Gift packaging" }] }] : []),
+  ];
   const mutation = cartId ? `mutation add($cartId: ID!, $lines: [CartLineInput!]!) { cartLinesAdd(cartId: $cartId, lines: $lines) { cart { ${CART_FIELDS} } userErrors { message } } }` : `mutation create($input: CartInput!) { cartCreate(input: $input) { cart { ${CART_FIELDS} } userErrors { message } } }`;
   const variables = cartId
-    ? { cartId, lines: [line] }
+    ? { cartId, lines }
     : {
         input: {
-          lines: [line],
+          lines,
           attributes: [{ key: "Order source", value: "Carter Mobile App" }],
           note: "Order placed from Carter mobile app",
         },
@@ -1324,7 +1362,7 @@ export async function addToShopifyCart(cartId: string | null, variantId: string,
   const data = await requestStorefront<any>(mutation, variables);
   const payload = cartId ? data?.cartLinesAdd : data?.cartCreate;
   if (cartId && (payload?.userErrors?.length || !payload?.cart)) {
-    return addToShopifyCart(null, variantId, isGift);
+    return addToShopifyCart(null, variantId, giftChoice, giftBoxVariantId);
   }
   if (payload?.userErrors?.length) throw new Error(payload.userErrors[0].message);
   if (!payload?.cart) throw new Error("Shopify could not create a cart.");

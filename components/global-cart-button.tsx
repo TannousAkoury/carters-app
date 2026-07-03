@@ -7,7 +7,7 @@ export function GlobalCartButton() {
   const pathname = usePathname();
   const router = useRouter();
   const { count } = useCart();
-  if (pathname === '/' || pathname === '/account' || pathname === '/cart') return null;
+  if (pathname === '/' || pathname === '/index' || pathname.startsWith('/(tabs)') || pathname === '/account' || pathname === '/cart') return null;
   return (
     <TouchableOpacity style={styles.button} onPress={() => router.push('/cart')} accessibilityLabel={`Cart, ${count} items`}>
       <Ionicons name="cart-outline" size={24} color="#002041" />

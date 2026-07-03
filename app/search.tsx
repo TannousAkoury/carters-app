@@ -3,8 +3,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useCurrency } from '@/components/currency-context';
 
 export default function SearchScreen() {
+  const { formatMoney } = useCurrency();
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [products, setProducts] = useState<HomepageProduct[]>([]);
@@ -26,7 +28,7 @@ export default function SearchScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.header}><TouchableOpacity style={styles.back} onPress={() => router.back()}><Ionicons name="arrow-back" size={24} color="#002041" /></TouchableOpacity><View style={styles.searchBox}><Ionicons name="search" size={19} color="#718096" /><TextInput style={styles.input} autoFocus placeholder="Search clothes, styles…" value={query} onChangeText={setQuery} returnKeyType="search" />{query ? <TouchableOpacity onPress={() => setQuery('')}><Ionicons name="close-circle" size={20} color="#9aa5b3" /></TouchableOpacity> : null}</View></View>
       {loading ? <View style={styles.center}><ActivityIndicator size="large" color="#002041" /></View> : (
-        <FlatList data={products} keyExtractor={(item) => item.id} numColumns={2} columnWrapperStyle={styles.row} contentContainerStyle={styles.grid} ListHeaderComponent={query.trim().length >= 2 ? <Text style={styles.count}>{products.length} RESULTS</Text> : null} ListEmptyComponent={<View style={styles.center}><Ionicons name="search-outline" size={48} color="#b3bdc8" /><Text style={styles.empty}>{query.trim().length < 2 ? 'Type at least 2 characters to search' : 'No products matched your search'}</Text></View>} renderItem={({ item }) => <TouchableOpacity style={styles.card} onPress={() => item.handle && router.push({ pathname: '/product/[handle]', params: { handle: item.handle } })}><Image source={{ uri: item.image }} style={styles.image} /><Text style={styles.productTitle} numberOfLines={2}>{item.title}</Text><Text style={styles.price}>{item.price}</Text></TouchableOpacity>} />
+        <FlatList data={products} keyExtractor={(item) => item.id} numColumns={2} columnWrapperStyle={styles.row} contentContainerStyle={styles.grid} ListHeaderComponent={query.trim().length >= 2 ? <Text style={styles.count}>{products.length} RESULTS</Text> : null} ListEmptyComponent={<View style={styles.center}><Ionicons name="search-outline" size={48} color="#b3bdc8" /><Text style={styles.empty}>{query.trim().length < 2 ? 'Type at least 2 characters to search' : 'No products matched your search'}</Text></View>} renderItem={({ item }) => <TouchableOpacity style={styles.card} onPress={() => item.handle && router.push({ pathname: '/product/[handle]', params: { handle: item.handle } })}><Image source={{ uri: item.image }} style={styles.image} /><Text style={styles.productTitle} numberOfLines={2}>{item.title}</Text><Text style={styles.price}>{formatMoney({ amount: String(item.minPrice ?? Number(item.price.replace(/[^0-9.]/g, ''))), currencyCode: 'USD' })}</Text></TouchableOpacity>} />
       )}
     </SafeAreaView>
   );
