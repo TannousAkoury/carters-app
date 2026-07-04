@@ -4,7 +4,7 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { useProductFilters } from "@/features/collection/use-product-filters";
 import { useCurrency } from "@/components/currency-context";
-import { useVideoPlayer, VideoView } from "expo-video";
+import { salePercentage } from "@/utils/pricing";
 import { ActivityIndicator, FlatList, Image, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 type Product = {
@@ -54,38 +54,18 @@ export default function CollectionScreen() {
     return () => { mounted = false; };
   }, [handle]);
 
-  const videoPlayer = useVideoPlayer(collection?.bannerVideo ?? null, (player) => {
-    player.loop = true;
-    player.muted = true;
-    player.play();
-  });
-
   return (
     <SafeAreaView style={styles.screen}>
       <Stack.Screen options={{ headerShown: false }} />
-      <View style={styles.announcement}>
-        <Text style={styles.announcementText}>FREE DELIVERY ON ORDERS ABOVE $150</Text>
-      </View>
       <View style={styles.header}>
         <TouchableOpacity style={styles.back} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={23} color="#002041" />
         </TouchableOpacity>
-        <View style={styles.heading}>
-          <Text style={styles.eyebrow}>COLLECTION</Text>
-          <Text style={styles.title}>{title || handle}</Text>
-        </View>
       </View>
 
-      {collection?.bannerVideo ? (
-        <VideoView
-          style={styles.banner}
-          player={videoPlayer}
-          contentFit="cover"
-          nativeControls
-        />
-      ) : collection?.bannerImage ? (
-        <Image source={{ uri: collection.bannerImage }} style={styles.banner} resizeMode="cover" />
-      ) : null}
+      <View style={styles.collectionBanner}>
+        <Text style={styles.collectionBannerTitle}>{collection?.title || title || handle}</Text>
+      </View>
 
       {!loading && !error ? (
         <View style={styles.toolbar}>
@@ -112,23 +92,26 @@ export default function CollectionScreen() {
           contentContainerStyle={styles.grid}
           columnWrapperStyle={styles.row}
           ListEmptyComponent={<Text style={styles.empty}>No products found in this collection.</Text>}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.card}
-              activeOpacity={0.86}
-              onPress={() => item.handle && router.push({ pathname: "/product/[handle]", params: { handle: item.handle, size: selectedSizes.length === 1 ? selectedSizes[0] : undefined } })}
-            >
-              <View style={styles.imageWrap}>
-                <Image source={{ uri: item.image }} style={styles.image} resizeMode="cover" />
-                {item.tag ? <Text style={styles.tag}>{item.tag}</Text> : null}
-              </View>
-              <Text style={styles.productTitle} numberOfLines={2}>{item.title}</Text>
-              <View style={styles.priceRow}>
-                <Text style={styles.price}>{formatMoney({ amount: String(item.minPrice ?? Number(item.price.replace(/[^0-9.]/g, ""))), currencyCode: "USD" })}</Text>
-                {item.oldPrice ? <Text style={styles.oldPrice}>{formatMoney({ amount: String(Number(item.oldPrice.replace(/[^0-9.]/g, ""))), currencyCode: "USD" })}</Text> : null}
-              </View>
-            </TouchableOpacity>
-          )}
+          renderItem={({ item }) => {
+            const discount = salePercentage(item.minPrice ?? item.price, item.oldPrice);
+            return (
+              <TouchableOpacity
+                style={styles.card}
+                activeOpacity={0.86}
+                onPress={() => item.handle && router.push({ pathname: "/product/[handle]", params: { handle: item.handle, size: selectedSizes.length === 1 ? selectedSizes[0] : undefined } })}
+              >
+                <View style={styles.imageWrap}>
+                  <Image source={{ uri: item.image }} style={styles.image} resizeMode="cover" />
+                  {discount ? <Text style={[styles.tag, styles.saleTag]}>-{discount}%</Text> : item.tag ? <Text style={styles.tag}>{item.tag}</Text> : null}
+                </View>
+                <Text style={styles.productTitle} numberOfLines={2}>{item.title}</Text>
+                <View style={styles.priceRow}>
+                  <Text style={styles.price}>{formatMoney({ amount: String(item.minPrice ?? Number(item.price.replace(/[^0-9.]/g, ""))), currencyCode: "USD" })}</Text>
+                  {item.oldPrice ? <Text style={styles.oldPrice}>{formatMoney({ amount: String(Number(item.oldPrice.replace(/[^0-9.]/g, ""))), currencyCode: "USD" })}</Text> : null}
+                </View>
+              </TouchableOpacity>
+            );
+          }}
         />
       )}
       <Modal visible={filterVisible} transparent animationType="slide" onRequestClose={() => setFilterVisible(false)}>
@@ -155,15 +138,11 @@ export default function CollectionScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#fff" },
-  announcement: { height: 27, backgroundColor: "#002041", alignItems: "center", justifyContent: "center" },
-  announcementText: { color: "#fff", fontSize: 9, fontWeight: "800", letterSpacing: 0.5 },
   header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingTop: 15, paddingBottom: 18, gap: 13, borderBottomWidth: 1, borderBottomColor: "#e8e8e8" },
   back: { width: 38, height: 38, backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
-  heading: { flex: 1 },
-  eyebrow: { color: "#718096", fontSize: 9, fontWeight: "700", letterSpacing: 1.4 },
-  title: { color: "#002041", fontSize: 23, fontWeight: "800", marginTop: 3 },
   toolbar: { height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 17, borderBottomWidth: 1, borderBottomColor: "#e8e8e8" },
-  banner: { width: "100%", aspectRatio: 2.15, backgroundColor: "#f3f5f7" },
+  collectionBanner: { minHeight: 112, paddingHorizontal: 24, paddingVertical: 28, alignItems: "center", justifyContent: "center", backgroundColor: "#eef5f8" },
+  collectionBannerTitle: { color: "#002041", fontSize: 25, lineHeight: 32, fontWeight: "900", textAlign: "center" },
   resultCount: { color: "#667085", fontSize: 10, fontWeight: "700", letterSpacing: 0.6 },
   filterLabel: { flexDirection: "row", alignItems: "center", gap: 6 },
   filterText: { color: "#002041", fontSize: 10, fontWeight: "800", letterSpacing: 0.5 },
@@ -176,6 +155,7 @@ const styles = StyleSheet.create({
   imageWrap: { aspectRatio: 0.82, overflow: "hidden", backgroundColor: "#f5f5f5" },
   image: { width: "100%", height: "100%" },
   tag: { position: "absolute", left: 7, top: 7, color: "#fff", backgroundColor: "#002041", paddingHorizontal: 8, paddingVertical: 4, fontSize: 9, fontWeight: "900" },
+  saleTag: { backgroundColor: "#d64545" },
   productTitle: { color: "#30343b", fontSize: 12, fontWeight: "600", lineHeight: 17, marginTop: 9 },
   priceRow: { flexDirection: "row", alignItems: "center", gap: 7, marginTop: 5 },
   price: { color: "#002041", fontSize: 13, fontWeight: "800" },

@@ -1,6 +1,7 @@
 import { getHomepageContent, getStorefrontNavigation, type StorefrontMenuItem } from "@/services/shopify";
 import { useCart } from "@/components/cart-context";
 import { useCurrency, type DisplayCurrency } from "@/components/currency-context";
+import { salePercentage } from "@/utils/pricing";
 import type { AgeCategory, ExploreStyle, HeroBannerItem, HomeProduct as Product, OurBrand, PromoFeature, ShopCategory, TinyEssential } from "@/features/home/types";
 import { Ionicons } from "@expo/vector-icons";
 import { Image as ExpoImage } from "expo-image";
@@ -74,12 +75,6 @@ function Header({
 }: HeaderProps) {
   return (
     <View style={[styles.header, isScrolled && styles.headerScrolled]}>
-      <View style={styles.announcementBar}>
-        <Text style={styles.announcementText} numberOfLines={1}>
-          DELIVERY IN 2–4 BUSINESS DAYS · FREE OVER $150
-        </Text>
-      </View>
-
       <View style={styles.headerMain}>
        <View style={styles.headerLeft}>
         <TouchableOpacity
@@ -104,6 +99,17 @@ function Header({
 
       <View style={styles.headerRight}>
         <TouchableOpacity
+          style={styles.headerCurrencyBtn}
+          onPress={onCurrency}
+          accessibilityRole="button"
+          accessibilityLabel={`Currency is ${currency}. Switch to ${currency === "USD" ? "LBP" : "USD"}`}
+          activeOpacity={0.75}
+        >
+          <Text style={styles.headerCurrencyText}>{currency}</Text>
+          <Ionicons name="swap-horizontal" size={12} color={COLORS.blue} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
           style={[
             styles.headerCircleBtn,
             !isScrolled && styles.headerCircleTransparent,
@@ -114,17 +120,6 @@ function Header({
           activeOpacity={0.75}
         >
           <Ionicons name="search-outline" size={21} color={COLORS.blue} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.headerCurrencyBtn}
-          onPress={onCurrency}
-          accessibilityRole="button"
-          accessibilityLabel={`Currency is ${currency}. Switch to ${currency === "USD" ? "LBP" : "USD"}`}
-          activeOpacity={0.75}
-        >
-          <Text style={styles.headerCurrencyText}>{currency}</Text>
-          <Ionicons name="swap-horizontal" size={12} color={COLORS.blue} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -199,115 +194,10 @@ function HeroBanner({
     );
   }
 
-  const activeBg = banner?.bg || COLORS.offWhite;
-
   return (
-    <View style={[styles.heroContainer, { backgroundColor: activeBg }]}>
-      <View style={[styles.heroSlide, { backgroundColor: banner.bg }]}>
-        <View
-          style={[
-            styles.heroBlobPrimary,
-            { backgroundColor: banner.softColor },
-          ]}
-        />
-
-        <View style={styles.heroPatternWrap}>
-          {Array.from({ length: 18 }).map((_, dotIndex) => (
-            <View key={`hero-dot-${dotIndex}`} style={styles.heroDotBg} />
-          ))}
-        </View>
-
-        <View style={styles.heroContent}>
-          <View style={styles.heroTextCol}>
-            <View style={styles.heroPill}>
-              <View
-                style={[
-                  styles.heroPillDot,
-                  { backgroundColor: banner.accentColor },
-                ]}
-              />
-              <Text style={styles.heroPillText}>{banner.subtitle}</Text>
-            </View>
-
-            <Text style={[styles.heroTitle, { color: banner.accentColor }]}>
-              {banner.title}
-            </Text>
-
-            {banner.description ? (
-              <Text style={styles.heroDescription}>{banner.description}</Text>
-            ) : null}
-            {banner.categories?.length ? (
-              <View style={styles.heroCategories}>
-                {banner.categories.map((category, index) => (
-                  <Text key={`${banner.id}-cat-${category}`} style={styles.heroCategoryText}>
-                    {category}
-                    {index < (banner.categories?.length ?? 0) - 1 ? " \u00B7" : ""}
-                  </Text>
-                ))}
-              </View>
-            ) : null}
-
-            <TouchableOpacity
-              style={[
-                styles.heroCta,
-                {
-                  backgroundColor: banner.accentColor,
-                  shadowColor: banner.accentColor,
-                },
-              ]}
-              onPress={() => onShopNow?.(banner)}
-              activeOpacity={0.84}
-            >
-              <Text style={styles.heroCtaText}>{banner.cta}</Text>
-            </TouchableOpacity>
-
-            {banner.features?.length ? (
-              <View style={styles.heroFeatures}>
-                {banner.features.map((feature) => (
-                  <View key={`${banner.id}-feature-${feature}`} style={styles.heroFeatureItem}>
-                    <Ionicons name="sparkles" size={10} color={banner.accentColor} />
-                    <Text style={styles.heroFeatureText}>{feature}</Text>
-                  </View>
-                ))}
-              </View>
-            ) : null}
-          </View>
-
-          <View style={styles.heroImageCol}>
-            <View
-              style={[
-                styles.heroImageBackCard,
-                { backgroundColor: banner.softColor },
-              ]}
-            />
-
-            <View style={styles.heroImageFrame}>
-              <Image
-                source={{ uri: banner.image }}
-                style={styles.heroImage}
-                resizeMode="cover"
-              />
-
-              <View style={styles.heroImageBadge}>
-                <Ionicons
-                  name="sparkles"
-                  size={12}
-                  color={banner.accentColor}
-                />
-                <Text
-                  style={[
-                    styles.heroImageBadgeText,
-                    { color: banner.accentColor },
-                  ]}
-                >
-                  New in
-                </Text>
-              </View>
-            </View>
-          </View>
-        </View>
-      </View>
-    </View>
+    <TouchableOpacity style={styles.shopifyHeroContainer} activeOpacity={0.9} onPress={() => onShopNow?.(banner)}>
+      <Image source={{ uri: banner.image }} style={styles.shopifyHeroImage} resizeMode="contain" />
+    </TouchableOpacity>
   );
 }
 
@@ -420,7 +310,7 @@ function AgeRow({
             onPress={() => onPress?.(category)}
             activeOpacity={0.78}
           >
-            <View style={[styles.ageCircle, { backgroundColor: category.bg }]}>
+            <View style={styles.ageCircle}>
               <Image
                 source={{ uri: category.image }}
                 style={styles.ageImage}
@@ -457,6 +347,7 @@ function ProductCard({
   const displayedPrice = formatMoney({ amount: String(item.minPrice ?? fallbackAmount), currencyCode: "USD" });
   const oldAmount = item.oldPrice ? Number(item.oldPrice.replace(/[^0-9.]/g, "")) : 0;
   const displayedOldPrice = item.oldPrice ? formatMoney({ amount: String(oldAmount), currencyCode: "USD" }) : null;
+  const discount = salePercentage(item.minPrice ?? fallbackAmount, oldAmount);
 
   const toggleWishlist = () => {
     const nextValue = !wished;
@@ -484,7 +375,7 @@ function ProductCard({
               item.tag === "SALE" ? styles.tagSale : styles.tagNew,
             ]}
           >
-            <Text style={styles.productTagText}>{item.tag}</Text>
+            <Text style={styles.productTagText}>{discount ? `-${discount}%` : item.tag}</Text>
           </View>
         )}
 
@@ -586,12 +477,6 @@ function ShopCategorySection({
       <SectionHeader
         title="Shop by Category"
         subtitle="Curated outfits, essentials & favorites"
-        right={
-          <View style={styles.categoryHeaderBadge}>
-            <Ionicons name="sparkles-outline" size={13} color={COLORS.blue} />
-            <Text style={styles.categoryHeaderBadgeText}>Shop all</Text>
-          </View>
-        }
       />
 
       {categories.map((category, index) => (
@@ -601,53 +486,26 @@ function ShopCategorySection({
           onPress={() => onPress?.(category)}
           activeOpacity={0.88}
         >
-          <View
-            style={[
-              styles.categoryFeatureArt,
-              { backgroundColor: category.bg },
-            ]}
-          >
-            <View style={styles.categoryFeatureBlob} />
-
-            <View style={styles.categoryFeatureDotPattern}>
-              {Array.from({ length: 12 }).map((_, dotIndex) => (
-                <View
-                  key={`category-feature-dot-${category.id}-${dotIndex}`}
-                  style={styles.categoryFeatureDot}
-                />
-              ))}
-            </View>
-
+          <View style={styles.categoryFeatureArt}>
             <Image
               source={{ uri: category.image }}
               style={styles.categoryFeatureImage}
               resizeMode="cover"
             />
-
-            <View style={styles.categoryFeatureImageFade} />
           </View>
 
           <View style={styles.categoryFeatureContent}>
             <View style={styles.categoryFeatureTextWrap}>
               <Text style={styles.categoryEyebrow}>
-                {category.eyebrow ??
-                  (index === 0 ? "Featured category" : "Shop category")}
+                {category.eyebrow ?? (index === 0 ? "Featured category" : "Shop category")}
               </Text>
-
-              <Text style={styles.categoryFeatureTitle} numberOfLines={1}>
-                {category.label}
-              </Text>
-
+              <Text style={styles.categoryFeatureTitle} numberOfLines={1}>{category.label}</Text>
               <Text style={styles.categoryFeatureSub} numberOfLines={2}>
-                {category.subtitle ??
-                  "Easy matching looks made for everyday comfort."}
+                {category.subtitle ?? "Easy matching looks made for everyday comfort."}
               </Text>
             </View>
-
             <View style={styles.categoryFeatureAction}>
-              <Text style={styles.categoryFeatureActionText}>
-                {category.cta ?? "Shop"}
-              </Text>
+              <Text style={styles.categoryFeatureActionText}>{category.cta ?? "Shop"}</Text>
               <Ionicons name="arrow-forward" size={13} color={COLORS.white} />
             </View>
           </View>
@@ -669,12 +527,6 @@ function ExploreStylesSection({
       <SectionHeader
         title="Explore Styles"
         subtitle="Shop the looks kids love"
-        right={
-          <TouchableOpacity style={styles.seeAllBtn}>
-            <Text style={styles.seeAll}>Explore</Text>
-            <Ionicons name="sparkles-outline" size={14} color={COLORS.blue} />
-          </TouchableOpacity>
-        }
       />
 
       <ScrollView
@@ -697,14 +549,6 @@ function ExploreStylesSection({
               }
               style={styles.exploreImage}
               resizeMode="cover"
-            />
-
-            <View style={styles.exploreOverlay} />
-            <View
-              style={[
-                styles.exploreAccent,
-                { backgroundColor: style.accentColor },
-              ]}
             />
 
             <View style={styles.exploreTextWrap}>
@@ -736,12 +580,6 @@ function TinyEssentialsSection({
       <SectionHeader
         title="Tiny Essentials"
         subtitle="Soft newborn must-haves"
-        right={
-          <View style={styles.tinyHeaderBadge}>
-            <Ionicons name="heart" size={13} color={COLORS.pinkAccent} />
-            <Text style={styles.tinyHeaderBadgeText}>Newborn</Text>
-          </View>
-        }
       />
 
       <View style={styles.tinyGrid}>
@@ -761,15 +599,6 @@ function TinyEssentialsSection({
                 resizeMode="cover"
               />
 
-              <View style={styles.tinyOverlay} />
-
-              <View
-                style={[
-                  styles.tinyAccentLine,
-                  { backgroundColor: item.accentColor },
-                ]}
-              />
-
               <View style={styles.tinyContent}>
                 <Text
                   style={[styles.tinyTitle, !isLarge && styles.tinyTitleSmall]}
@@ -778,20 +607,6 @@ function TinyEssentialsSection({
                   {item.title}
                 </Text>
 
-                <View
-                  style={[
-                    styles.tinyShopBtn,
-                    { backgroundColor: item.accentColor },
-                    isLarge && styles.tinyShopBtnLarge,
-                  ]}
-                >
-                  <Text style={styles.tinyShopText}>Shop now</Text>
-                  <Ionicons
-                    name="arrow-forward"
-                    size={12}
-                    color={COLORS.white}
-                  />
-                </View>
               </View>
             </TouchableOpacity>
           );
@@ -813,12 +628,6 @@ function OurBrandsSection({
       <SectionHeader
         title="Our Brands"
         subtitle="Discover the Carter's family of brands"
-        right={
-          <View style={styles.brandsHeaderBadge}>
-            <Ionicons name="sparkles" size={13} color={COLORS.blue} />
-            <Text style={styles.brandsHeaderBadgeText}>Featured brands</Text>
-          </View>
-        }
       />
 
       <ScrollView
@@ -829,7 +638,7 @@ function OurBrandsSection({
         {brands.map((brand) => (
           <TouchableOpacity
             key={brand.id}
-            style={[styles.brandShowcaseCard, { backgroundColor: brand.bg }]}
+            style={styles.brandShowcaseCard}
             onPress={() => onPress?.(brand)}
             activeOpacity={0.88}
           >
@@ -840,34 +649,6 @@ function OurBrandsSection({
                 resizeMode="cover"
               />
 
-              <View style={styles.brandImageOverlay} />
-              <View
-                style={[
-                  styles.brandAccentBar,
-                  { backgroundColor: brand.color },
-                ]}
-              />
-
-              <View style={styles.brandTopMeta}>
-                <View style={styles.brandWordmarkPill}>
-                  <Text style={styles.brandWordmarkText} numberOfLines={1}>
-                    {brand.logoText}
-                  </Text>
-                </View>
-
-                <View
-                  style={[
-                    styles.brandArrowCircle,
-                    { backgroundColor: brand.color },
-                  ]}
-                >
-                  <Ionicons
-                    name="arrow-forward"
-                    size={14}
-                    color={COLORS.white}
-                  />
-                </View>
-              </View>
             </View>
 
             <View style={styles.brandContentCard}>
@@ -926,19 +707,6 @@ function LatestCollectionSection({
           </TouchableOpacity>
         }
       />
-
-      <View style={styles.latestHeroStrip}>
-        <View>
-          <Text style={styles.latestEyebrow}>Spring summer season</Text>
-          <Text style={styles.latestHeroTitle}>
-            Fresh outfits for every day
-          </Text>
-        </View>
-
-        <View style={styles.latestHeroIcon}>
-          <Ionicons name="sparkles" size={20} color={COLORS.blue} />
-        </View>
-      </View>
 
       <ScrollView
         horizontal
@@ -1252,7 +1020,7 @@ export default function HomeScreen() {
         <HeroBanner
           items={heroBanners}
           onShopNow={(banner) =>
-            showCollection(banner.handle, banner.title || "New arrivals")
+            showCollection(banner.handle, banner.title)
           }
         />
 
@@ -1366,19 +1134,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 12,
     elevation: 8,
-  },
-  announcementBar: {
-    height: 27,
-    backgroundColor: "#174f86",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  announcementText: {
-    color: COLORS.white,
-    fontSize: 9,
-    fontWeight: "800",
-    letterSpacing: 0.45,
-    paddingHorizontal: 8,
   },
   headerMain: {
     height: 60,
@@ -1983,39 +1738,9 @@ const styles = StyleSheet.create({
     position: "relative",
     overflow: "hidden",
   },
-  categoryFeatureBlob: {
-    position: "absolute",
-    width: 178,
-    height: 178,
-    borderRadius: 89,
-    right: -42,
-    top: -62,
-    backgroundColor: "rgba(255,255,255,0.48)",
-  },
-  categoryFeatureDotPattern: {
-    position: "absolute",
-    top: 18,
-    left: 18,
-    width: 70,
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    opacity: 0.45,
-    zIndex: 2,
-  },
-  categoryFeatureDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "rgba(11,30,66,0.26)",
-  },
   categoryFeatureImage: {
     width: "100%",
     height: "100%",
-  },
-  categoryFeatureImageFade: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(11,30,66,0.04)",
   },
   categoryFeatureContent: {
     flexDirection: "row",

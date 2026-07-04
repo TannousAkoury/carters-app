@@ -6,6 +6,7 @@ import * as SecureStore from "expo-secure-store";
 import { useEffect, useMemo, useState } from "react";
 import { useCart } from "@/components/cart-context";
 import { useCurrency } from "@/components/currency-context";
+import { salePercentage } from "@/utils/pricing";
 import { ActivityIndicator, Image, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 const SIZE_CHART = [
@@ -56,6 +57,7 @@ export default function ProductScreen() {
 
   const hasSizes = useMemo(() => product?.variants.some((v) => v.selectedOptions.some((o) => o.name.toLowerCase() === "size")), [product]);
   const label = (variant: ProductVariant) => variant.selectedOptions.find((o) => o.name.toLowerCase() === "size")?.value ?? variant.title;
+  const discount = salePercentage(selected?.money.amount, selected?.compareAtMoney?.amount);
 
   const buyNow = async () => {
     if (!selected) return;
@@ -100,15 +102,30 @@ export default function ProductScreen() {
         <TouchableOpacity onPress={toggleCurrency} style={styles.currencySwitch}><Text style={styles.currencyText}>{currency} ⇄</Text></TouchableOpacity>
       </View>
       <ScrollView contentContainerStyle={styles.content}>
-        <Image source={{ uri: product.image }} style={styles.image} resizeMode="cover" />
+        <View>
+          <Image source={{ uri: product.image }} style={styles.image} resizeMode="cover" />
+          {discount ? <Text style={styles.saleBadge}>-{discount}%</Text> : null}
+        </View>
         <Text style={styles.title}>{product.title}</Text>
-        <Text style={styles.price}>{formatMoney(selected?.money ?? product.variants[0]?.money)}</Text>
+        <View style={styles.productPriceRow}>
+          <Text style={[styles.price, discount !== null ? styles.salePrice : null]}>{formatMoney(selected?.money ?? product.variants[0]?.money)}</Text>
+          {discount && selected?.compareAtMoney ? <Text style={styles.oldPrice}>{formatMoney(selected.compareAtMoney)}</Text> : null}
+        </View>
         {selected?.sku ? <Text style={styles.sku}>SKU: {selected.sku}</Text> : null}
+        <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>{hasSizes ? "Select a size" : "Select an option"}</Text>{hasSizes ? <TouchableOpacity onPress={() => setShowSizeChart(true)}><Text style={styles.sizeChartLink}>Size chart</Text></TouchableOpacity> : null}</View>
+        <View style={styles.sizes}>
+          {product.variants.map((variant) => (
+            <TouchableOpacity key={variant.id} disabled={!variant.availableForSale} onPress={() => setSelected(variant)} style={[styles.size, selected?.id === variant.id && styles.sizeSelected, !variant.availableForSale && styles.sizeDisabled]}>
+              <Text style={[styles.sizeText, selected?.id === variant.id && styles.sizeTextSelected]}>{label(variant)}</Text>
+              {!variant.availableForSale ? <View pointerEvents="none" style={styles.outOfStockCross}><View style={[styles.crossLine, styles.crossForward]} /><View style={[styles.crossLine, styles.crossBackward]} /></View> : null}
+            </TouchableOpacity>
+          ))}
+        </View>
         {giftOptions ? <View style={styles.giftSection}>
           <Text style={styles.giftSectionTitle}>Choose gift packaging <Text style={styles.optional}>(optional)</Text></Text>
           <View style={styles.giftChoices}>
             <TouchableOpacity onPress={() => setGiftChoice(giftChoice === "wrap" ? "none" : "wrap")} style={[styles.giftCard, giftChoice === "wrap" && styles.giftCardSelected]} accessibilityRole="radio" accessibilityState={{ checked: giftChoice === "wrap" }}>
-              <Image source={{ uri: giftOptions.wrapImage }} style={styles.giftImage} resizeMode="cover" />
+              <Image source={require("../../assets/images/wrapgift.jpeg")} style={styles.giftImage} resizeMode="cover" />
               <View style={styles.giftCardCopy}><Text style={styles.giftTitle}>Gift wrap</Text><Text style={styles.giftPrice}>Free</Text></View>
               <Ionicons name={giftChoice === "wrap" ? "radio-button-on" : "radio-button-off"} size={21} color="#002041" />
             </TouchableOpacity>
@@ -119,15 +136,6 @@ export default function ProductScreen() {
             </TouchableOpacity>
           </View>
         </View> : null}
-        <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>{hasSizes ? "Select a size" : "Select an option"}</Text>{hasSizes ? <TouchableOpacity onPress={() => setShowSizeChart(true)}><Text style={styles.sizeChartLink}>Size chart</Text></TouchableOpacity> : null}</View>
-        <View style={styles.sizes}>
-          {product.variants.map((variant) => (
-            <TouchableOpacity key={variant.id} disabled={!variant.availableForSale} onPress={() => setSelected(variant)} style={[styles.size, selected?.id === variant.id && styles.sizeSelected, !variant.availableForSale && styles.sizeDisabled]}>
-              <Text style={[styles.sizeText, selected?.id === variant.id && styles.sizeTextSelected]}>{label(variant)}</Text>
-              {!variant.availableForSale ? <View pointerEvents="none" style={styles.outOfStockCross}><View style={[styles.crossLine, styles.crossForward]} /><View style={[styles.crossLine, styles.crossBackward]} /></View> : null}
-            </TouchableOpacity>
-          ))}
-        </View>
         {product.description ? <Text style={styles.description}>{product.description}</Text> : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
@@ -155,7 +163,8 @@ const styles = StyleSheet.create({
   header: { height: 58, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: "#eee", paddingHorizontal: 12 },
   icon: { width: 40, height: 40, alignItems: "center", justifyContent: "center" }, headerTitle: { color: "#002041", fontWeight: "800", fontSize: 17 }, currencySwitch: { minWidth: 48, height: 34, marginRight: 51, paddingHorizontal: 8, borderRadius: 17, backgroundColor: "#eef5f8", alignItems: "center", justifyContent: "center" }, currencyText: { color: "#002041", fontSize: 12, fontWeight: "900" },
   content: { paddingBottom: 28 }, image: { width: "100%", aspectRatio: 0.88, backgroundColor: "#f4f4f4" },
-  title: { fontSize: 22, lineHeight: 29, fontWeight: "800", color: "#18243b", margin: 18, marginBottom: 7 }, price: { color: "#002041", fontSize: 19, fontWeight: "800", marginHorizontal: 18 }, sku: { color: "#657083", fontSize: 13, fontWeight: "700", marginHorizontal: 18, marginTop: 7 },
+  saleBadge: { position: "absolute", left: 14, top: 14, color: "#fff", backgroundColor: "#d64545", paddingHorizontal: 10, paddingVertical: 6, fontSize: 12, fontWeight: "900" },
+  title: { fontSize: 22, lineHeight: 29, fontWeight: "800", color: "#18243b", margin: 18, marginBottom: 7 }, productPriceRow: { flexDirection: "row", alignItems: "center", gap: 9, marginHorizontal: 18 }, price: { color: "#002041", fontSize: 19, fontWeight: "800" }, salePrice: { color: "#d64545" }, oldPrice: { color: "#9a8f8b", fontSize: 14, textDecorationLine: "line-through" }, sku: { color: "#657083", fontSize: 13, fontWeight: "700", marginHorizontal: 18, marginTop: 7 },
   sectionHeading: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginHorizontal: 18, marginTop: 24, marginBottom: 11 }, sectionTitle: { fontSize: 14, fontWeight: "800", color: "#30343b" }, sizeChartLink: { color: "#006ca8", fontSize: 13, fontWeight: "900", textDecorationLine: "underline" }, sizes: { flexDirection: "row", flexWrap: "wrap", gap: 9, marginHorizontal: 18 },
   size: { minWidth: 54, paddingHorizontal: 14, height: 42, borderWidth: 1, borderColor: "#ccd5df", alignItems: "center", justifyContent: "center", borderRadius: 5, overflow: "hidden" }, sizeSelected: { backgroundColor: "#002041", borderColor: "#002041" }, sizeDisabled: { backgroundColor: "#f3f4f5", borderColor: "#aeb7c1" }, sizeText: { color: "#26364d", fontWeight: "700" }, sizeTextSelected: { color: "#fff" },
   outOfStockCross: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" }, crossLine: { position: "absolute", width: "125%", height: 1.5, backgroundColor: "#8e98a5" }, crossForward: { transform: [{ rotate: "34deg" }] }, crossBackward: { transform: [{ rotate: "-34deg" }] },

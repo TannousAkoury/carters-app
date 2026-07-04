@@ -151,6 +151,7 @@ export type ProductVariant = {
   availableForSale: boolean;
   price: string;
   money: ShopifyMoney;
+  compareAtMoney?: ShopifyMoney | null;
   selectedOptions: { name: string; value: string }[];
 };
 
@@ -1278,6 +1279,7 @@ export async function getProduct(handle: string): Promise<ProductDetails | null>
               id title sku availableForSale
               selectedOptions { name value }
               price { amount currencyCode }
+              compareAtPrice { amount currencyCode }
             }
           }
         }
@@ -1299,6 +1301,7 @@ export async function getProduct(handle: string): Promise<ProductDetails | null>
       availableForSale: node.availableForSale,
       price: formatMoney(node.price),
       money: node.price,
+      compareAtMoney: node.compareAtPrice,
       selectedOptions: node.selectedOptions ?? [],
     })),
   };
@@ -1335,13 +1338,13 @@ export type ShopifyCart = {
   checkoutUrl: string;
   totalQuantity: number;
   cost: { subtotalAmount: ShopifyMoney; totalAmount: ShopifyMoney };
-  lines: { edges: { node: { id: string; quantity: number; attributes: { key: string; value: string }[]; merchandise: { id: string; title: string; product: { title: string; handle: string; featuredImage?: { url: string } | null }; price: ShopifyMoney } } }[] };
+  lines: { edges: { node: { id: string; quantity: number; attributes: { key: string; value: string }[]; merchandise: { id: string; title: string; product: { title: string; handle: string; featuredImage?: { url: string } | null }; price: ShopifyMoney; compareAtPrice?: ShopifyMoney | null } } }[] };
 };
 
 const CART_FIELDS = `
   id checkoutUrl totalQuantity
   cost { subtotalAmount { amount currencyCode } totalAmount { amount currencyCode } }
-  lines(first: 100) { edges { node { id quantity attributes { key value } merchandise { ... on ProductVariant { id title price { amount currencyCode } product { title handle featuredImage { url } } } } } } }
+  lines(first: 100) { edges { node { id quantity attributes { key value } merchandise { ... on ProductVariant { id title price { amount currencyCode } compareAtPrice { amount currencyCode } product { title handle featuredImage { url } } } } } } }
 `;
 
 export async function addToShopifyCart(cartId: string | null, variantId: string, giftChoice: GiftChoice = "none", giftBoxVariantId?: string) {
