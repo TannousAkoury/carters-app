@@ -102,7 +102,7 @@ export default function CollectionScreen() {
               >
                 <View style={styles.imageWrap}>
                   <Image source={{ uri: item.image }} style={styles.image} resizeMode="cover" />
-                  {discount ? <Text style={[styles.tag, styles.saleTag]}>-{discount}%</Text> : item.tag ? <Text style={styles.tag}>{item.tag}</Text> : null}
+                  {discount ? <Text style={[styles.tag, styles.saleTag]}>-{discount}%</Text> : item.tag === "NEW" ? <Text style={styles.tag}>NEW</Text> : null}
                 </View>
                 <Text style={styles.productTitle} numberOfLines={2}>{item.title}</Text>
                 <View style={styles.priceRow}>

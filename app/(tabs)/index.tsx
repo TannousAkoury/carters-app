@@ -1,4 +1,6 @@
 import { getHomepageContent, getStorefrontNavigation, type StorefrontMenuItem } from "@/services/shopify";
+import { getAdminSections, getBundledAdminSections, type AdminSection } from "@/services/admin-content";
+import { AdminSections } from "@/components/admin-sections";
 import { useCart } from "@/components/cart-context";
 import { useCurrency, type DisplayCurrency } from "@/components/currency-context";
 import { salePercentage } from "@/utils/pricing";
@@ -368,14 +370,14 @@ function ProductCard({
           resizeMode="cover"
         />
 
-        {item.tag && (
+        {(discount || item.tag === "NEW") && (
           <View
             style={[
               styles.productTag,
-              item.tag === "SALE" ? styles.tagSale : styles.tagNew,
+              discount ? styles.tagSale : styles.tagNew,
             ]}
           >
-            <Text style={styles.productTagText}>{discount ? `-${discount}%` : item.tag}</Text>
+            <Text style={styles.productTagText}>{discount ? `-${discount}%` : "NEW"}</Text>
           </View>
         )}
 
@@ -888,6 +890,8 @@ export default function HomeScreen() {
   const [tinyEssentialsState, setTinyEssentialsState] =
     useState<TinyEssential[]>([]);
   const [ourBrandsState, setOurBrandsState] = useState<OurBrand[]>([]);
+  const [adminSections, setAdminSections] = useState<AdminSection[]>(getBundledAdminSections);
+  const [adminContentError, setAdminContentError] = useState("");
 
   useFocusEffect(
     useCallback(() => {
@@ -942,6 +946,23 @@ export default function HomeScreen() {
     });
     return () => { mounted = false; };
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      let mounted = true;
+      setAdminContentError("");
+      getAdminSections()
+        .then((items) => {
+          console.info(`Loaded ${items.length} admin section(s).`);
+          if (mounted) setAdminSections(items);
+        })
+        .catch((error) => {
+          console.info("Admin sections unavailable:", error);
+          if (mounted) setAdminContentError(error instanceof Error ? error.message : "Admin content unavailable");
+        });
+      return () => { mounted = false; };
+    }, []),
+  );
 
   const handleMainScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetY = e.nativeEvent.contentOffset.y;
@@ -1017,6 +1038,15 @@ export default function HomeScreen() {
         onScroll={handleMainScroll}
         scrollEventThrottle={16}
       >
+        {adminSections.length > 0 && (
+          <AdminSections sections={adminSections} placement="before-hero" onOpen={() => showCollection("all-products", "Shop all")} />
+        )}
+        {__DEV__ && adminContentError ? (
+          <View style={{ backgroundColor: "#fff0f0", padding: 10 }}>
+            <Text style={{ color: "#a33", fontSize: 10, textAlign: "center" }}>Admin connection: {adminContentError}</Text>
+          </View>
+        ) : null}
+
         <HeroBanner
           items={heroBanners}
           onShopNow={(banner) =>
@@ -1026,7 +1056,11 @@ export default function HomeScreen() {
 
         <HomepageStatus loading={homepageLoading} error={homepageError} />
 
+        <AdminSections sections={adminSections} placement="after-hero" onOpen={() => showCollection("all-products", "Shop all")} />
+
         <PromoStrip items={promoItems} />
+
+        <AdminSections sections={adminSections} placement="after-promos" onOpen={() => showCollection("all-products", "Shop all")} />
 
         {ageGroups.length > 0 && (
           <AgeRow
@@ -1034,6 +1068,8 @@ export default function HomeScreen() {
             onPress={(category) => showCollection(category.handle, category.label)}
           />
         )}
+
+        <AdminSections sections={adminSections} placement="after-ages" onOpen={() => showCollection("all-products", "Shop all")} />
 
         {topPicksProducts.length > 0 && (
           <TopPicksSection
@@ -1044,12 +1080,16 @@ export default function HomeScreen() {
           />
         )}
 
+        <AdminSections sections={adminSections} placement="after-top-picks" onOpen={() => showCollection("all-products", "Shop all")} />
+
         {shopCategories.length > 0 && (
           <ShopCategorySection
             categories={shopCategories}
             onPress={(category) => showCollection(category.handle, category.label)}
           />
         )}
+
+        <AdminSections sections={adminSections} placement="after-categories" onOpen={() => showCollection("all-products", "Shop all")} />
 
         {exploreStylesState.length > 0 && (
           <ExploreStylesSection
@@ -1058,6 +1098,8 @@ export default function HomeScreen() {
           />
         )}
 
+        <AdminSections sections={adminSections} placement="after-explore" onOpen={() => showCollection("all-products", "Shop all")} />
+
         {tinyEssentialsState.length > 0 && (
           <TinyEssentialsSection
             items={tinyEssentialsState}
@@ -1065,12 +1107,16 @@ export default function HomeScreen() {
           />
         )}
 
+        <AdminSections sections={adminSections} placement="after-essentials" onOpen={() => showCollection("all-products", "Shop all")} />
+
         {ourBrandsState.length > 0 && (
           <OurBrandsSection
             brands={ourBrandsState}
             onPress={(brand) => showCollection(brand.handle, brand.label)}
           />
         )}
+
+        <AdminSections sections={adminSections} placement="after-brands" onOpen={() => showCollection("all-products", "Shop all")} />
 
         {latestCollectionProducts.length > 0 && (
           <LatestCollectionSection
@@ -1082,6 +1128,8 @@ export default function HomeScreen() {
             }
           />
         )}
+
+        <AdminSections sections={adminSections} placement="after-latest" onOpen={() => showCollection("all-products", "Shop all")} />
 
       </ScrollView>
 

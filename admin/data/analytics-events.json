@@ -1,0 +1,443 @@
+[
+  {
+    "id": "eac73187-f309-4533-b3e7-77210da55cf8",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/"
+    },
+    "createdAt": "2026-07-06T11:44:09.468Z"
+  },
+  {
+    "id": "d3ae90b3-4a71-49a9-8907-ad1c161facaf",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/"
+    },
+    "createdAt": "2026-07-06T11:46:41.528Z"
+  },
+  {
+    "id": "b9818cd2-2da4-4c3e-b4b1-57ce693000fa",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/"
+    },
+    "createdAt": "2026-07-06T11:46:58.432Z"
+  },
+  {
+    "id": "c860b370-40ed-471c-807a-fc191d0bfd73",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/"
+    },
+    "createdAt": "2026-07-06T12:02:29.035Z"
+  },
+  {
+    "id": "5b7021a3-e2c7-4419-821f-a81860a179db",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/notifications"
+    },
+    "createdAt": "2026-07-06T12:02:48.881Z"
+  },
+  {
+    "id": "a51b67cd-a90d-4016-ad22-21c49325fc9a",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/notifications"
+    },
+    "createdAt": "2026-07-06T12:04:21.404Z"
+  },
+  {
+    "id": "53ffe24a-b58a-472f-9f5a-a87e730fdbcf",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/collection/bg"
+    },
+    "createdAt": "2026-07-06T12:04:21.440Z"
+  },
+  {
+    "id": "87990e7f-fa87-470c-86f1-2583c39d825c",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/product/carters-baby-girl-2-piece-bunny-short-sleeve-sweater-top-short-set-pink"
+    },
+    "createdAt": "2026-07-06T12:04:28.981Z"
+  },
+  {
+    "id": "7746d73c-08a2-465f-a51d-fbce002095f6",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/collection/bg"
+    },
+    "createdAt": "2026-07-06T12:04:37.067Z"
+  },
+  {
+    "id": "837f1d6d-8d26-4a7c-a6f4-eed850c66f12",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/product/carters-baby-girl-2-piece-bunny-short-sleeve-sweater-top-short-set-pink"
+    },
+    "createdAt": "2026-07-06T12:04:41.857Z"
+  },
+  {
+    "id": "41971bd2-f574-426e-91ca-0a61161304ed",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/collection/bg"
+    },
+    "createdAt": "2026-07-06T12:04:45.021Z"
+  },
+  {
+    "id": "99955dd0-a487-4695-8d45-b0face93b431",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/cart"
+    },
+    "createdAt": "2026-07-06T12:04:45.766Z"
+  },
+  {
+    "id": "ffc76fc5-3258-483e-a031-c1a99962331b",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/collection/bg"
+    },
+    "createdAt": "2026-07-06T12:06:10.287Z"
+  },
+  {
+    "id": "d985896f-13ae-49c1-bded-142788118c8a",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/product/carters-baby-girl-2-piece-bunny-short-sleeve-sweater-top-short-set-pink"
+    },
+    "createdAt": "2026-07-06T12:06:10.911Z"
+  },
+  {
+    "id": "c9e1f85f-eb0e-47a9-9220-1a4bf43a8ba8",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/notifications"
+    },
+    "createdAt": "2026-07-06T12:06:20.550Z"
+  },
+  {
+    "id": "a94212df-0735-42bf-ba6c-4b16d95f9ca8",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/product/carters-baby-girl-2-piece-bunny-short-sleeve-sweater-top-short-set-pink"
+    },
+    "createdAt": "2026-07-06T12:06:25.158Z"
+  },
+  {
+    "id": "e48b2b4a-b851-47bf-85dd-e22b8967a321",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/collection/bg"
+    },
+    "createdAt": "2026-07-06T12:19:41.294Z"
+  },
+  {
+    "id": "317b16ff-9105-4276-8b4d-df38e4e77cde",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/notifications"
+    },
+    "createdAt": "2026-07-06T12:19:42.187Z"
+  },
+  {
+    "id": "3641c0fa-bb44-4dd4-8d8f-dd13473257f5",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/collection/new-collection-ss26"
+    },
+    "createdAt": "2026-07-06T12:19:43.572Z"
+  },
+  {
+    "id": "e859107b-d51c-454c-9cc0-0c51c625d5d9",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/notifications"
+    },
+    "createdAt": "2026-07-06T12:19:47.189Z"
+  },
+  {
+    "id": "f22c24be-d31c-4f2d-bfde-73f1e864182b",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/collection/new-collection-ss26"
+    },
+    "createdAt": "2026-07-06T12:19:47.232Z"
+  },
+  {
+    "id": "facd1931-f214-452a-a020-3694d24ab7a8",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/notifications"
+    },
+    "createdAt": "2026-07-06T12:19:48.911Z"
+  },
+  {
+    "id": "20eca440-e6db-4a1c-95a0-92ae9b38981a",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/cart"
+    },
+    "createdAt": "2026-07-06T12:21:55.602Z"
+  },
+  {
+    "id": "4342c497-04be-4379-92ba-3c0b852d5af1",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/notifications"
+    },
+    "createdAt": "2026-07-06T12:21:57.807Z"
+  },
+  {
+    "id": "2866e724-8cff-4d8f-a3e9-4948473a431f",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/collection/new-collection-ss26"
+    },
+    "createdAt": "2026-07-06T12:22:01.240Z"
+  },
+  {
+    "id": "500c2a98-be42-42e7-99d3-0af44e714a44",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/notifications"
+    },
+    "createdAt": "2026-07-06T12:22:03.116Z"
+  },
+  {
+    "id": "a8f7aaf8-5d75-4eab-a772-9e6d56c3e21b",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/collection/new-collection-ss26"
+    },
+    "createdAt": "2026-07-06T12:22:34.978Z"
+  },
+  {
+    "id": "f0797134-f935-4ec5-a039-be223fb1f8c3",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/notifications"
+    },
+    "createdAt": "2026-07-06T12:22:36.118Z"
+  },
+  {
+    "id": "b9488d2e-e025-411b-a82b-2d9b01dd4750",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/"
+    },
+    "createdAt": "2026-07-06T12:22:53.760Z"
+  },
+  {
+    "id": "2b3aa198-0a68-47b1-b733-58760a7d4c35",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/notifications"
+    },
+    "createdAt": "2026-07-06T12:22:56.379Z"
+  },
+  {
+    "id": "9d3baa3e-2f3c-4e26-86c7-28e5081f7db3",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/collection/new-collection-ss26"
+    },
+    "createdAt": "2026-07-06T12:22:57.279Z"
+  },
+  {
+    "id": "bd62fbf7-50b8-4901-96ac-9be998c65cfb",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/notifications"
+    },
+    "createdAt": "2026-07-06T12:22:59.774Z"
+  },
+  {
+    "id": "06f1c3ed-2e7d-4f1e-89bd-e831e37cccfa",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/collection/new-collection-ss26"
+    },
+    "createdAt": "2026-07-06T12:23:34.642Z"
+  },
+  {
+    "id": "26c1c33e-5df3-49e8-8fd1-da1f5df166fb",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/notifications"
+    },
+    "createdAt": "2026-07-06T12:23:34.833Z"
+  },
+  {
+    "id": "db0c7c13-309f-4fc9-8f5f-19b609657200",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/collection/new-collection-ss26"
+    },
+    "createdAt": "2026-07-06T12:23:34.941Z"
+  },
+  {
+    "id": "16f542c4-a360-46f9-8e6e-b57cc4bd03a4",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/notifications"
+    },
+    "createdAt": "2026-07-06T12:23:36.358Z"
+  },
+  {
+    "id": "ef87da9b-3933-40ff-822c-1512794893f6",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/collection/new-collection-ss26"
+    },
+    "createdAt": "2026-07-06T12:23:40.097Z"
+  },
+  {
+    "id": "9316a1a3-cb37-4a69-b58f-b6ef6d7e8597",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/notifications"
+    },
+    "createdAt": "2026-07-06T12:23:42.141Z"
+  },
+  {
+    "id": "6186d861-5dc5-4a65-a22d-f0615a888a22",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/"
+    },
+    "createdAt": "2026-07-06T12:23:43.497Z"
+  },
+  {
+    "id": "35e39410-62b2-4625-a9e5-109402148d5c",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/"
+    },
+    "createdAt": "2026-07-06T12:24:13.458Z"
+  },
+  {
+    "id": "e33d9955-f8b2-4d68-b747-17de6a061e54",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/"
+    },
+    "createdAt": "2026-07-06T12:24:24.667Z"
+  },
+  {
+    "id": "026c1491-7f66-4812-b6e5-ed385696830d",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/notifications"
+    },
+    "createdAt": "2026-07-06T12:24:31.310Z"
+  },
+  {
+    "id": "ba2ad4e8-77cb-45a8-9fe6-ba2a93c0fb85",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/"
+    },
+    "createdAt": "2026-07-06T12:24:32.864Z"
+  },
+  {
+    "id": "64df9cdc-cd1b-4675-8b66-1ab1095cb02c",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/notifications"
+    },
+    "createdAt": "2026-07-06T12:25:09.749Z"
+  },
+  {
+    "id": "cd549e33-9c6f-4ac0-a0c8-ee6ada8bb001",
+    "name": "notification_open",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "title": "zeina"
+    },
+    "createdAt": "2026-07-06T12:25:10.500Z"
+  },
+  {
+    "id": "eefe21c8-8117-468b-b55f-68b5bc724201",
+    "name": "notification_open",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "title": "zeina"
+    },
+    "createdAt": "2026-07-06T12:25:11.753Z"
+  },
+  {
+    "id": "fc353e02-b6e4-45e0-85cf-3a67e3254baa",
+    "name": "notification_open",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "title": "zeina"
+    },
+    "createdAt": "2026-07-06T12:25:12.075Z"
+  },
+  {
+    "id": "04b36387-fa33-4e0a-9899-12033c0886c5",
+    "name": "notification_open",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "title": "zeina"
+    },
+    "createdAt": "2026-07-06T12:25:12.513Z"
+  },
+  {
+    "id": "d22053c8-edab-40ec-ac4d-1d56a9570a0f",
+    "name": "notification_open",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "title": "zeina"
+    },
+    "createdAt": "2026-07-06T12:25:13.032Z"
+  }
+]

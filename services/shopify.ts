@@ -1443,7 +1443,7 @@ async function getMobileHomepageFromAdmin() {
     const data = await requestStorefront<any>(MOBILE_HOMEPAGE_QUERY);
     return parseAdminPayload(data);
   } catch (error) {
-    console.info("Mobile homepage metafield unavailable; trying storefront sync.");
+    // The optional mobile metafield is absent; the public storefront remains the fallback.
     return null;
   }
 }
