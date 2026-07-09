@@ -1,4 +1,5 @@
-import { deleteAdminUser, resetAdminUserPassword } from "@/lib/admin-users";
+import { createPasswordResetInvite, deleteAdminUser } from "@/lib/admin-users";
+import { appBaseUrl, sendMemberSetupEmail } from "@/lib/email";
 import { NextResponse } from "next/server";
 
 type Params = { params: Promise<{ id: string }> };
@@ -9,11 +10,12 @@ export async function DELETE(_request: Request, { params }: Params) {
 }
 
 export async function PATCH(request: Request, { params }: Params) {
-  const body = await request.json().catch(() => null);
   try {
-    const user = await resetAdminUserPassword((await params).id, typeof body?.password === "string" ? body.password : "");
-    return NextResponse.json({ user });
+    const invite = await createPasswordResetInvite((await params).id);
+    const setupUrl = `${appBaseUrl(request)}/set-password?token=${encodeURIComponent(invite.token)}`;
+    const email = await sendMemberSetupEmail({ to: invite.user.email, setupUrl, reset: true });
+    return NextResponse.json({ user: invite.user, email });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to reset password." }, { status: 400 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to send reset email." }, { status: 400 });
   }
 }

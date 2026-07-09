@@ -1,0 +1,10 @@
+[
+  {
+    "id": "62d12845-a456-4971-9019-ea541cbe9f06",
+    "to": "tannous.akoury@zavco.net",
+    "subject": "Set up your Carter's admin account",
+    "text": "You were invited to Carter's App Studio.\n\nOpen this secure link to set your password:\nhttp://localhost:3001/set-password?token=bc09241caabb6fa5778ef6a2afb8075a2f39d9a6997feb88b49ef8fdb5b41abc\n\nThis link expires in 7 days.",
+    "createdAt": "2026-07-09T13:38:38.510Z",
+    "mode": "local-outbox"
+  }
+]
