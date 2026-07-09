@@ -51,6 +51,13 @@ const COLORS = {
 
 const FONT = Platform.select({ ios: "System", android: "Roboto" });
 
+function colorWithOpacity(color: string, opacity: number) {
+  const match = color.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
+  if (!match) return color;
+  const [, r, g, b] = match;
+  return `rgba(${parseInt(r, 16)},${parseInt(g, 16)},${parseInt(b, 16)},${opacity})`;
+}
+
 type IconName = ComponentProps<typeof Ionicons>["name"];
 type TabId = "home" | "categories" | "shop" | "account";
 
@@ -484,7 +491,10 @@ function ShopCategorySection({
       {categories.map((category, index) => (
         <TouchableOpacity
           key={category.id}
-          style={styles.categoryFeatureCard}
+          style={[
+            styles.categoryFeatureCard,
+            { borderColor: colorWithOpacity(category.bg, 0.45) },
+          ]}
           onPress={() => onPress?.(category)}
           activeOpacity={0.88}
         >
@@ -553,6 +563,9 @@ function ExploreStylesSection({
               resizeMode="cover"
             />
 
+            <View style={styles.exploreOverlay} />
+            <View style={[styles.exploreAccent, { backgroundColor: style.accentColor }]} />
+
             <View style={styles.exploreTextWrap}>
               <Text style={styles.exploreLabel} numberOfLines={2}>
                 {style.label}
@@ -577,11 +590,19 @@ function TinyEssentialsSection({
   items: TinyEssential[];
   onPress?: (item: TinyEssential) => void;
 }) {
+  const badgeColor = items[0]?.accentColor ?? COLORS.blue;
+
   return (
     <View style={styles.sectionBlock}>
       <SectionHeader
         title="Tiny Essentials"
         subtitle="Soft newborn must-haves"
+        right={
+          <View style={[styles.tinyHeaderBadge, { backgroundColor: colorWithOpacity(badgeColor, 0.16) }]}>
+            <Ionicons name="sparkles-outline" size={13} color={badgeColor} />
+            <Text style={[styles.tinyHeaderBadgeText, { color: badgeColor }]}>Shopify picks</Text>
+          </View>
+        }
       />
 
       <View style={styles.tinyGrid}>
@@ -591,7 +612,11 @@ function TinyEssentialsSection({
           return (
             <TouchableOpacity
               key={item.id}
-              style={[styles.tinyCard, isLarge && styles.tinyCardLarge]}
+              style={[
+                styles.tinyCard,
+                { borderColor: colorWithOpacity(item.accentColor, 0.35) },
+                isLarge && styles.tinyCardLarge,
+              ]}
               onPress={() => onPress?.(item)}
               activeOpacity={0.86}
             >
@@ -600,6 +625,9 @@ function TinyEssentialsSection({
                 style={styles.tinyImage}
                 resizeMode="cover"
               />
+
+              <View style={styles.tinyOverlay} />
+              <View style={[styles.tinyAccentLine, { backgroundColor: item.accentColor }]} />
 
               <View style={styles.tinyContent}>
                 <Text
@@ -1745,7 +1773,6 @@ const styles = StyleSheet.create({
 
   categorySectionBlock: {
     marginTop: 14,
-    backgroundColor: "#FFF8F1",
     paddingVertical: 17,
     borderTopWidth: 1,
     borderBottomWidth: 1,
@@ -1804,7 +1831,7 @@ const styles = StyleSheet.create({
   },
   categoryEyebrow: {
     fontSize: 9.5,
-    color: COLORS.pinkAccent,
+    color: COLORS.blue,
     fontWeight: "900",
     textTransform: "uppercase",
     letterSpacing: 0.9,
@@ -2007,7 +2034,6 @@ const styles = StyleSheet.create({
   tinyHeaderBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FBE4E1",
     borderRadius: 999,
     paddingHorizontal: 11,
     paddingVertical: 7,
@@ -2015,7 +2041,6 @@ const styles = StyleSheet.create({
   },
   tinyHeaderBadgeText: {
     fontSize: 11.5,
-    color: COLORS.pinkAccent,
     fontWeight: "900",
     fontFamily: FONT,
   },
@@ -2237,7 +2262,7 @@ const styles = StyleSheet.create({
 
   latestSection: {
     marginTop: 14,
-    backgroundColor: "#FFF8F1",
+    backgroundColor: COLORS.white,
     paddingVertical: 17,
     borderTopWidth: 1,
     borderBottomWidth: 1,
@@ -2246,7 +2271,7 @@ const styles = StyleSheet.create({
   latestSeeAllBtn: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: COLORS.pinkAccent,
+    backgroundColor: COLORS.blue,
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 7,
@@ -2278,7 +2303,7 @@ const styles = StyleSheet.create({
   },
   latestEyebrow: {
     fontSize: 10,
-    color: COLORS.pinkAccent,
+    color: COLORS.blue,
     textTransform: "uppercase",
     letterSpacing: 0.9,
     fontWeight: "900",

@@ -11,6 +11,7 @@ import {
   signInShopifyCustomer,
   updateShopifyCustomer,
 } from '@/services/shopify';
+import { fetchAdmin } from '@/services/admin-api';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import { Link } from 'expo-router';
@@ -18,6 +19,9 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const TOKEN_KEY = 'shopify_customer_access_token';
+const EXPO_PUSH_TOKEN_KEY = 'expo_push_token';
+const CUSTOMER_EMAIL_KEY = 'shopify_customer_email';
+const CUSTOMER_PHONE_KEY = 'shopify_customer_phone';
 const emptyAddress: ShopifyAddressInput = { firstName: '', lastName: '', address1: '', address2: '', city: '', province: '', country: 'Lebanon', zip: '', phone: '' };
 
 export default function AccountScreen() {
@@ -45,15 +49,25 @@ export default function AccountScreen() {
       const token = providedToken ?? await SecureStore.getItemAsync(TOKEN_KEY);
       if (!token) { setCustomer(null); return; }
       const profile = await getShopifyCustomer(token);
-      if (!profile) await SecureStore.deleteItemAsync(TOKEN_KEY);
+      if (!profile) {
+        await SecureStore.deleteItemAsync(TOKEN_KEY);
+        await SecureStore.deleteItemAsync(CUSTOMER_EMAIL_KEY);
+        await SecureStore.deleteItemAsync(CUSTOMER_PHONE_KEY);
+      }
       setCustomer(profile);
       if (profile) {
+        await SecureStore.setItemAsync(CUSTOMER_EMAIL_KEY, profile.email.toLowerCase());
+        if (profile.phone) await SecureStore.setItemAsync(CUSTOMER_PHONE_KEY, profile.phone);
+        else await SecureStore.deleteItemAsync(CUSTOMER_PHONE_KEY);
+        await syncNotificationIdentity(profile);
         setFirstName(profile.firstName ?? '');
         setLastName(profile.lastName ?? '');
         setPhone(profile.phone ?? '');
       }
     } catch {
       await SecureStore.deleteItemAsync(TOKEN_KEY);
+      await SecureStore.deleteItemAsync(CUSTOMER_EMAIL_KEY);
+      await SecureStore.deleteItemAsync(CUSTOMER_PHONE_KEY);
       setCustomer(null);
     } finally { setLoading(false); }
   };
@@ -132,7 +146,7 @@ export default function AccountScreen() {
     setEditingAddressId(item.id); setShowAddressForm(true); clearNotice();
   };
 
-  const signOut = async () => { await SecureStore.deleteItemAsync(TOKEN_KEY); setCustomer(null); setMode('signin'); clearNotice(); };
+  const signOut = async () => { await SecureStore.deleteItemAsync(TOKEN_KEY); await SecureStore.deleteItemAsync(CUSTOMER_EMAIL_KEY); await SecureStore.deleteItemAsync(CUSTOMER_PHONE_KEY); setCustomer(null); setMode('signin'); clearNotice(); };
   const clearNotice = () => { setError(''); setMessage(''); };
 
   if (loading && !customer) return <View style={styles.center}><ActivityIndicator size="large" color="#002041" /></View>;
@@ -198,6 +212,13 @@ function friendlyError(reason: unknown, fallback: string) { return reason instan
 function prettyStatus(value: string) { return value.toLowerCase().replace(/_/g, ' ').replace(/^./, (letter) => letter.toUpperCase()); }
 function formatMoney(money: { amount: string; currencyCode: string }) { try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: money.currencyCode }).format(Number(money.amount)); } catch { return `${money.amount} ${money.currencyCode}`; } }
 function normalizeLebanesePhone(value: string) { const trimmed = value.trim(); const digits = trimmed.replace(/\D/g, ''); if (digits.length < 7) return ''; if (trimmed.startsWith('+')) return `+${digits}`; if (digits.startsWith('961')) return `+${digits}`; if (digits.startsWith('0')) return `+961${digits.slice(1)}`; return `+961${digits}`; }
+async function syncNotificationIdentity(customer: ShopifyCustomer) {
+  const token = await SecureStore.getItemAsync(EXPO_PUSH_TOKEN_KEY);
+  if (!token) return;
+  try {
+    await fetchAdmin('/api/push/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, customerEmail: customer.email, customerPhone: customer.phone }) });
+  } catch { /* Admin API may be offline while browsing the app. */ }
+}
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#fff' }, center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' }, container: { flexGrow: 1, alignItems: 'center', padding: 24, paddingBottom: 50 }, icon: { width: 68, height: 68, borderRadius: 34, alignItems: 'center', justifyContent: 'center', backgroundColor: '#eaf3f4', marginTop: 12, marginBottom: 14 },

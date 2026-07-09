@@ -527,19 +527,13 @@ const COLORS = {
 
 const PLACEHOLDER_IMAGE = "https://via.placeholder.com/400x400?text=Image";
 const CATEGORY_BG_COLORS = [
-  "#FBE4E1",
-  "#EAF3F4",
-  "#FFF3EF",
+  COLORS.blueLight,
   "#E8F4F4",
-  "#F0E9FF",
-  "#FFF6E5",
 ];
 const ACCENT_COLORS = [
   COLORS.blueMid,
-  COLORS.pinkAccent,
   COLORS.orange,
   COLORS.blue,
-  COLORS.pinkAccent,
   COLORS.orange,
   COLORS.sale,
 ];
@@ -1307,7 +1301,7 @@ export async function getProduct(handle: string): Promise<ProductDetails | null>
   };
 }
 
-export async function createCheckout(variantId: string, giftChoice: GiftChoice = "none", giftBoxVariantId?: string): Promise<string> {
+export async function createCheckout(variantId: string, giftChoice: GiftChoice = "none", giftBoxVariantId?: string, customerAccessToken?: string | null): Promise<string> {
   const mutation = `
     mutation createCart($input: CartInput!) {
       cartCreate(input: $input) {
@@ -1324,6 +1318,7 @@ export async function createCheckout(variantId: string, giftChoice: GiftChoice =
       ],
       attributes: [{ key: "Order source", value: "Carter Mobile App" }],
       note: "Order placed from Carter mobile app",
+      ...(customerAccessToken ? { buyerIdentity: { customerAccessToken } } : {}),
     },
   });
   const error = data?.cartCreate?.userErrors?.[0]?.message;
@@ -1375,6 +1370,25 @@ export async function addToShopifyCart(cartId: string | null, variantId: string,
 export async function getShopifyCart(cartId: string) {
   const data = await requestStorefront<any>(`query cart($id: ID!) { cart(id: $id) { ${CART_FIELDS} } }`, { id: cartId });
   return (data?.cart ?? null) as ShopifyCart | null;
+}
+
+export async function attachCustomerToShopifyCart(cartId: string, customerAccessToken?: string | null) {
+  if (!customerAccessToken) return null;
+  const mutation = `
+    mutation attachCustomer($cartId: ID!, $buyerIdentity: CartBuyerIdentityInput!) {
+      cartBuyerIdentityUpdate(cartId: $cartId, buyerIdentity: $buyerIdentity) {
+        cart { ${CART_FIELDS} }
+        userErrors { message }
+      }
+    }
+  `;
+  const data = await requestStorefront<any>(mutation, {
+    cartId,
+    buyerIdentity: { customerAccessToken },
+  });
+  const payload = data?.cartBuyerIdentityUpdate;
+  if (payload?.userErrors?.length) throw new Error(payload.userErrors[0].message);
+  return (payload?.cart ?? null) as ShopifyCart | null;
 }
 
 export async function updateShopifyCartLine(cartId: string, lineId: string, quantity: number) {

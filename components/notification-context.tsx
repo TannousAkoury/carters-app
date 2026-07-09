@@ -10,6 +10,9 @@ import { trackEvent } from "@/services/analytics";
 
 const INBOX_KEY = "notification_inbox";
 const TEST_PUSH_CURSOR_KEY = "test_push_cursor";
+const EXPO_PUSH_TOKEN_KEY = "expo_push_token";
+const CUSTOMER_EMAIL_KEY = "shopify_customer_email";
+const CUSTOMER_PHONE_KEY = "shopify_customer_phone";
 
 export type InboxNotification = {
   id: string;
@@ -98,7 +101,8 @@ export function NotificationProvider({ children }: PropsWithChildren) {
         const permission = await Notifications.getPermissionsAsync();
         if (permission.status !== "granted") return;
         const cursor = await SecureStore.getItemAsync(TEST_PUSH_CURSOR_KEY) ?? "";
-        const response = await fetchAdmin(`/api/push/inbox?after=${encodeURIComponent(cursor)}`);
+        const token = await SecureStore.getItemAsync(EXPO_PUSH_TOKEN_KEY) ?? "";
+        const response = await fetchAdmin(`/api/push/inbox?after=${encodeURIComponent(cursor)}&token=${encodeURIComponent(token)}`);
         if (!response.ok) return;
         const payload = await response.json();
         const messages = Array.isArray(payload?.messages) ? payload.messages : [];
@@ -127,8 +131,11 @@ export function NotificationProvider({ children }: PropsWithChildren) {
       const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
       if (!projectId) throw new Error("EAS project ID is not configured yet.");
       const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+      await SecureStore.setItemAsync(EXPO_PUSH_TOKEN_KEY, token);
       if (adminApiUrls().length) {
-        const response = await fetchAdmin("/api/push/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, platform: Platform.OS }) });
+        const customerEmail = await SecureStore.getItemAsync(CUSTOMER_EMAIL_KEY);
+        const customerPhone = await SecureStore.getItemAsync(CUSTOMER_PHONE_KEY);
+        const response = await fetchAdmin("/api/push/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, platform: Platform.OS, customerEmail, customerPhone }) });
         if (!response.ok) throw new Error("The admin server could not save this device.");
       }
       return token;

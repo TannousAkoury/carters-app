@@ -19,6 +19,7 @@ const SIZE_CHART = [
   ["18M", "76–81 cm", "11.1–12.5 kg"],
   ["24M", "81–86 cm", "12.5–13.6 kg"],
 ];
+const CUSTOMER_TOKEN_KEY = "shopify_customer_access_token";
 
 export default function ProductScreen() {
   const { setCount } = useCart();
@@ -63,7 +64,8 @@ export default function ProductScreen() {
     if (!selected) return;
     try {
       setBuying(true); setError("");
-      const checkoutUrl = await createCheckout(selected.id, giftChoice, giftOptions?.boxVariantId);
+      const customerToken = await SecureStore.getItemAsync(CUSTOMER_TOKEN_KEY);
+      const checkoutUrl = await createCheckout(selected.id, giftChoice, giftOptions?.boxVariantId, customerToken);
       await WebBrowser.openBrowserAsync(checkoutUrl, {
         presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
         controlsColor: "#002041",

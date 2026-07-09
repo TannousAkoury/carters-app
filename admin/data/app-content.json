@@ -1,6 +1,6 @@
 {
-  "version": 1783338455268,
-  "publishedAt": "2026-07-06T11:47:35.268Z",
+  "version": 1783593739527,
+  "publishedAt": "2026-07-09T10:42:19.527Z",
   "sections": [
     {
       "id": "hero-1",
@@ -10,16 +10,6 @@
       "image": "https://images.unsplash.com/photo-1522771930-78848d9293e8?auto=format&fit=crop&w=900&q=80",
       "buttonLabel": "Shop new arrivals",
       "background": "#f9e7df",
-      "enabled": false
-    },
-    {
-      "id": "products-1",
-      "type": "products",
-      "title": "Top picks this week",
-      "subtitle": "Popular with Carter's families",
-      "image": "",
-      "buttonLabel": "View all",
-      "background": "#ffffff",
       "enabled": false
     },
     {
@@ -33,13 +23,13 @@
       "enabled": false
     },
     {
-      "id": "announcement-1783337440353",
-      "type": "announcement",
-      "title": "tannous",
-      "subtitle": "",
+      "id": "products-1",
+      "type": "products",
+      "title": "Top picks this week",
+      "subtitle": "Popular with Carter's families",
       "image": "",
-      "buttonLabel": "",
-      "background": "#0d416c",
+      "buttonLabel": "View all",
+      "background": "#ffffff",
       "enabled": false
     }
   ]

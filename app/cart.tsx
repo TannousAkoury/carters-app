@@ -1,4 +1,4 @@
-import { getShopifyCart, markShopifyCartAsAppOrder, ShopifyCart, updateShopifyCartLine } from '@/services/shopify';
+import { attachCustomerToShopifyCart, getShopifyCart, markShopifyCartAsAppOrder, ShopifyCart, updateShopifyCartLine } from '@/services/shopify';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
@@ -8,6 +8,8 @@ import { useCart } from '@/components/cart-context';
 import { useCurrency } from '@/components/currency-context';
 import { salePercentage } from '@/utils/pricing';
 import { ActivityIndicator, FlatList, Image, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+
+const CUSTOMER_TOKEN_KEY = 'shopify_customer_access_token';
 
 export default function CartScreen() {
   const { setCount } = useCart();
@@ -41,7 +43,11 @@ export default function CartScreen() {
     try {
       setLoading(true);
       await markShopifyCartAsAppOrder(cart.id);
-      await WebBrowser.openBrowserAsync(cart.checkoutUrl, { presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET, controlsColor: '#002041', toolbarColor: '#fff' });
+      const customerToken = await SecureStore.getItemAsync(CUSTOMER_TOKEN_KEY);
+      const customerCart = await attachCustomerToShopifyCart(cart.id, customerToken);
+      const checkoutUrl = customerCart?.checkoutUrl ?? cart.checkoutUrl;
+      if (customerCart) setCart(customerCart);
+      await WebBrowser.openBrowserAsync(checkoutUrl, { presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET, controlsColor: '#002041', toolbarColor: '#fff' });
     } catch { setError('Unable to prepare checkout. Please try again.'); }
     finally { setLoading(false); }
   };
