@@ -22,6 +22,8 @@ type View = "dashboard" | "editor" | "marketing" | "customers" | "chat" | "team"
 type Placement = "before-hero" | "after-hero" | "after-promos" | "after-ages" | "after-top-picks" | "after-categories" | "after-explore" | "after-essentials" | "after-brands" | "after-latest";
 type AdminRole = { id: string; name: string; scope: string; description: string; members: number };
 type StaffUser = { id: string; email: string; role: string; status: "invited" | "active"; inviteExpiresAt?: string; createdAt: string; updatedAt: string };
+type AdminCustomer = { id:string; name:string; firstName:string; lastName:string; email:string; phone:string; location:string; orders:number; totalSpent?:{amount:string;currencyCode:string}|null; status:string; lastOrderAt?:string|null; createdAt?:string|null; updatedAt?:string|null };
+type CustomerDraft = { firstName:string; lastName:string; email:string; phone:string };
 const placements: { value: Placement; label: string }[] = [
   { value:"before-hero",label:"Before Shopify hero" },{ value:"after-hero",label:"After Shopify hero" },{ value:"after-promos",label:"After promo strip" },{ value:"after-ages",label:"After age groups" },{ value:"after-top-picks",label:"After top picks" },{ value:"after-categories",label:"After shop categories" },{ value:"after-explore",label:"After explore styles" },{ value:"after-essentials",label:"After tiny essentials" },{ value:"after-brands",label:"After brands" },{ value:"after-latest",label:"After latest collection" },
 ];
@@ -141,7 +143,7 @@ function Dashboard({ setView, publishedAt }: { setView: (v: View) => void; publi
   const metrics = [[summary?.sessions ?? "—", "Unique app devices", "Last 30 days"], [summary?.screenViews ?? "—", "Screen views", "Recorded in app"], [summary?.productViews ?? "—", "Product views", "Recorded in app"], [summary?.notificationDevices ?? "—", "Notification devices", "Currently registered"]];
   const maxDay=Math.max(1,...(summary?.days.map(day=>day.value)??[1]));
   return <div className={styles.content}>
-    <section className={styles.opsHero}><div><p>STORE OPERATIONS</p><h2>Mobile app workspace</h2><span>Content, marketing, and customer operations are managed from one place.</span></div><div className={styles.opsHeroActions}><button className={styles.primary} onClick={() => setView("editor")}>Open editor</button><button className={styles.secondary} onClick={() => setView("marketing")}>Create campaign</button></div></section>
+    <section className={styles.opsHero}><div><p>STORE OPERATIONS</p><h2>Mobile app workspace</h2><span>Content, marketing, and customer operations are managed from one place.</span></div><div className={styles.opsHeroActions}><button className={styles.primary} onClick={() => setView("editor")}>Open editor</button><button className={styles.primary} onClick={() => setView("marketing")}>Create campaign</button></div></section>
     {analyticsError&&<section className={styles.card}>Analytics unavailable: {analyticsError}</section>}
     <div className={styles.metricGrid}>{metrics.map(([value, label, note]) => <article className={styles.metric} key={label}><div className={styles.metricIcon}>↗</div><p>{label}</p><strong>{value}</strong><span>{note}</span></article>)}</div>
     <div className={styles.dashboardGrid}>
@@ -199,7 +201,126 @@ function Marketing(){
 function MiniMetric({value,label,note}:{value:string;label:string;note:string}){return <article className={styles.metric}><p>{label}</p><strong>{value}</strong><span>{note}</span></article>}
 
 function Customers(){
-  return <div className={styles.content}><div className={styles.actionHeader}><div><h2>Customers</h2><p>Shopify-backed customer operations.</p></div><input className={styles.smallSearch} placeholder="Search unavailable until connected" disabled /></div><div className={styles.segmentGrid}>{[["Profiles","Shopify Admin API required","—"],["Addresses","Read from customer account","—"],["Orders","Customer order history","—"],["Segments","Rules not connected","0"]].map(([title,copy,value])=><article className={styles.segment} key={title}><span>♙</span><div><strong>{title}</strong><small>{copy}</small></div><b>{value}</b></article>)}</div><section className={`${styles.card} ${styles.customerTable}`}><div className={styles.cardHead}><div><h2>Customer directory</h2><p>Secure Admin API credentials are required to show customer records here.</p></div><i className={`${styles.tag} ${styles.tagGray}`}>Not connected</i></div><div className={styles.dataTable}><div className={styles.tableHead}><span>Customer</span><span>Location</span><span>Orders</span><span>Status</span><span>Last activity</span></div><div className={styles.empty}>Customer totals, order values, and segments are unavailable until Shopify Admin authentication is connected.</div></div></section></div>
+  const [customers,setCustomers]=useState<AdminCustomer[]>([]);
+  const [search,setSearch]=useState("");
+  const [statusFilter,setStatusFilter]=useState("all");
+  const [minOrders,setMinOrders]=useState("");
+  const [maxOrders,setMaxOrders]=useState("");
+  const [minSpent,setMinSpent]=useState("");
+  const [maxSpent,setMaxSpent]=useState("");
+  const [inactiveOnly,setInactiveOnly]=useState(false);
+  const [inactiveMonths,setInactiveMonths]=useState("5");
+  const [loading,setLoading]=useState(true);
+  const [message,setMessage]=useState("");
+  const [editingId,setEditingId]=useState("");
+  const [savingId,setSavingId]=useState("");
+  const [draft,setDraft]=useState<CustomerDraft>({firstName:"",lastName:"",email:"",phone:""});
+  const [pageInfo,setPageInfo]=useState<{hasNextPage:boolean;endCursor:string|null}>({hasNextPage:false,endCursor:null});
+  const loadCustomers=async(nextSearch=search,after?:string|null)=>{
+    setLoading(true); setMessage("");
+    try{
+      const params=new URLSearchParams();
+      if(nextSearch.trim())params.set("search",nextSearch.trim());
+      if(after)params.set("after",after);
+      const response=await fetch(`/api/shopify/customers?${params.toString()}`,{cache:"no-store"});
+      const data=await response.json();
+      if(!response.ok)throw new Error(data.error||"Unable to load customers.");
+      setCustomers(current=>after?[...current,...(data.customers??[])]:data.customers??[]);
+      setPageInfo(data.pageInfo??{hasNextPage:false,endCursor:null});
+    }catch(error){setMessage(error instanceof Error?error.message:"Unable to load customers."); if(!after)setCustomers([])}
+    finally{setLoading(false)}
+  };
+  const startEdit=(customer:AdminCustomer)=>{setEditingId(customer.id);setDraft({firstName:customer.firstName,lastName:customer.lastName,email:customer.email,phone:customer.phone});setMessage("")};
+  const saveCustomer=async()=>{
+    if(!editingId)return;
+    setSavingId(editingId);setMessage("Saving customer...");
+    try{
+      const response=await fetch("/api/shopify/customers",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:editingId,...draft})});
+      const data=await response.json();
+      if(!response.ok)throw new Error(data.error||"Unable to update customer.");
+      setCustomers(items=>items.map(item=>item.id===editingId?data.customer:item));
+      setEditingId("");setMessage("Customer updated.");
+    }catch(error){setMessage(error instanceof Error?error.message:"Unable to update customer.")}
+    finally{setSavingId("")}
+  };
+  const deleteCustomer=async(customer:AdminCustomer)=>{
+    if(customer.orders>0){setMessage("Shopify only allows deleting customers with no orders.");return}
+    if(!window.confirm(`Delete ${customer.name}?`))return;
+    setSavingId(customer.id);setMessage("Deleting customer...");
+    try{
+      const response=await fetch(`/api/shopify/customers?id=${encodeURIComponent(customer.id)}`,{method:"DELETE"});
+      const data=await response.json();
+      if(!response.ok)throw new Error(data.error||"Unable to delete customer.");
+      setCustomers(items=>items.filter(item=>item.id!==customer.id));
+      if(editingId===customer.id)setEditingId("");
+      setMessage("Customer deleted.");
+    }catch(error){setMessage(error instanceof Error?error.message:"Unable to delete customer.")}
+    finally{setSavingId("")}
+  };
+  useEffect(()=>{
+    /* eslint-disable react-hooks/set-state-in-effect */
+    void loadCustomers("",null);
+    /* eslint-enable react-hooks/set-state-in-effect */
+    // The initial load should run once; subsequent loads are driven by search and pagination actions.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
+  const statusOptions=Array.from(new Set(customers.map(customer=>customer.status).filter(Boolean)));
+  const amountValue=(customer:AdminCustomer)=>Number(customer.totalSpent?.amount??0)||0;
+  const minOrderValue=minOrders===""?null:Number(minOrders);
+  const maxOrderValue=maxOrders===""?null:Number(maxOrders);
+  const minSpentValue=minSpent===""?null:Number(minSpent);
+  const maxSpentValue=maxSpent===""?null:Number(maxSpent);
+  const inactiveMonthValue=Math.max(1,Number(inactiveMonths)||5);
+  const inactiveSince=new Date();
+  inactiveSince.setMonth(inactiveSince.getMonth()-inactiveMonthValue);
+  const filteredCustomers=customers.filter(customer=>{
+    const spent=amountValue(customer);
+    const lastOrderDate=customer.lastOrderAt?new Date(customer.lastOrderAt):null;
+    return (statusFilter==="all"||customer.status===statusFilter)
+      && (minOrderValue===null||customer.orders>=minOrderValue)
+      && (maxOrderValue===null||customer.orders<=maxOrderValue)
+      && (minSpentValue===null||spent>=minSpentValue)
+      && (maxSpentValue===null||spent<=maxSpentValue)
+      && (!inactiveOnly||!lastOrderDate||lastOrderDate<inactiveSince);
+  });
+  const totalOrders=filteredCustomers.reduce((sum,customer)=>sum+customer.orders,0);
+  const activeCount=filteredCustomers.filter(customer=>customer.status==="ENABLED").length;
+  const formatSpent=(value:AdminCustomer["totalSpent"])=>{if(!value)return "—";try{return new Intl.NumberFormat(undefined,{style:"currency",currency:value.currencyCode}).format(Number(value.amount))}catch{return `${value.amount} ${value.currencyCode}`}};
+  const formatDate=(value?:string|null)=>value?new Date(value).toLocaleDateString():"—";
+  const hasCustomerFilters=Boolean(search||statusFilter!=="all"||minOrders||maxOrders||minSpent||maxSpent||inactiveOnly);
+  const resetFilters=()=>{setSearch("");setStatusFilter("all");setMinOrders("");setMaxOrders("");setMinSpent("");setMaxSpent("");setInactiveOnly(false);setInactiveMonths("5");void loadCustomers("",null)};
+  const exportCustomers=()=>{
+    if(!filteredCustomers.length){setMessage("No customers match this export filter.");return}
+    const columns=["Name","First name","Last name","Email","Phone","Location","Orders","Total spent","Status","Last order","Created at","Updated at"];
+    const escapeCsv=(value:string|number|null|undefined)=>`"${String(value??"").replace(/"/g,'""')}"`;
+    const rows=filteredCustomers.map(customer=>[
+      customer.name,
+      customer.firstName,
+      customer.lastName,
+      customer.email,
+      customer.phone,
+      customer.location,
+      customer.orders,
+      customer.totalSpent?`${customer.totalSpent.amount} ${customer.totalSpent.currencyCode}`:"",
+      customer.status,
+      customer.lastOrderAt||"",
+      customer.createdAt||"",
+      customer.updatedAt||"",
+    ]);
+    const csv=[columns,...rows].map(row=>row.map(escapeCsv).join(",")).join("\n");
+    const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    const link=document.createElement("a");
+    const filterName=statusFilter==="all"?"all":statusFilter.toLowerCase();
+    link.href=url;
+    link.download=`shopify-customers-${filterName}-${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    setMessage(`Exported ${filteredCustomers.length} customer${filteredCustomers.length===1?"":"s"}.`);
+  };
+  return <div className={styles.content}><div className={styles.actionHeader}><div><h2>Customers</h2><p>Live Shopify customer directory.</p></div><form className={styles.customerSearch} onSubmit={event=>{event.preventDefault();void loadCustomers(search,null)}}><input className={styles.smallSearch} placeholder="Search customers" value={search} onChange={event=>setSearch(event.target.value)} /><button className={styles.primary} disabled={loading} type="submit">Search</button><button className={styles.secondary} disabled={loading||!filteredCustomers.length} type="button" onClick={exportCustomers}>Export CSV</button>{hasCustomerFilters&&<button className={styles.secondary} disabled={loading} type="button" onClick={resetFilters}>Clear</button>}</form></div><div className={styles.customerFilterBar}><select className={styles.customerFilter} value={statusFilter} onChange={event=>setStatusFilter(event.target.value)}><option value="all">All statuses</option>{statusOptions.map(status=><option key={status} value={status}>{status.toLowerCase()}</option>)}</select><label>Orders from<input type="number" min="0" value={minOrders} onChange={event=>setMinOrders(event.target.value)} /></label><label>Orders to<input type="number" min="0" value={maxOrders} onChange={event=>setMaxOrders(event.target.value)} /></label><label>Spent from<input type="number" min="0" step="0.01" value={minSpent} onChange={event=>setMinSpent(event.target.value)} /></label><label>Spent to<input type="number" min="0" step="0.01" value={maxSpent} onChange={event=>setMaxSpent(event.target.value)} /></label><label className={styles.customerCheck}><input type="checkbox" checked={inactiveOnly} onChange={event=>setInactiveOnly(event.target.checked)} />No purchase in</label><label>Months<input type="number" min="1" value={inactiveMonths} onChange={event=>setInactiveMonths(event.target.value)} /></label></div><div className={styles.segmentGrid}>{[["Profiles","Loaded from Shopify Admin",String(customers.length)],["Filtered","Matching current filter",String(filteredCustomers.length)],["Active accounts","Enabled filtered records",String(activeCount)],["Orders","From filtered customers",String(totalOrders)]].map(([title,copy,value])=><article className={styles.segment} key={title}><span>♙</span><div><strong>{title}</strong><small>{copy}</small></div><b>{value}</b></article>)}</div><section className={`${styles.card} ${styles.customerTable}`}><div className={styles.cardHead}><div><h2>Customer directory</h2><p>{message||`Showing customers after search, order, spend, and inactivity filters. Inactive means no order since ${formatDate(inactiveSince.toISOString())}.`}</p></div><i className={`${styles.tag} ${message?styles.tagGray:styles.tagGreen}`}>{loading?"Loading":message?"Notice":"Connected"}</i></div><div className={styles.dataTable}><div className={styles.tableHead}><span>Customer</span><span>Location</span><span>Orders</span><span>Status</span><span>Last order</span></div>{filteredCustomers.length?filteredCustomers.map(customer=><div className={styles.customerRecord} key={customer.id}><div className={styles.tableRow}><div className={styles.customerCell}><strong>{customer.name}</strong><small>{customer.email||"No email"} · {customer.phone||"No phone"}</small><div className={styles.customerActions}><button className={styles.secondary} disabled={savingId===customer.id} onClick={()=>startEdit(customer)}>Edit</button><button className={styles.secondary} disabled={savingId===customer.id||customer.orders>0} title={customer.orders>0?"Shopify only allows deleting customers with no orders.":undefined} onClick={()=>void deleteCustomer(customer)}>Delete</button></div></div><span>{customer.location}</span><span>{customer.orders} · {formatSpent(customer.totalSpent)}</span><span><i className={`${styles.tag} ${customer.status==="ENABLED"?styles.tagGreen:styles.tagGray}`}>{customer.status.toLowerCase()}</i></span><span>{formatDate(customer.lastOrderAt)}</span></div>{editingId===customer.id&&<div className={styles.customerEditPanel}><label>First name<input value={draft.firstName} onChange={event=>setDraft(value=>({...value,firstName:event.target.value}))}/></label><label>Last name<input value={draft.lastName} onChange={event=>setDraft(value=>({...value,lastName:event.target.value}))}/></label><label>Email<input value={draft.email} onChange={event=>setDraft(value=>({...value,email:event.target.value}))}/></label><label>Phone<input value={draft.phone} onChange={event=>setDraft(value=>({...value,phone:event.target.value}))}/></label><div><button className={styles.secondary} disabled={savingId===customer.id} onClick={()=>setEditingId("")}>Cancel</button><button className={styles.primary} disabled={savingId===customer.id} onClick={saveCustomer}>{savingId===customer.id?"Saving":"Save"}</button></div></div>}</div>):<div className={styles.empty}>{loading?"Loading customers...":message||"No customers found for this filter."}</div>}</div>{pageInfo.hasNextPage&&<div className={styles.inlineActions}><button className={styles.secondary} disabled={loading} onClick={()=>loadCustomers(search,pageInfo.endCursor)}>Load more</button></div>}</section></div>
 }
 
 function Team(){

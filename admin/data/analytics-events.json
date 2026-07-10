@@ -1033,5 +1033,14 @@
       "path": "/notifications"
     },
     "createdAt": "2026-07-09T10:52:30.227Z"
+  },
+  {
+    "id": "fd540c17-98f8-4cb6-b599-81f1ba80be23",
+    "name": "screen_view",
+    "sessionId": "1783337630894-3rmesbm82c2",
+    "properties": {
+      "path": "/"
+    },
+    "createdAt": "2026-07-10T09:03:21.644Z"
   }
 ]
