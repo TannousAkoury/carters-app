@@ -18,11 +18,21 @@ type Section = {
   enabled: boolean;
   placement?: Placement;
 };
-type View = "dashboard" | "editor" | "marketing" | "customers" | "chat" | "team" | "settings";
+type View = "dashboard" | "editor" | "inventory" | "promotions" | "analytics" | "marketing" | "orders" | "customers" | "chat" | "team" | "settings";
 type Placement = "before-hero" | "after-hero" | "after-promos" | "after-ages" | "after-top-picks" | "after-categories" | "after-explore" | "after-essentials" | "after-brands" | "after-latest";
 type AdminRole = { id: string; name: string; scope: string; description: string; members: number };
 type StaffUser = { id: string; email: string; role: string; status: "invited" | "active"; inviteExpiresAt?: string; createdAt: string; updatedAt: string };
 type AdminCustomer = { id:string; name:string; firstName:string; lastName:string; email:string; phone:string; location:string; orders:number; totalSpent?:{amount:string;currencyCode:string}|null; status:string; lastOrderAt?:string|null; createdAt?:string|null; updatedAt?:string|null };
+type OrderAddress = { firstName:string; lastName:string; address1:string; address2:string; city:string; province:string; zip:string; country:string; phone:string };
+type OrderLineItem = { name:string; quantity:number; sku?:string|null; variantTitle?:string|null; image?:{url?:string|null;altText?:string|null}|null };
+type AdminOrder = { id:string; name:string; createdAt:string; financialStatus:string; fulfillmentStatus:string; canMarkAsPaid:boolean; cancelledAt?:string|null; note:string; tags:string[]; total?:{amount:string;currencyCode:string}|null; customer:string; email:string; destination:string; shippingAddress:OrderAddress; items:OrderLineItem[] };
+type OrderDraft = { email:string; note:string; tags:string; shippingAddress:OrderAddress };
+type InventoryLevel = { locationId:string; locationName:string; quantity:number };
+type InventoryItem = { id:string; productId:string; inventoryItemId:string; name:string; product:string; variant:string; sku:string; barcode:string; price:string; compareAtPrice:string; quantity:number; policy:string; tracked:boolean; levels:InventoryLevel[]; availableForSale:boolean; productStatus:string; updatedAt?:string };
+type InventoryLocation = { id:string; name:string; isActive:boolean };
+type ProductDraft = { title:string; status:string; sku:string; barcode:string; price:string; compareAtPrice:string; inventoryPolicy:string; tracked:boolean };
+type Promotion = { id:string; title:string; type:string; code:string; status:string; startsAt?:string|null; endsAt?:string|null; usageCount:number };
+type AnalyticsSummary = { range:string; sessions:number; screenViews:number; productViews:number; cartViews:number; notificationDevices:number; purchases:number|null; days:{label:string;value:number}[] };
 type CustomerDraft = { firstName:string; lastName:string; email:string; phone:string };
 const placements: { value: Placement; label: string }[] = [
   { value:"before-hero",label:"Before Shopify hero" },{ value:"after-hero",label:"After Shopify hero" },{ value:"after-promos",label:"After promo strip" },{ value:"after-ages",label:"After age groups" },{ value:"after-top-picks",label:"After top picks" },{ value:"after-categories",label:"After shop categories" },{ value:"after-explore",label:"After explore styles" },{ value:"after-essentials",label:"After tiny essentials" },{ value:"after-brands",label:"After brands" },{ value:"after-latest",label:"After latest collection" },
@@ -64,7 +74,11 @@ export default function Home() {
   const pageTitles: Record<View, { title: string; copy: string }> = {
     dashboard: { title: "Command center", copy: "Monitor app health, traffic, and publishing status." },
     editor: { title: "App editor", copy: "Arrange custom content around live Shopify sections." },
+    inventory: { title: "Inventory", copy: "Monitor Shopify product variants and stock levels." },
+    promotions: { title: "Promotions", copy: "Review Shopify discount codes and automatic offers." },
+    analytics: { title: "Analytics", copy: "Understand app traffic and customer engagement." },
     marketing: { title: "Marketing", copy: "Create push campaigns and review notification performance." },
+    orders: { title: "Orders", copy: "Review live orders from Shopify." },
     customers: { title: "Customers", copy: "Prepare Shopify-backed customer operations." },
     chat: { title: "Customer chat", copy: "Review support readiness and realtime connection state." },
     team: { title: "Team & activity", copy: "Manage admin roles and audit readiness." },
@@ -108,7 +122,11 @@ export default function Home() {
         <nav className={styles.nav}>
           <Nav active={view === "dashboard"} onClick={() => setView("dashboard")} icon="⌂" label="Dashboard" />
           <Nav active={view === "editor"} onClick={() => setView("editor")} icon="✦" label="App editor" />
+          <Nav active={view === "inventory"} onClick={() => setView("inventory")} icon="▦" label="Inventory" />
+          <Nav active={view === "promotions"} onClick={() => setView("promotions")} icon="%" label="Promotions" />
+          <Nav active={view === "analytics"} onClick={() => setView("analytics")} icon="↗" label="Analytics" />
           <Nav active={view === "marketing"} onClick={() => setView("marketing")} icon="◈" label="Marketing" />
+          <Nav active={view === "orders"} onClick={() => setView("orders")} icon="▤" label="Orders" />
           <Nav active={view === "customers"} onClick={() => setView("customers")} icon="♙" label="Customers" />
           <Nav active={view === "chat"} onClick={() => setView("chat")} icon="◌" label="Customer chat" badge="3" />
           <Nav active={view === "team"} onClick={() => setView("team")} icon="☷" label="Team & activity" />
@@ -121,7 +139,11 @@ export default function Home() {
         <header className={styles.topbar}><div className={styles.topbarTitle}><p className={styles.eyebrow}>CARTER&apos;S MOBILE APP</p><h1>{pageTitles[view].title}</h1><small>{pageTitles[view].copy}</small></div><div className={styles.topActions}><span className={styles.statusDot}>{publishMessage || "● App live"}</span>{view === "editor" && <><button className={styles.secondary} onClick={saveDraft}>{saved ? "Draft saved" : "Save draft"}</button><button className={styles.primary} onClick={publish}>Publish changes</button></>}<button className={styles.secondary} onClick={logout}>Log out</button></div></header>
         {view === "dashboard" && <Dashboard setView={setView} publishedAt={publishedAt} />}
         {view === "editor" && <Editor sections={sections} selected={selected} selectedId={selectedId} setSelectedId={setSelectedId} update={update} move={move} remove={remove} add={add} />}
+        {view === "inventory" && <Inventory />}
+        {view === "promotions" && <Promotions />}
+        {view === "analytics" && <Analytics />}
         {view === "marketing" && <Marketing />}
+        {view === "orders" && <Orders />}
         {view === "customers" && <Customers />}
         {view === "chat" && <Chat />}
         {view === "team" && <Team />}
@@ -175,6 +197,135 @@ function PreviewSection({section,selected,onClick}:{section:Section;selected:boo
   return <section onClick={onClick} className={`${styles.previewText} ${selected?styles.previewSelected:""}`} style={{background:section.background}}><h3>{section.title}</h3><p>{section.subtitle}</p><button>{section.buttonLabel}</button></section>;
 }
 
+export function InventoryReadOnly(){
+  const [items,setItems]=useState<InventoryItem[]>([]);const [search,setSearch]=useState("");const [loading,setLoading]=useState(true);const [message,setMessage]=useState("");const [pageInfo,setPageInfo]=useState<{hasNextPage:boolean;endCursor:string|null}>({hasNextPage:false,endCursor:null});
+  const load=async(term:string,after:string|null)=>{setLoading(true);setMessage("");try{const params=new URLSearchParams();if(term.trim())params.set("search",term.trim());if(after)params.set("after",after);const response=await fetch(`/api/shopify/inventory?${params}`,{cache:"no-store"});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to load inventory.");const next=Array.isArray(data.inventory)?data.inventory:[];setItems(current=>after?[...current,...next]:next);setPageInfo(data.pageInfo||{hasNextPage:false,endCursor:null});if(!next.length)setMessage(term?"No inventory matches this search.":"No Shopify inventory was returned.")}catch(error){setMessage(error instanceof Error?error.message:"Unable to load inventory.");if(!after)setItems([])}finally{setLoading(false)}};
+  useEffect(()=>{/* eslint-disable react-hooks/set-state-in-effect */void load("",null);/* eslint-enable react-hooks/set-state-in-effect */},[]);
+  const lowStock=items.filter(item=>item.tracked&&item.quantity>0&&item.quantity<=5).length;const outOfStock=items.filter(item=>item.tracked&&item.quantity<=0).length;const totalUnits=items.reduce((sum,item)=>sum+Math.max(0,item.quantity),0);
+  return <div className={styles.content}><div className={styles.actionHeader}><div><h2>Inventory</h2><p>Live aggregate stock from Shopify product variants.</p></div><form className={styles.customerSearch} onSubmit={event=>{event.preventDefault();void load(search,null)}}><input className={styles.smallSearch} placeholder="Search product, variant, or SKU" value={search} onChange={event=>setSearch(event.target.value)}/><button className={styles.primary} disabled={loading}>Search</button>{search&&<button className={styles.secondary} type="button" onClick={()=>{setSearch("");void load("",null)}}>Clear</button>}</form></div><div className={styles.segmentGrid}>{[["Variants","Loaded from Shopify",items.length],["Available units","Across loaded variants",totalUnits],["Low stock","Five units or fewer",lowStock],["Out of stock","Tracked with no stock",outOfStock]].map(([title,copy,value])=><article className={styles.segment} key={title}><span>▦</span><div><strong>{title}</strong><small>{copy}</small></div><b>{value}</b></article>)}</div><section className={`${styles.card} ${styles.inventoryTable}`}><div className={styles.cardHead}><div><h2>Stock directory</h2><p>{message||"Quantities are aggregated across Shopify locations."}</p></div><i className={`${styles.tag} ${message?styles.tagGray:styles.tagGreen}`}>{loading?"Loading":message?"Notice":"Connected"}</i></div><div className={styles.dataTable}><div className={styles.tableHead}><span>Product</span><span>SKU</span><span>Price</span><span>Quantity</span><span>Availability</span><span>Updated</span></div>{items.length?items.map(item=><div className={styles.tableRow} key={item.id}><div className={styles.customerCell}><strong>{item.product}</strong><small>{item.variant} · {item.productStatus.toLowerCase()}</small></div><span>{item.sku||"—"}</span><span>{item.price}</span><strong className={item.quantity<=0?styles.stockEmpty:item.quantity<=5?styles.stockLow:styles.stockOk}>{item.tracked?item.quantity:"Not tracked"}</strong><span><i className={`${styles.tag} ${item.quantity<=0?styles.tagGray:item.availableForSale?styles.tagGreen:styles.tagBlue}`}>{item.availableForSale?"Available":"Unavailable"}</i></span><span>{item.updatedAt?new Date(item.updatedAt).toLocaleDateString():"—"}</span></div>):<div className={styles.empty}>{loading?"Loading Shopify inventory...":message||"No inventory found."}</div>}</div>{pageInfo.hasNextPage&&<div className={styles.inlineActions}><button className={styles.secondary} disabled={loading} onClick={()=>void load(search,pageInfo.endCursor)}>Load more</button></div>}</section></div>
+}
+
+export function PromotionsReadOnly(){
+  const [items,setItems]=useState<Promotion[]>([]);const [search,setSearch]=useState("");const [loading,setLoading]=useState(true);const [message,setMessage]=useState("");const [pageInfo,setPageInfo]=useState<{hasNextPage:boolean;endCursor:string|null}>({hasNextPage:false,endCursor:null});
+  const load=async(term:string,after:string|null)=>{setLoading(true);setMessage("");try{const params=new URLSearchParams();if(term.trim())params.set("search",term.trim());if(after)params.set("after",after);const response=await fetch(`/api/shopify/promotions?${params}`,{cache:"no-store"});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to load promotions.");const next=Array.isArray(data.promotions)?data.promotions:[];setItems(current=>after?[...current,...next]:next);setPageInfo(data.pageInfo||{hasNextPage:false,endCursor:null});if(!next.length)setMessage(term?"No promotions match this search.":"No Shopify promotions were returned.")}catch(error){setMessage(error instanceof Error?error.message:"Unable to load promotions.");if(!after)setItems([])}finally{setLoading(false)}};
+  useEffect(()=>{/* eslint-disable react-hooks/set-state-in-effect */void load("",null);/* eslint-enable react-hooks/set-state-in-effect */},[]);
+  const active=items.filter(item=>item.status==="ACTIVE").length;const scheduled=items.filter(item=>item.status==="SCHEDULED").length;const uses=items.reduce((sum,item)=>sum+item.usageCount,0);
+  return <div className={styles.content}><div className={styles.actionHeader}><div><h2>Promotions</h2><p>Shopify discount codes and automatic offers.</p></div><form className={styles.customerSearch} onSubmit={event=>{event.preventDefault();void load(search,null)}}><input className={styles.smallSearch} placeholder="Search promotion title" value={search} onChange={event=>setSearch(event.target.value)}/><button className={styles.primary} disabled={loading}>Search</button>{search&&<button className={styles.secondary} type="button" onClick={()=>{setSearch("");void load("",null)}}>Clear</button>}</form></div><div className={styles.segmentGrid}>{[["Promotions","Loaded from Shopify",items.length],["Active","Currently available",active],["Scheduled","Starting later",scheduled],["Uses","Reported by Shopify",uses]].map(([title,copy,value])=><article className={styles.segment} key={title}><span>%</span><div><strong>{title}</strong><small>{copy}</small></div><b>{value}</b></article>)}</div><section className={`${styles.card} ${styles.promotionTable}`}><div className={styles.cardHead}><div><h2>Promotion directory</h2><p>{message||"Codes and automatic discounts are managed in Shopify."}</p></div><i className={`${styles.tag} ${message?styles.tagGray:styles.tagGreen}`}>{loading?"Loading":message?"Notice":"Connected"}</i></div><div className={styles.dataTable}><div className={styles.tableHead}><span>Promotion</span><span>Method</span><span>Status</span><span>Starts</span><span>Ends</span><span>Uses</span></div>{items.length?items.map(item=><div className={styles.tableRow} key={item.id}><div className={styles.customerCell}><strong>{item.title}</strong><small>{item.type.replace(/([a-z])([A-Z])/g,"$1 $2")}</small></div><strong>{item.code}</strong><span><i className={`${styles.tag} ${item.status==="ACTIVE"?styles.tagGreen:item.status==="SCHEDULED"?styles.tagBlue:styles.tagGray}`}>{item.status.toLowerCase()}</i></span><span>{item.startsAt?new Date(item.startsAt).toLocaleDateString():"Immediately"}</span><span>{item.endsAt?new Date(item.endsAt).toLocaleDateString():"No end date"}</span><strong>{item.usageCount}</strong></div>):<div className={styles.empty}>{loading?"Loading Shopify promotions...":message||"No promotions found."}</div>}</div>{pageInfo.hasNextPage&&<div className={styles.inlineActions}><button className={styles.secondary} disabled={loading} onClick={()=>void load(search,pageInfo.endCursor)}>Load more</button></div>}</section></div>
+}
+
+function Inventory(){
+  const [items,setItems]=useState<InventoryItem[]>([]);
+  const [locations,setLocations]=useState<InventoryLocation[]>([]);
+  const [locationId,setLocationId]=useState("");
+  const [search,setSearch]=useState("");
+  const [stockFilter,setStockFilter]=useState("all");
+  const [statusFilter,setStatusFilter]=useState("all");
+  const [selected,setSelected]=useState<string[]>([]);
+  const [bulkMode,setBulkMode]=useState<"set"|"add"|"subtract"|"zero">("set");
+  const [bulkValue,setBulkValue]=useState("0");
+  const [loading,setLoading]=useState(true);
+  const [saving,setSaving]=useState(false);
+  const [message,setMessage]=useState("");
+  const [editing,setEditing]=useState<InventoryItem|null>(null);
+  const [productDraft,setProductDraft]=useState<ProductDraft|null>(null);
+  const [productSaving,setProductSaving]=useState(false);
+  const [pageInfo,setPageInfo]=useState<{hasNextPage:boolean;endCursor:string|null}>({hasNextPage:false,endCursor:null});
+  const load=async(term:string,after:string|null)=>{setLoading(true);setMessage("");try{const params=new URLSearchParams();if(term.trim())params.set("search",term.trim());if(after)params.set("after",after);const response=await fetch(`/api/shopify/inventory?${params}`,{cache:"no-store"});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to load inventory.");const next=Array.isArray(data.inventory)?data.inventory:[];setItems(current=>after?[...current,...next]:next);const nextLocations=Array.isArray(data.locations)?data.locations:[];setLocations(nextLocations);setLocationId(current=>current||nextLocations[0]?.id||"");setPageInfo(data.pageInfo||{hasNextPage:false,endCursor:null});if(!next.length)setMessage(term?"No inventory matches this search.":"No Shopify inventory was returned.")}catch(error){setMessage(error instanceof Error?error.message:"Unable to load inventory.");if(!after)setItems([])}finally{setLoading(false)}};
+  useEffect(()=>{/* eslint-disable react-hooks/set-state-in-effect */void load("",null);/* eslint-enable react-hooks/set-state-in-effect */},[]);
+  const quantityAt=(item:InventoryItem)=>locationId?(item.levels.find(level=>level.locationId===locationId)?.quantity??0):item.quantity;
+  const filtered=items.filter(item=>{
+    const quantity=quantityAt(item);
+    const stockMatches=stockFilter==="all"||(stockFilter==="in"&&quantity>0)||(stockFilter==="low"&&quantity>0&&quantity<=5)||(stockFilter==="out"&&quantity<=0)||(stockFilter==="untracked"&&!item.tracked);
+    return stockMatches&&(statusFilter==="all"||item.productStatus===statusFilter);
+  });
+  const toggle=(id:string)=>setSelected(current=>current.includes(id)?current.filter(item=>item!==id):[...current,id]);
+  const selectVisible=()=>setSelected(current=>filtered.every(item=>current.includes(item.id))?current.filter(id=>!filtered.some(item=>item.id===id)):[...new Set([...current,...filtered.map(item=>item.id)])]);
+  const applyBulk=async()=>{
+    if(!locationId||!selected.length){setMessage("Choose a location and select at least one variant.");return}
+    const amount=Math.max(0,Math.floor(Number(bulkValue)||0));
+    const selectedItems=items.filter(item=>selected.includes(item.id)&&item.tracked&&item.inventoryItemId);
+    const changes:{inventoryItemId:string;locationId:string;delta?:number;activateQuantity?:number}[]=[];
+    selectedItems.forEach(item=>{
+      const level=item.levels.find(entry=>entry.locationId===locationId);const current=level?.quantity??0;
+      const target=bulkMode==="set"?amount:bulkMode==="add"?current+amount:bulkMode==="subtract"?Math.max(0,current-amount):0;
+      if(!level){if(target>0)changes.push({inventoryItemId:item.inventoryItemId,locationId,activateQuantity:target});return}
+      const delta=target-current;if(delta)changes.push({inventoryItemId:item.inventoryItemId,locationId,delta});
+    });
+    if(!changes.length){setMessage("The selected inventory already has that quantity, or inventory tracking is disabled.");return}
+    if(bulkMode==="zero"&&!window.confirm(`Set ${changes.length} selected inventor${changes.length===1?"y":"ies"} to zero at this location?`))return;
+    setSaving(true);setMessage("Updating Shopify inventory...");
+    try{const response=await fetch("/api/shopify/inventory",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({changes})});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to update inventory.");setMessage(`Updated ${data.changed} inventory item${data.changed===1?"":"s"}.`);setSelected([]);await load(search,null)}catch(error){setMessage(error instanceof Error?error.message:"Unable to update inventory.")}finally{setSaving(false)}
+  };
+  const openProduct=(item:InventoryItem)=>{setEditing(item);setProductDraft({title:item.product,status:item.productStatus,sku:item.sku,barcode:item.barcode,price:item.price,compareAtPrice:item.compareAtPrice||"",inventoryPolicy:item.policy,tracked:item.tracked});setMessage("")};
+  const closeProduct=()=>{setEditing(null);setProductDraft(null)};
+  const saveProduct=async()=>{
+    if(!editing||!productDraft)return;
+    if(!productDraft.title.trim()){setMessage("Product title is required.");return}
+    setProductSaving(true);setMessage("Updating product in Shopify...");
+    try{const response=await fetch("/api/shopify/inventory",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({productId:editing.productId,variantId:editing.id,product:{title:productDraft.title,status:productDraft.status},variant:{sku:productDraft.sku,barcode:productDraft.barcode,price:productDraft.price,compareAtPrice:productDraft.compareAtPrice,inventoryPolicy:productDraft.inventoryPolicy,tracked:productDraft.tracked}})});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to update product.");setMessage(`${productDraft.title} was updated in Shopify.`);closeProduct();await load(search,null)}catch(error){setMessage(error instanceof Error?error.message:"Unable to update product.")}finally{setProductSaving(false)}
+  };
+  const lowStock=filtered.filter(item=>item.tracked&&quantityAt(item)>0&&quantityAt(item)<=5).length;const outOfStock=filtered.filter(item=>item.tracked&&quantityAt(item)<=0).length;const totalUnits=filtered.reduce((sum,item)=>sum+Math.max(0,quantityAt(item)),0);
+  return <div className={styles.content}>
+    <div className={styles.actionHeader}>
+      <div><h2>Inventory</h2><p>Manage available Shopify stock by location.</p></div>
+      <form className={styles.customerSearch} onSubmit={event=>{event.preventDefault();void load(search,null)}}>
+        <input className={styles.smallSearch} placeholder="Search product, variant, or SKU" value={search} onChange={event=>setSearch(event.target.value)}/>
+        <button className={styles.primary} disabled={loading}>Search</button>
+        {search&&<button className={styles.secondary} type="button" onClick={()=>{setSearch("");void load("",null)}}>Clear</button>}
+      </form>
+    </div>
+    <div className={styles.inventoryFilters}>
+      <label>Location<select value={locationId} onChange={event=>{setLocationId(event.target.value);setSelected([])}}>{locations.map(location=><option key={location.id} value={location.id}>{location.name}</option>)}</select></label>
+      <label>Stock<select value={stockFilter} onChange={event=>setStockFilter(event.target.value)}><option value="all">All inventory</option><option value="in">In stock</option><option value="low">Low stock</option><option value="out">Out of stock</option><option value="untracked">Not tracked</option></select></label>
+      <label>Product status<select value={statusFilter} onChange={event=>setStatusFilter(event.target.value)}><option value="all">All statuses</option><option value="ACTIVE">Active</option><option value="DRAFT">Draft</option><option value="ARCHIVED">Archived</option></select></label>
+    </div>
+    <div className={styles.segmentGrid}>{[["Variants","Matching filters",filtered.length],["Available units","At selected location",totalUnits],["Low stock","Five units or fewer",lowStock],["Out of stock","Tracked with no stock",outOfStock]].map(([title,copy,value])=><article className={styles.segment} key={title}><span>▦</span><div><strong>{title}</strong><small>{copy}</small></div><b>{value}</b></article>)}</div>
+    {selected.length>0&&<div className={styles.bulkBar}><strong>{selected.length} selected</strong><select value={bulkMode} onChange={event=>setBulkMode(event.target.value as typeof bulkMode)}><option value="set">Set quantity to</option><option value="add">Add quantity</option><option value="subtract">Subtract quantity</option><option value="zero">Set to zero</option></select>{bulkMode!=="zero"&&<input type="number" min="0" value={bulkValue} onChange={event=>setBulkValue(event.target.value)}/>}<button className={styles.primary} disabled={saving} onClick={()=>void applyBulk()}>{saving?"Updating...":"Apply bulk edit"}</button><button className={styles.secondary} onClick={()=>setSelected([])}>Clear selection</button></div>}
+    <section className={`${styles.card} ${styles.inventoryManageTable}`}>
+      <div className={styles.cardHead}><div><h2>Stock directory</h2><p>{message||"Select variants to change quantities in bulk. Setting zero removes available stock, not the product."}</p></div><i className={`${styles.tag} ${message?styles.tagGray:styles.tagGreen}`}>{loading?"Loading":message?"Notice":"Connected"}</i></div>
+      <div className={styles.dataTable}>
+        <div className={styles.tableHead}><input type="checkbox" aria-label="Select visible inventory" checked={Boolean(filtered.length)&&filtered.every(item=>selected.includes(item.id))} onChange={selectVisible}/><span>Product</span><span>SKU</span><span>Price</span><span>Available</span><span>Status</span><span>Updated</span><span>Action</span></div>
+        {filtered.length?filtered.map(item=><div className={styles.tableRow} key={item.id}><input type="checkbox" aria-label={`Select ${item.name}`} checked={selected.includes(item.id)} onChange={()=>toggle(item.id)}/><div className={styles.customerCell}><strong>{item.product}</strong><small>{item.variant} · {item.productStatus.toLowerCase()}</small></div><span>{item.sku||"—"}</span><span>{item.price}</span><strong className={quantityAt(item)<=0?styles.stockEmpty:quantityAt(item)<=5?styles.stockLow:styles.stockOk}>{item.tracked?quantityAt(item):"Not tracked"}</strong><span><i className={`${styles.tag} ${quantityAt(item)<=0?styles.tagGray:styles.tagGreen}`}>{quantityAt(item)>0?"In stock":"Out of stock"}</i></span><span>{item.updatedAt?new Date(item.updatedAt).toLocaleDateString():"—"}</span><button className={styles.secondary} type="button" onClick={()=>openProduct(item)}>View / edit</button></div>):<div className={styles.empty}>{loading?"Loading Shopify inventory...":message||"No inventory matches these filters."}</div>}
+      </div>
+      {pageInfo.hasNextPage&&<div className={styles.inlineActions}><button className={styles.secondary} disabled={loading} onClick={()=>void load(search,pageInfo.endCursor)}>Load more</button></div>}
+    </section>
+    {editing&&productDraft&&<section className={`${styles.card} ${styles.productEditor}`}>
+      <div className={styles.cardHead}><div><h2>View or edit product</h2><p>{editing.variant} · Changes are saved directly to Shopify.</p></div><button className={styles.secondary} type="button" onClick={closeProduct}>Close</button></div>
+      <div className={styles.productEditorGrid}>
+        <label>Product title<input value={productDraft.title} onChange={event=>setProductDraft(current=>current&&({...current,title:event.target.value}))}/></label>
+        <label>Product status<select value={productDraft.status} onChange={event=>setProductDraft(current=>current&&({...current,status:event.target.value}))}><option value="ACTIVE">Active</option><option value="DRAFT">Draft</option><option value="ARCHIVED">Archived</option></select></label>
+        <label>SKU<input value={productDraft.sku} onChange={event=>setProductDraft(current=>current&&({...current,sku:event.target.value}))}/></label>
+        <label>Barcode<input value={productDraft.barcode} onChange={event=>setProductDraft(current=>current&&({...current,barcode:event.target.value}))}/></label>
+        <label>Price<input type="number" min="0" step="0.01" value={productDraft.price} onChange={event=>setProductDraft(current=>current&&({...current,price:event.target.value}))}/></label>
+        <label>Compare-at price<input type="number" min="0" step="0.01" value={productDraft.compareAtPrice} onChange={event=>setProductDraft(current=>current&&({...current,compareAtPrice:event.target.value}))} placeholder="No compare-at price"/></label>
+        <label>Out-of-stock policy<select value={productDraft.inventoryPolicy} onChange={event=>setProductDraft(current=>current&&({...current,inventoryPolicy:event.target.value}))}><option value="DENY">Stop selling</option><option value="CONTINUE">Continue selling</option></select></label>
+        <label className={styles.productCheck}><input type="checkbox" checked={productDraft.tracked} onChange={event=>setProductDraft(current=>current&&({...current,tracked:event.target.checked}))}/>Track inventory for this variant</label>
+      </div>
+      <div className={styles.productLocations}><strong>Inventory by location</strong>{editing.levels.length?editing.levels.map(level=><div key={level.locationId}><span>{level.locationName}</span><b>{level.quantity}</b></div>):<small>No active inventory levels.</small>}</div>
+      <div className={styles.inlineActions}><button className={styles.secondary} type="button" onClick={closeProduct}>Cancel</button><button className={styles.primary} type="button" disabled={productSaving} onClick={()=>void saveProduct()}>{productSaving?"Saving...":"Save product"}</button></div>
+    </section>}
+  </div>
+}
+
+function Promotions(){
+  const [items,setItems]=useState<Promotion[]>([]);const [search,setSearch]=useState("");const [statusFilter,setStatusFilter]=useState("all");const [methodFilter,setMethodFilter]=useState("all");const [loading,setLoading]=useState(true);const [message,setMessage]=useState("");const [showCreate,setShowCreate]=useState(false);const [pageInfo,setPageInfo]=useState<{hasNextPage:boolean;endCursor:string|null}>({hasNextPage:false,endCursor:null});
+  const [draft,setDraft]=useState({method:"code",title:"",code:"",valueType:"percentage",value:"10",minimumSubtotal:"",usageLimit:"",startsAt:"",endsAt:"",appliesOncePerCustomer:false});
+  const load=async(term:string,after:string|null)=>{setLoading(true);setMessage("");try{const params=new URLSearchParams();if(term.trim())params.set("search",term.trim());if(after)params.set("after",after);const response=await fetch(`/api/shopify/promotions?${params}`,{cache:"no-store"});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to load promotions.");const next=Array.isArray(data.promotions)?data.promotions:[];setItems(current=>after?[...current,...next]:next);setPageInfo(data.pageInfo||{hasNextPage:false,endCursor:null});if(!next.length)setMessage(term?"No promotions match this search.":"No Shopify promotions were returned.")}catch(error){setMessage(error instanceof Error?error.message:"Unable to load promotions.");if(!after)setItems([])}finally{setLoading(false)}};
+  useEffect(()=>{/* eslint-disable react-hooks/set-state-in-effect */void load("",null);/* eslint-enable react-hooks/set-state-in-effect */},[]);
+  const methodOf=(item:Promotion)=>item.type.startsWith("Automatic")?"automatic":"code";const filtered=items.filter(item=>(statusFilter==="all"||item.status===statusFilter)&&(methodFilter==="all"||methodOf(item)===methodFilter));
+  const createPromotion=async()=>{setLoading(true);setMessage("Creating promotion in Shopify...");try{const payload={...draft,startsAt:draft.startsAt?new Date(draft.startsAt).toISOString():undefined,endsAt:draft.endsAt?new Date(draft.endsAt).toISOString():undefined};const response=await fetch("/api/shopify/promotions",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to create promotion.");setMessage("Promotion created in Shopify.");setShowCreate(false);setDraft({method:"code",title:"",code:"",valueType:"percentage",value:"10",minimumSubtotal:"",usageLimit:"",startsAt:"",endsAt:"",appliesOncePerCustomer:false});await load("",null)}catch(error){setMessage(error instanceof Error?error.message:"Unable to create promotion.")}finally{setLoading(false)}};
+  const deletePromotion=async(item:Promotion)=>{if(!window.confirm(`Delete ${item.title}? This permanently removes the promotion from Shopify.`))return;setLoading(true);setMessage("Deleting promotion...");try{const response=await fetch(`/api/shopify/promotions?id=${encodeURIComponent(item.id)}&method=${methodOf(item)}`,{method:"DELETE"});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to delete promotion.");setItems(current=>current.filter(entry=>entry.id!==item.id));setMessage(`${item.title} was deleted.`)}catch(error){setMessage(error instanceof Error?error.message:"Unable to delete promotion.")}finally{setLoading(false)}};
+  const active=filtered.filter(item=>item.status==="ACTIVE").length;const scheduled=filtered.filter(item=>item.status==="SCHEDULED").length;const uses=filtered.reduce((sum,item)=>sum+item.usageCount,0);
+  return <div className={styles.content}><div className={styles.actionHeader}><div><h2>Promotions</h2><p>Create and manage Shopify discounts.</p></div><div className={styles.inlineActions}><button className={styles.primary} onClick={()=>setShowCreate(value=>!value)}>{showCreate?"Close creator":"Create promotion"}</button></div></div>{showCreate&&<section className={`${styles.card} ${styles.promotionCreator}`}><div className={styles.cardHead}><div><h2>New promotion</h2><p>Basic percentage or fixed-amount discount for all products.</p></div></div><div className={styles.promotionForm}><label>Method<select value={draft.method} onChange={event=>setDraft(current=>({...current,method:event.target.value}))}><option value="code">Discount code</option><option value="automatic">Automatic discount</option></select></label><label>Title<input value={draft.title} onChange={event=>setDraft(current=>({...current,title:event.target.value}))} placeholder="Summer sale"/></label>{draft.method==="code"&&<label>Code<input value={draft.code} onChange={event=>setDraft(current=>({...current,code:event.target.value.toUpperCase()}))} placeholder="SUMMER20"/></label>}<label>Value type<select value={draft.valueType} onChange={event=>setDraft(current=>({...current,valueType:event.target.value}))}><option value="percentage">Percentage</option><option value="fixed">Fixed amount</option></select></label><label>Discount value<input type="number" min="0.01" step="0.01" value={draft.value} onChange={event=>setDraft(current=>({...current,value:event.target.value}))}/></label><label>Minimum subtotal<input type="number" min="0" step="0.01" value={draft.minimumSubtotal} onChange={event=>setDraft(current=>({...current,minimumSubtotal:event.target.value}))} placeholder="No minimum"/></label>{draft.method==="code"&&<label>Usage limit<input type="number" min="1" value={draft.usageLimit} onChange={event=>setDraft(current=>({...current,usageLimit:event.target.value}))} placeholder="Unlimited"/></label>}<label>Starts<input type="datetime-local" value={draft.startsAt} onChange={event=>setDraft(current=>({...current,startsAt:event.target.value}))}/></label><label>Ends<input type="datetime-local" value={draft.endsAt} onChange={event=>setDraft(current=>({...current,endsAt:event.target.value}))}/></label>{draft.method==="code"&&<label className={styles.promotionCheck}><input type="checkbox" checked={draft.appliesOncePerCustomer} onChange={event=>setDraft(current=>({...current,appliesOncePerCustomer:event.target.checked}))}/>Limit to one use per customer</label>}</div><div className={styles.inlineActions}><button className={styles.secondary} onClick={()=>setShowCreate(false)}>Cancel</button><button className={styles.primary} disabled={loading} onClick={()=>void createPromotion()}>{loading?"Creating...":"Create in Shopify"}</button></div></section>}<div className={styles.promotionFilters}><form className={styles.customerSearch} onSubmit={event=>{event.preventDefault();void load(search,null)}}><input className={styles.smallSearch} placeholder="Search promotion title" value={search} onChange={event=>setSearch(event.target.value)}/><button className={styles.primary} disabled={loading}>Search</button></form><select value={statusFilter} onChange={event=>setStatusFilter(event.target.value)}><option value="all">All statuses</option><option value="ACTIVE">Active</option><option value="SCHEDULED">Scheduled</option><option value="EXPIRED">Expired</option></select><select value={methodFilter} onChange={event=>setMethodFilter(event.target.value)}><option value="all">All methods</option><option value="code">Discount code</option><option value="automatic">Automatic</option></select></div><div className={styles.segmentGrid}>{[["Promotions","Matching filters",filtered.length],["Active","Currently available",active],["Scheduled","Starting later",scheduled],["Uses","Reported by Shopify",uses]].map(([title,copy,value])=><article className={styles.segment} key={title}><span>%</span><div><strong>{title}</strong><small>{copy}</small></div><b>{value}</b></article>)}</div><section className={`${styles.card} ${styles.promotionManageTable}`}><div className={styles.cardHead}><div><h2>Promotion directory</h2><p>{message||"Shopify code and automatic discounts."}</p></div><i className={`${styles.tag} ${message?styles.tagGray:styles.tagGreen}`}>{loading?"Loading":message?"Notice":"Connected"}</i></div><div className={styles.dataTable}><div className={styles.tableHead}><span>Promotion</span><span>Method</span><span>Status</span><span>Starts</span><span>Ends</span><span>Uses</span><span>Action</span></div>{filtered.length?filtered.map(item=><div className={styles.tableRow} key={item.id}><div className={styles.customerCell}><strong>{item.title}</strong><small>{item.type.replace(/([a-z])([A-Z])/g,"$1 $2")}</small></div><strong>{item.code}</strong><span><i className={`${styles.tag} ${item.status==="ACTIVE"?styles.tagGreen:item.status==="SCHEDULED"?styles.tagBlue:styles.tagGray}`}>{item.status.toLowerCase()}</i></span><span>{item.startsAt?new Date(item.startsAt).toLocaleDateString():"Immediately"}</span><span>{item.endsAt?new Date(item.endsAt).toLocaleDateString():"No end date"}</span><strong>{item.usageCount}</strong><button className={styles.delete} disabled={loading} onClick={()=>void deletePromotion(item)}>Delete</button></div>):<div className={styles.empty}>{loading?"Loading Shopify promotions...":message||"No promotions match these filters."}</div>}</div>{pageInfo.hasNextPage&&<div className={styles.inlineActions}><button className={styles.secondary} disabled={loading} onClick={()=>void load(search,pageInfo.endCursor)}>Load more</button></div>}</section></div>
+}
+
+function Analytics(){
+  const [summary,setSummary]=useState<AnalyticsSummary|null>(null);const [message,setMessage]=useState("");
+  useEffect(()=>{fetch("/api/analytics/summary",{cache:"no-store"}).then(async response=>{if(!response.ok)throw new Error("Analytics API unavailable.");setSummary(await response.json())}).catch(error=>setMessage(error.message))},[]);
+  const maxDay=Math.max(1,...(summary?.days.map(day=>day.value)||[1]));const productRate=summary?.screenViews?Math.round((summary.productViews/summary.screenViews)*100):0;const cartRate=summary?.productViews?Math.round((summary.cartViews/summary.productViews)*100):0;
+  return <div className={styles.content}><section className={styles.opsHero}><div><p>APP ANALYTICS</p><h2>Last 30 days</h2><span>Recorded app sessions, screen activity and shopping intent.</span></div><i className={`${styles.tag} ${message?styles.tagGray:styles.tagGreen}`}>{message?"Unavailable":"Live records"}</i></section>{message&&<section className={styles.card}>{message}</section>}<div className={styles.metricGrid}>{[[summary?.sessions??"—","Unique devices","Recorded sessions"],[summary?.screenViews??"—","Screen views","All tracked screens"],[summary?.productViews??"—","Product views",`${productRate}% of screen views`],[summary?.cartViews??"—","Cart views",`${cartRate}% of product views`]].map(([value,label,note])=><article className={styles.metric} key={label}><div className={styles.metricIcon}>↗</div><p>{label}</p><strong>{value}</strong><span>{note}</span></article>)}</div><div className={styles.dashboardGrid}><section className={styles.card}><div className={styles.cardHead}><div><h2>Daily active devices</h2><p>Unique devices with screen views · last 7 days</p></div></div><div className={styles.chart}>{(summary?.days||[]).map(day=><div key={day.label} className={styles.barWrap}><div className={styles.bar} style={{height:`${Math.max(3,(day.value/maxDay)*100)}%`}}/><small>{day.label}</small></div>)}</div></section><section className={styles.card}><div className={styles.cardHead}><div><h2>Engagement signals</h2><p>Current local analytics coverage</p></div></div><div className={styles.analyticsSignals}><div><strong>{summary?.notificationDevices??"—"}</strong><small>Push-enabled devices</small></div><div><strong>{productRate}%</strong><small>Screen-to-product rate</small></div><div><strong>{cartRate}%</strong><small>Product-to-cart rate</small></div><div><strong>{summary?.purchases??"—"}</strong><small>Purchases require webhooks</small></div></div></section></div></div>
+}
+
 function Chat(){return <div className={styles.content}><div className={styles.actionHeader}><div><h2>Customer chat</h2><p>Realtime support inbox readiness.</p></div><button className={styles.secondary}>Configure inbox</button></div><div className={styles.supportGrid}><section className={styles.card}><div className={styles.cardHead}><div><h2>Inbox status</h2><p>Supabase Realtime is required before live chat can be enabled.</p></div></div><div className={styles.empty}>No recorded conversations yet.</div></section><section className={styles.card}><div className={styles.cardHead}><div><h2>Setup checklist</h2><p>Required production pieces.</p></div></div><div className={styles.checkList}>{["Create conversations table","Enable realtime channel","Add staff assignment rules","Connect notification alerts"].map((item)=><div key={item}><span>○</span><strong>{item}</strong></div>)}</div></section></div></div>}
 
 function Marketing(){
@@ -199,6 +350,175 @@ function Marketing(){
 }
 
 function MiniMetric({value,label,note}:{value:string;label:string;note:string}){return <article className={styles.metric}><p>{label}</p><strong>{value}</strong><span>{note}</span></article>}
+
+function OrderProductImage({item}:{item:OrderLineItem}){
+  if(!item.image?.url)return <span className={styles.orderImageFallback}>▦</span>;
+  // Shopify serves order product images from its CDN; preserve the exact historic line-item image URL.
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img className={styles.orderProductImage} src={item.image.url} alt={item.image.altText||item.name}/>;
+}
+
+function Orders(){
+  const [orders,setOrders]=useState<AdminOrder[]>([]);
+  const [search,setSearch]=useState("");
+  const [loading,setLoading]=useState(true);
+  const [message,setMessage]=useState("");
+  const [statusFilter,setStatusFilter]=useState("all");
+  const [selectedOrderIds,setSelectedOrderIds]=useState<string[]>([]);
+  const [bulkNotifyCustomer,setBulkNotifyCustomer]=useState(false);
+  const [selectedId,setSelectedId]=useState("");
+  const [saving,setSaving]=useState(false);
+  const [notifyCustomer,setNotifyCustomer]=useState(false);
+  const [draft,setDraft]=useState<OrderDraft|null>(null);
+  const [pageInfo,setPageInfo]=useState<{hasNextPage:boolean;endCursor:string|null}>({hasNextPage:false,endCursor:null});
+  const loadOrders=async(term:string,after:string|null)=>{
+    setLoading(true);setMessage("");
+    try{
+      const params=new URLSearchParams();
+      if(term.trim())params.set("search",term.trim());
+      if(after)params.set("after",after);
+      const response=await fetch(`/api/shopify/orders?${params.toString()}`,{cache:"no-store"});
+      const data=await response.json();
+      if(!response.ok)throw new Error(data.error||"Unable to load Shopify orders.");
+      const next=Array.isArray(data.orders)?data.orders:[];
+      setOrders(items=>after?[...items,...next]:next);
+      setPageInfo(data.pageInfo||{hasNextPage:false,endCursor:null});
+      if(!next.length)setMessage(term?"No Shopify orders match this search.":"No Shopify orders were returned.");
+    }catch(error){setMessage(error instanceof Error?error.message:"Unable to load Shopify orders.");if(!after)setOrders([])}
+    finally{setLoading(false)}
+  };
+  useEffect(()=>{
+    /* eslint-disable react-hooks/set-state-in-effect */
+    void loadOrders("",null);
+    /* eslint-enable react-hooks/set-state-in-effect */
+    // Initial Shopify load only; search and pagination are explicit actions.
+  },[]);
+  const money=(value:AdminOrder["total"])=>{if(!value)return "—";try{return new Intl.NumberFormat(undefined,{style:"currency",currency:value.currencyCode}).format(Number(value.amount))}catch{return `${value.amount} ${value.currencyCode}`}};
+  const paidCount=orders.filter(order=>order.financialStatus==="PAID").length;
+  const openFulfillmentCount=orders.filter(order=>!(["FULFILLED","RESTOCKED"] as string[]).includes(order.fulfillmentStatus)).length;
+  const sales=orders.reduce((sum,order)=>sum+(Number(order.total?.amount)||0),0);
+  const currency=orders.find(order=>order.total?.currencyCode)?.total?.currencyCode;
+  const salesLabel=currency?money({amount:String(sales),currencyCode:currency}):"—";
+  const filteredOrders=orders.filter(order=>statusFilter==="all"||(statusFilter==="unfulfilled"&&!order.cancelledAt&&order.fulfillmentStatus!=="FULFILLED")||(statusFilter==="unpaid"&&!order.cancelledAt&&order.financialStatus!=="PAID")||(statusFilter==="paid"&&!order.cancelledAt&&order.financialStatus==="PAID")||(statusFilter==="cancelled"&&Boolean(order.cancelledAt)));
+  const selectedOrders=orders.filter(order=>selectedOrderIds.includes(order.id));
+  const fulfillableSelected=selectedOrders.filter(order=>!order.cancelledAt&&order.fulfillmentStatus!=="FULFILLED");
+  const selectedOrder=orders.find(order=>order.id===selectedId);
+  const toggleOrder=(id:string)=>setSelectedOrderIds(current=>current.includes(id)?current.filter(value=>value!==id):[...current,id]);
+  const selectVisibleOrders=()=>setSelectedOrderIds(current=>filteredOrders.every(order=>current.includes(order.id))?current.filter(id=>!filteredOrders.some(order=>order.id===id)):[...new Set([...current,...filteredOrders.map(order=>order.id)])]);
+  const openOrder=(order:AdminOrder)=>{setSelectedId(order.id);setDraft({email:order.email,note:order.note,tags:order.tags.join(", "),shippingAddress:{...order.shippingAddress}});setNotifyCustomer(false);setMessage("")};
+  const closeOrder=()=>{setSelectedId("");setDraft(null)};
+  const updateAddress=(key:keyof OrderAddress,value:string)=>setDraft(current=>current?{...current,shippingAddress:{...current.shippingAddress,[key]:value}}:current);
+  const saveOrder=async()=>{
+    if(!selectedOrder||!draft)return;
+    setSaving(true);setMessage("Updating order in Shopify...");
+    try{
+      const response=await fetch("/api/shopify/orders",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:selectedOrder.id,...draft})});
+      const data=await response.json();
+      if(!response.ok)throw new Error(data.error||"Unable to update order.");
+      setOrders(items=>items.map(item=>item.id===data.order.id?data.order:item));
+      setDraft({email:data.order.email,note:data.order.note,tags:data.order.tags.join(", "),shippingAddress:{...data.order.shippingAddress}});
+      setMessage(`${data.order.name} was updated in Shopify.`);
+    }catch(error){setMessage(error instanceof Error?error.message:"Unable to update order.")}
+    finally{setSaving(false)}
+  };
+  const updateOrderStatus=async(action:"mark_paid"|"fulfill")=>{
+    if(!selectedOrder)return;
+    const label=action==="mark_paid"?"mark this order as paid":"mark all prepared items as fulfilled";
+    if(!window.confirm(`Are you sure you want to ${label} in Shopify?`))return;
+    setSaving(true);setMessage(action==="mark_paid"?"Recording payment in Shopify...":"Creating Shopify fulfillment...");
+    try{
+      const response=await fetch("/api/shopify/orders",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:selectedOrder.id,action,notifyCustomer})});
+      const data=await response.json();
+      if(!response.ok)throw new Error(data.error||"Unable to update order status.");
+      await loadOrders(search,null);
+      setMessage(action==="mark_paid"?`${selectedOrder.name} is now marked paid.`:`${selectedOrder.name} is now marked fulfilled${notifyCustomer?" and the customer was notified":""}.`);
+    }catch(error){setMessage(error instanceof Error?error.message:"Unable to update order status.")}
+    finally{setSaving(false)}
+  };
+  const bulkFulfillOrders=async()=>{
+    if(!fulfillableSelected.length){setMessage("Select at least one unfulfilled order.");return}
+    if(!window.confirm(`Mark ${fulfillableSelected.length} selected order${fulfillableSelected.length===1?"":"s"} as fulfilled in Shopify?`))return;
+    setSaving(true);setMessage(`Fulfilling ${fulfillableSelected.length} selected orders...`);
+    try{
+      const ids=fulfillableSelected.map(order=>order.id);const failedIds:string[]=[];let fulfilledCount=0;
+      for(let index=0;index<ids.length;index+=50){const batch=ids.slice(index,index+50);const response=await fetch("/api/shopify/orders",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ids:batch,action:"bulk_fulfill",notifyCustomer:bulkNotifyCustomer})});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to fulfill selected orders.");fulfilledCount+=Number(data.fulfilledOrders)||0;if(Array.isArray(data.failed))failedIds.push(...data.failed.map((item:{id:string})=>item.id))}
+      await loadOrders(search,null);
+      setSelectedOrderIds(failedIds);
+      setMessage(failedIds.length?`${fulfilledCount} orders fulfilled; ${failedIds.length} could not be fulfilled and remain selected.`:`${fulfilledCount} selected order${fulfilledCount===1?"":"s"} marked fulfilled.`);
+    }catch(error){setMessage(error instanceof Error?error.message:"Unable to fulfill selected orders.")}
+    finally{setSaving(false)}
+  };
+  const printSelectedOrders=()=>{if(!selectedOrders.length){setMessage("Select at least one order to print.");return}window.print()};
+  const cancelOrder=async()=>{
+    if(!selectedOrder||selectedOrder.cancelledAt)return;
+    if(!window.confirm(`Cancel ${selectedOrder.name}? This is irreversible. Inventory will be restocked, but no automatic refund will be issued.`))return;
+    setSaving(true);setMessage("Cancelling order in Shopify...");
+    try{
+      const response=await fetch(`/api/shopify/orders?id=${encodeURIComponent(selectedOrder.id)}`,{method:"DELETE"});
+      const data=await response.json();
+      if(!response.ok)throw new Error(data.error||"Unable to cancel order.");
+      setMessage(`${selectedOrder.name} cancellation was submitted to Shopify.`);
+      setSelectedId("");setDraft(null);
+      await loadOrders(search,null);
+    }catch(error){setMessage(error instanceof Error?error.message:"Unable to cancel order.")}
+    finally{setSaving(false)}
+  };
+  return <div className={styles.content}>
+    <div className={styles.actionHeader}><div><h2>Orders</h2><p>Live Shopify orders, newest first.</p></div><form className={styles.customerSearch} onSubmit={event=>{event.preventDefault();void loadOrders(search,null)}}><input className={styles.smallSearch} placeholder="Search order, customer, or email" value={search} onChange={event=>setSearch(event.target.value)}/><button className={styles.primary} disabled={loading} type="submit">Search</button>{search&&<button className={styles.secondary} disabled={loading} type="button" onClick={()=>{setSearch("");void loadOrders("",null)}}>Clear</button>}</form></div>
+    <div className={styles.orderFilters} role="tablist" aria-label="Filter orders">{[["all","All"],["unfulfilled","Unfulfilled"],["unpaid","Unpaid"],["paid","Paid"],["cancelled","Cancelled"]].map(([value,label])=><button key={value} role="tab" aria-selected={statusFilter===value} className={statusFilter===value?styles.orderFilterActive:""} onClick={()=>{setStatusFilter(value);setSelectedOrderIds([])}}>{label}</button>)}</div>
+    {selectedOrders.length>0&&<div className={styles.orderBulkBar}><strong>{selectedOrders.length} selected</strong><label><input type="checkbox" checked={bulkNotifyCustomer} onChange={event=>setBulkNotifyCustomer(event.target.checked)}/>Notify customers</label><button className={styles.secondary} type="button" onClick={printSelectedOrders}>Print orders</button><button className={styles.primary} type="button" disabled={saving||!fulfillableSelected.length} onClick={()=>void bulkFulfillOrders()}>{saving?"Fulfilling...":`Mark fulfilled (${fulfillableSelected.length})`}</button><button className={styles.secondary} type="button" onClick={()=>setSelectedOrderIds([])}>Clear</button></div>}
+    <div className={styles.segmentGrid}>{[["Loaded orders","Current Shopify results",String(orders.length)],["Paid","Loaded paid orders",String(paidCount)],["Needs fulfillment","Loaded open fulfillments",String(openFulfillmentCount)],["Order value","Loaded page total",salesLabel]].map(([title,copy,value])=><article className={styles.segment} key={title}><span>▤</span><div><strong>{title}</strong><small>{copy}</small></div><b>{value}</b></article>)}</div>
+    <section className={`${styles.card} ${styles.orderTable}`}>
+      <div className={styles.cardHead}><div><h2>Orders</h2><p>{message||`${filteredOrders.length} order${filteredOrders.length===1?"":"s"} in this view.`}</p></div><i className={`${styles.tag} ${message?styles.tagGray:styles.tagGreen}`}>{loading?"Loading":message?"Notice":"Connected"}</i></div>
+      <div className={styles.dataTable}>
+        <div className={styles.tableHead}><input type="checkbox" aria-label="Select all visible orders" checked={Boolean(filteredOrders.length)&&filteredOrders.every(order=>selectedOrderIds.includes(order.id))} onChange={selectVisibleOrders}/><span>Order</span><span>Date</span><span>Customer</span><span>Total</span><span>Payment</span><span>Fulfillment</span><span>Items</span><span>Action</span></div>
+        {filteredOrders.length?filteredOrders.map(order=><div className={`${styles.tableRow} ${styles.orderRow}`} key={order.id}>
+          <input type="checkbox" aria-label={`Select ${order.name}`} checked={selectedOrderIds.includes(order.id)} onChange={()=>toggleOrder(order.id)}/>
+          <button className={styles.orderLink} type="button" onClick={()=>openOrder(order)}>{order.name}</button>
+          <span>{new Date(order.createdAt).toLocaleDateString()}<small>{new Date(order.createdAt).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</small></span>
+          <div className={styles.customerCell}><strong>{order.customer}</strong><small>{order.destination}</small></div>
+          <strong>{money(order.total)}</strong>
+          <span><i className={`${styles.tag} ${order.financialStatus==="PAID"?styles.tagGreen:styles.tagGray}`}>{order.financialStatus.toLowerCase().replaceAll("_"," ")}</i></span>
+          <span><i className={`${styles.tag} ${order.cancelledAt?styles.tagGray:order.fulfillmentStatus==="FULFILLED"?styles.tagGreen:styles.tagBlue}`}>{order.cancelledAt?"cancelled":order.fulfillmentStatus.toLowerCase().replaceAll("_"," ")}</i></span>
+          <div className={styles.orderItemCell}><div className={styles.orderImageStack}>{order.items.slice(0,3).map((item,index)=><OrderProductImage key={`${item.name}-${index}`} item={item}/>)}</div><span>{order.items.reduce((sum,item)=>sum+item.quantity,0)} item{order.items.reduce((sum,item)=>sum+item.quantity,0)===1?"":"s"}</span></div>
+          <button className={styles.secondary} type="button" onClick={()=>openOrder(order)}>View / edit</button>
+        </div>):<div className={styles.empty}>{loading?"Loading Shopify orders...":message||"No orders match this view."}</div>}
+      </div>
+      {pageInfo.hasNextPage&&<div className={styles.inlineActions}><button className={styles.secondary} disabled={loading} onClick={()=>void loadOrders(search,pageInfo.endCursor)}>Load more</button></div>}
+    </section>
+    {selectedOrder&&draft&&<div className={styles.orderOverlay} role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget)closeOrder()}}>
+      <section className={styles.orderDrawer} role="dialog" aria-modal="true" aria-labelledby="order-drawer-title">
+        <div className={styles.orderDrawerHeader}><div><button className={styles.orderClose} type="button" aria-label="Close order" onClick={closeOrder}>←</button><div><h2 id="order-drawer-title">{selectedOrder.name}</h2><p>{new Date(selectedOrder.createdAt).toLocaleString()} · {money(selectedOrder.total)}</p></div></div><button className={styles.secondary} type="button" onClick={closeOrder}>Close</button></div>
+        <div className={styles.orderDrawerBody}>
+          <div className={styles.orderStatusRow}><i className={`${styles.tag} ${selectedOrder.financialStatus==="PAID"?styles.tagGreen:styles.tagGray}`}>{selectedOrder.financialStatus.toLowerCase().replaceAll("_"," ")}</i><i className={`${styles.tag} ${selectedOrder.cancelledAt?styles.tagGray:selectedOrder.fulfillmentStatus==="FULFILLED"?styles.tagGreen:styles.tagBlue}`}>{selectedOrder.cancelledAt?"cancelled":selectedOrder.fulfillmentStatus.toLowerCase().replaceAll("_"," ")}</i></div>
+          <div className={styles.orderSummaryGrid}><article><small>Customer</small><strong>{selectedOrder.customer}</strong><span>{selectedOrder.email||"No email"}</span></article><article><small>Ship to</small><strong>{selectedOrder.destination}</strong><span>{selectedOrder.shippingAddress.phone||"No phone"}</span></article><article><small>Order total</small><strong>{money(selectedOrder.total)}</strong><span>{selectedOrder.items.reduce((sum,item)=>sum+item.quantity,0)} items</span></article></div>
+          <section className={styles.orderDrawerCard}>
+            <div className={styles.cardHead}><div><h2>Products</h2><p>Items currently on this Shopify order.</p></div></div>
+            <div className={styles.orderLines}>{selectedOrder.items.length?selectedOrder.items.map((item,index)=><div key={`${item.name}-${index}`}><OrderProductImage item={item}/><div><strong>{item.name}</strong><small>{[item.variantTitle,item.sku].filter(Boolean).join(" · ")||"Product item"}</small></div><span>Quantity {item.quantity}</span></div>):<div className={styles.empty}>No line items returned.</div>}</div>
+          </section>
+          <section className={styles.orderDrawerCard}>
+            <div className={styles.cardHead}><div><h2>Preparation status</h2><p>Record payment and fulfillment in Shopify when the order is ready.</p></div></div>
+            <div className={styles.orderPrepareActions}>
+              <label><input type="checkbox" checked={notifyCustomer} onChange={event=>setNotifyCustomer(event.target.checked)}/>Notify the customer when fulfilling</label>
+              <div><button className={styles.secondary} type="button" disabled={saving||!selectedOrder.canMarkAsPaid||Boolean(selectedOrder.cancelledAt)} onClick={()=>void updateOrderStatus("mark_paid")}>{selectedOrder.financialStatus==="PAID"?"Already paid":"Mark as paid"}</button><button className={styles.primary} type="button" disabled={saving||selectedOrder.fulfillmentStatus==="FULFILLED"||Boolean(selectedOrder.cancelledAt)} onClick={()=>void updateOrderStatus("fulfill")}>{selectedOrder.fulfillmentStatus==="FULFILLED"?"Already fulfilled":"Mark as fulfilled"}</button></div>
+            </div>
+          </section>
+          <section className={styles.orderDrawerCard}><div className={styles.cardHead}><div><h2>Customer and shipping</h2><p>Edit supported Shopify order fields.</p></div></div><div className={styles.orderDetailGrid}><label>Customer email<input type="email" value={draft.email} onChange={event=>setDraft(current=>current?{...current,email:event.target.value}:current)}/></label><label>Tags<input value={draft.tags} onChange={event=>setDraft(current=>current?{...current,tags:event.target.value}:current)} placeholder="priority, gift"/></label><label className={styles.orderWideField}>Internal note<textarea rows={3} value={draft.note} onChange={event=>setDraft(current=>current?{...current,note:event.target.value}:current)}/></label><label>First name<input value={draft.shippingAddress.firstName} onChange={event=>updateAddress("firstName",event.target.value)}/></label><label>Last name<input value={draft.shippingAddress.lastName} onChange={event=>updateAddress("lastName",event.target.value)}/></label><label className={styles.orderWideField}>Address<input value={draft.shippingAddress.address1} onChange={event=>updateAddress("address1",event.target.value)}/></label><label>Apartment / suite<input value={draft.shippingAddress.address2} onChange={event=>updateAddress("address2",event.target.value)}/></label><label>Phone<input value={draft.shippingAddress.phone} onChange={event=>updateAddress("phone",event.target.value)}/></label><label>City<input value={draft.shippingAddress.city} onChange={event=>updateAddress("city",event.target.value)}/></label><label>Province / state<input value={draft.shippingAddress.province} onChange={event=>updateAddress("province",event.target.value)}/></label><label>Postal code<input value={draft.shippingAddress.zip} onChange={event=>updateAddress("zip",event.target.value)}/></label><label>Country<input value={draft.shippingAddress.country} onChange={event=>updateAddress("country",event.target.value)}/></label></div></section>
+        </div>
+        <div className={styles.orderDrawerFooter}><small>{message||"Product and quantity changes require Shopify's separate order-edit workflow."}</small><div><button className={styles.delete} type="button" disabled={saving||Boolean(selectedOrder.cancelledAt)} onClick={()=>void cancelOrder()}>{selectedOrder.cancelledAt?"Order cancelled":"Cancel order"}</button><button className={styles.primary} type="button" disabled={saving||Boolean(selectedOrder.cancelledAt)} onClick={()=>void saveOrder()}>{saving?"Saving...":"Save changes"}</button></div></div>
+      </section>
+    </div>}
+    <div className={styles.orderPrintArea} aria-hidden="true">
+      {selectedOrders.map(order=><article className={styles.printOrder} key={`print-${order.id}`}>
+        <header><div><p>CARTER&apos;S ORDER</p><h1>{order.name}</h1><span>{new Date(order.createdAt).toLocaleString()}</span></div><div><strong>{money(order.total)}</strong><span>{order.financialStatus.toLowerCase().replaceAll("_"," ")} · {order.fulfillmentStatus.toLowerCase().replaceAll("_"," ")}</span></div></header>
+        <section className={styles.printAddresses}><div><small>Customer</small><strong>{order.customer}</strong><span>{order.email||"No email"}</span><span>{order.shippingAddress.phone||"No phone"}</span></div><div><small>Ship to</small><strong>{[order.shippingAddress.firstName,order.shippingAddress.lastName].filter(Boolean).join(" ")||order.customer}</strong><span>{[order.shippingAddress.address1,order.shippingAddress.address2].filter(Boolean).join(", ")}</span><span>{[order.shippingAddress.city,order.shippingAddress.province,order.shippingAddress.zip].filter(Boolean).join(", ")}</span><span>{order.shippingAddress.country}</span></div></section>
+        <section className={styles.printProducts}><div className={styles.printProductHead}><span>Product</span><span>SKU</span><span>Quantity</span></div>{order.items.map((item,index)=><div className={styles.printProductRow} key={`${order.id}-${item.name}-${index}`}><OrderProductImage item={item}/><div><strong>{item.name}</strong><span>{item.variantTitle||""}</span></div><span>{item.sku||"—"}</span><b>{item.quantity}</b></div>)}</section>
+        {order.note&&<section className={styles.printNote}><small>Order note</small><p>{order.note}</p></section>}
+        <footer><span>{order.items.reduce((sum,item)=>sum+item.quantity,0)} total items</span><strong>Total: {money(order.total)}</strong></footer>
+      </article>)}
+    </div>
+  </div>
+}
 
 function Customers(){
   const [customers,setCustomers]=useState<AdminCustomer[]>([]);
