@@ -1,10 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import baseStyles from "./page.module.css";
 import extraStyles from "./admin-extra.module.css";
 
-const styles = { ...baseStyles, ...extraStyles };
+const styles = Object.fromEntries(
+  [...new Set([...Object.keys(baseStyles), ...Object.keys(extraStyles)])].map((className) => [
+    className,
+    [baseStyles[className], extraStyles[className]].filter(Boolean).join(" "),
+  ]),
+) as typeof baseStyles & typeof extraStyles;
 
 type SectionType = "hero" | "text" | "products" | "announcement";
 type Section = {
@@ -17,6 +24,7 @@ type Section = {
   background: string;
   enabled: boolean;
   placement?: Placement;
+  customCss?: string;
 };
 type View = "dashboard" | "editor" | "inventory" | "promotions" | "analytics" | "marketing" | "orders" | "customers" | "chat" | "team" | "settings";
 type Placement = "before-hero" | "after-hero" | "after-promos" | "after-ages" | "after-top-picks" | "after-categories" | "after-explore" | "after-essentials" | "after-brands" | "after-latest";
@@ -28,11 +36,26 @@ type OrderLineItem = { name:string; quantity:number; sku?:string|null; variantTi
 type AdminOrder = { id:string; name:string; createdAt:string; financialStatus:string; fulfillmentStatus:string; canMarkAsPaid:boolean; cancelledAt?:string|null; note:string; tags:string[]; total?:{amount:string;currencyCode:string}|null; customer:string; email:string; destination:string; shippingAddress:OrderAddress; items:OrderLineItem[] };
 type OrderDraft = { email:string; note:string; tags:string; shippingAddress:OrderAddress };
 type InventoryLevel = { locationId:string; locationName:string; quantity:number };
-type InventoryItem = { id:string; productId:string; inventoryItemId:string; name:string; product:string; variant:string; sku:string; barcode:string; price:string; compareAtPrice:string; quantity:number; policy:string; tracked:boolean; levels:InventoryLevel[]; availableForSale:boolean; productStatus:string; updatedAt?:string };
+type VariantOption = { name:string; value:string; optionValueId?:string };
+type InventoryItem = { id:string; productId:string; inventoryItemId:string; name:string; product:string; descriptionHtml:string; vendor:string; productType:string; tags:string[]; seoTitle:string; seoDescription:string; variant:string; selectedOptions:VariantOption[]; sku:string; barcode:string; price:string; compareAtPrice:string; quantity:number; policy:string; tracked:boolean; levels:InventoryLevel[]; availableForSale:boolean; productStatus:string; image?:{url?:string|null;altText?:string|null}|null; updatedAt?:string };
 type InventoryLocation = { id:string; name:string; isActive:boolean };
-type ProductDraft = { title:string; status:string; sku:string; barcode:string; price:string; compareAtPrice:string; inventoryPolicy:string; tracked:boolean };
-type Promotion = { id:string; title:string; type:string; code:string; status:string; startsAt?:string|null; endsAt?:string|null; usageCount:number };
-type AnalyticsSummary = { range:string; sessions:number; screenViews:number; productViews:number; cartViews:number; notificationDevices:number; purchases:number|null; days:{label:string;value:number}[] };
+type ProductDraft = { title:string; descriptionHtml:string; vendor:string; productType:string; tags:string; seoTitle:string; seoDescription:string; status:string; options:VariantOption[]; sku:string; barcode:string; price:string; compareAtPrice:string; inventoryPolicy:string; tracked:boolean };
+type Promotion = { id:string; title:string; type:string; code:string; status:string; startsAt?:string|null; endsAt?:string|null; usageCount:number; valueType?:"percentage"|"fixed"; value?:number; minimumSubtotal?:string; usageLimit?:number|null; appliesOncePerCustomer?:boolean; editable?:boolean; valueEditable?:boolean };
+type PromotionDraft = { method:"code"|"automatic"; title:string; code:string; valueType:"percentage"|"fixed"; value:string; minimumSubtotal:string; usageLimit:string; startsAt:string; endsAt:string; appliesOncePerCustomer:boolean };
+type AppAnalytics = {
+  range:{days:number;start:string;end:string};
+  metrics:{uniqueDevices:number;sessions:number;screenViews:number;productViews:number;cartViews:number;viewsPerSession:number;bounceRate:number;activeDevices24h:number;notificationOpens:number;pushDevices:number};
+  changes:{uniqueDevices:number;sessions:number;screenViews:number;productViews:number;cartViews:number};
+  daily:{date:string;label:string;devices:number;sessions:number;views:number;productViews:number;cartViews:number}[];
+  screens:{path:string;label:string;views:number;devices:number;share:number}[];
+  topProducts:{path:string;label:string;views:number;devices:number}[];
+  platforms:{label:string;value:number}[];
+  audience:{label:string;value:number}[];
+  funnel:{label:string;value:number;rate:number}[];
+  hours:{hour:number;value:number}[];
+  generatedAt:string;
+  recordingSince:string|null;
+};
 type CustomerDraft = { firstName:string; lastName:string; email:string; phone:string };
 const placements: { value: Placement; label: string }[] = [
   { value:"before-hero",label:"Before Shopify hero" },{ value:"after-hero",label:"After Shopify hero" },{ value:"after-promos",label:"After promo strip" },{ value:"after-ages",label:"After age groups" },{ value:"after-top-picks",label:"After top picks" },{ value:"after-categories",label:"After shop categories" },{ value:"after-explore",label:"After explore styles" },{ value:"after-essentials",label:"After tiny essentials" },{ value:"after-brands",label:"After brands" },{ value:"after-latest",label:"After latest collection" },
@@ -46,6 +69,37 @@ const defaults: Section[] = [
 ];
 
 const sectionNames: Record<SectionType, string> = { hero: "Hero banner", text: "Text block", products: "Product carousel", announcement: "Announcement" };
+const customCssExample=`.section {
+  padding: 24px;
+  border-radius: 12px;
+}
+.title {
+  color: #0b2944;
+  font-size: 28px;
+}
+.description {
+  color: #61707d;
+}
+.button {
+  background-color: #397ab5;
+  color: #ffffff;
+  border-radius: 8px;
+}`;
+type PreviewCustomStyles={section:CSSProperties;title:CSSProperties;description:CSSProperties;button:CSSProperties};
+function parsePreviewCustomCss(source=""):PreviewCustomStyles{
+  const result:PreviewCustomStyles={section:{},title:{},description:{},button:{}};
+  const allowed:Record<keyof PreviewCustomStyles,Record<string,keyof CSSProperties>>={
+    section:{"background-color":"backgroundColor",padding:"padding","padding-top":"paddingTop","padding-right":"paddingRight","padding-bottom":"paddingBottom","padding-left":"paddingLeft",margin:"margin","margin-top":"marginTop","margin-bottom":"marginBottom","border-radius":"borderRadius","border-width":"borderWidth","border-color":"borderColor","min-height":"minHeight"},
+    title:{color:"color","font-size":"fontSize","font-weight":"fontWeight","text-align":"textAlign","line-height":"lineHeight","margin-bottom":"marginBottom"},
+    description:{color:"color","font-size":"fontSize","font-weight":"fontWeight","text-align":"textAlign","line-height":"lineHeight","margin-top":"marginTop"},
+    button:{"background-color":"backgroundColor",color:"color","font-size":"fontSize","font-weight":"fontWeight","border-radius":"borderRadius",padding:"padding","padding-left":"paddingLeft","padding-right":"paddingRight","padding-top":"paddingTop","padding-bottom":"paddingBottom","margin-top":"marginTop"},
+  };
+  for(const block of source.matchAll(/\.(section|title|description|button)\s*\{([^}]*)\}/gi)){
+    const group=block[1].toLowerCase() as keyof PreviewCustomStyles;
+    for(const declaration of block[2].split(";")){const separator=declaration.indexOf(":");if(separator<0)continue;const property=declaration.slice(0,separator).trim().toLowerCase();const value=declaration.slice(separator+1).trim();const key=allowed[group][property];if(key&&value&&!/url\s*\(|@import|expression\s*\(/i.test(value))(result[group] as Record<string,string>)[key]=value}
+  }
+  return result;
+}
 function newSection(type: SectionType): Section {
   return { id: `${type}-${Date.now()}`, type, title: sectionNames[type], subtitle: type === "text" ? "Write your message here." : "", image: "", buttonLabel: type === "announcement" ? "" : "Learn more", background: type === "announcement" ? "#0d416c" : "#ffffff", enabled: true, placement: "before-hero" };
 }
@@ -112,13 +166,22 @@ export default function Home() {
     if (selectedId === id) setSelectedId(sections.find((item) => item.id !== id)?.id ?? "");
     setSaved(false);
   };
+  const duplicate = (id: string) => {
+    const source=sections.find(item=>item.id===id);if(!source)return;const copy={...source,id:`${source.type}-${Date.now()}`,title:`${source.title} copy`};
+    setSections((items) => { const index=items.findIndex(item=>item.id===id);const next=[...items];next.splice(index+1,0,copy);return next; });
+    setSelectedId(copy.id);
+    setSaved(false);
+  };
+  const setSectionVisibility = (id:string,enabled:boolean) => { setSections(items=>items.map(item=>item.id===id?{...item,enabled}:item));setSaved(false); };
   const add = (type: SectionType, placement: Placement = "before-hero") => { const item = { ...newSection(type), placement }; setSections((items) => [...items, item]); setSelectedId(item.id); setSaved(false); };
 
   if (!ready) return null;
   return (
     <div className={styles.shell}>
       <aside className={styles.sidebar}>
-        <div className={styles.brand}><span className={styles.brandMark}>C</span><div><strong>Carter&apos;s</strong><small>App Studio</small></div></div>
+        <div className={styles.brand}>
+          <Image className={styles.brandLogo} src="/carters-logo.png" alt="Carter's and OshKosh B'gosh" width={306} height={91} priority />
+        </div>
         <nav className={styles.nav}>
           <Nav active={view === "dashboard"} onClick={() => setView("dashboard")} icon="⌂" label="Dashboard" />
           <Nav active={view === "editor"} onClick={() => setView("editor")} icon="✦" label="App editor" />
@@ -138,7 +201,7 @@ export default function Home() {
       <main className={styles.main}>
         <header className={styles.topbar}><div className={styles.topbarTitle}><p className={styles.eyebrow}>CARTER&apos;S MOBILE APP</p><h1>{pageTitles[view].title}</h1><small>{pageTitles[view].copy}</small></div><div className={styles.topActions}><span className={styles.statusDot}>{publishMessage || "● App live"}</span>{view === "editor" && <><button className={styles.secondary} onClick={saveDraft}>{saved ? "Draft saved" : "Save draft"}</button><button className={styles.primary} onClick={publish}>Publish changes</button></>}<button className={styles.secondary} onClick={logout}>Log out</button></div></header>
         {view === "dashboard" && <Dashboard setView={setView} publishedAt={publishedAt} />}
-        {view === "editor" && <Editor sections={sections} selected={selected} selectedId={selectedId} setSelectedId={setSelectedId} update={update} move={move} remove={remove} add={add} />}
+        {view === "editor" && <Editor sections={sections} selected={selected} selectedId={selectedId} setSelectedId={setSelectedId} update={update} move={move} remove={remove} duplicate={duplicate} setSectionVisibility={setSectionVisibility} add={add} />}
         {view === "inventory" && <Inventory />}
         {view === "promotions" && <Promotions />}
         {view === "analytics" && <Analytics />}
@@ -159,42 +222,92 @@ function Nav({ active, onClick, icon, label, badge }: { active: boolean; onClick
 
 function Dashboard({ setView, publishedAt }: { setView: (v: View) => void; publishedAt: string }) {
   type Summary = { sessions:number; screenViews:number; productViews:number; cartViews:number; notificationDevices:number; purchases:number|null; days:{label:string;value:number}[] };
+  type Operations = { orders:AdminOrder[]; inventory:InventoryItem[]; promotions:Promotion[] };
   const [summary,setSummary]=useState<Summary|null>(null);
+  const [operations,setOperations]=useState<Operations>({orders:[],inventory:[],promotions:[]});
+  const [loading,setLoading]=useState(true);
   const [analyticsError,setAnalyticsError]=useState("");
-  useEffect(()=>{fetch("/api/analytics/summary").then(async response=>{if(!response.ok)throw new Error("Analytics API unavailable");setSummary(await response.json())}).catch(error=>setAnalyticsError(error.message))},[]);
-  const metrics = [[summary?.sessions ?? "—", "Unique app devices", "Last 30 days"], [summary?.screenViews ?? "—", "Screen views", "Recorded in app"], [summary?.productViews ?? "—", "Product views", "Recorded in app"], [summary?.notificationDevices ?? "—", "Notification devices", "Currently registered"]];
+  const refresh=useCallback(async()=>{
+    setLoading(true);setAnalyticsError("");
+    const requests=await Promise.allSettled([
+      fetch("/api/analytics/summary",{cache:"no-store"}),fetch("/api/shopify/orders",{cache:"no-store"}),fetch("/api/shopify/inventory?limit=50",{cache:"no-store"}),fetch("/api/shopify/promotions",{cache:"no-store"}),
+    ]);
+    const read=async(result:PromiseSettledResult<Response>)=>{if(result.status!=="fulfilled"||!result.value.ok)return null;return result.value.json()};
+    const [analytics,orders,inventory,promotions]=await Promise.all(requests.map(read));
+    if(analytics)setSummary(analytics);else setAnalyticsError("Some live dashboard data is temporarily unavailable.");
+    setOperations({orders:Array.isArray(orders?.orders)?orders.orders:[],inventory:Array.isArray(inventory?.inventory)?inventory.inventory:[],promotions:Array.isArray(promotions?.promotions)?promotions.promotions:[]});
+    setLoading(false);
+  },[]);
+  useEffect(()=>{/* eslint-disable react-hooks/set-state-in-effect */void refresh();/* eslint-enable react-hooks/set-state-in-effect */},[refresh]);
+  const unfulfilled=operations.orders.filter(order=>!order.cancelledAt&&order.fulfillmentStatus.toUpperCase()!=="FULFILLED").length;
+  const outOfStock=operations.inventory.filter(item=>item.tracked&&item.quantity<=0).length;
+  const lowStock=operations.inventory.filter(item=>item.tracked&&item.quantity>0&&item.quantity<=5).length;
+  const activePromotions=operations.promotions.filter(item=>item.status==="ACTIVE").length;
+  const revenue=operations.orders.reduce((sum,order)=>sum+Number(order.total?.amount||0),0);
+  const currency=operations.orders.find(order=>order.total?.currencyCode)?.total?.currencyCode||"USD";
+  const metrics = [
+    {value:summary?.sessions ?? "—",label:"App sessions",note:"Last 30 days",icon:"↗",tone:styles.dashboardIconBlue},
+    {value:operations.orders.length||"—",label:"Recent orders",note:revenue?`${new Intl.NumberFormat(undefined,{style:"currency",currency}).format(revenue)} loaded value`:"Latest Shopify activity",icon:"▤",tone:styles.dashboardIconGreen},
+    {value:summary?.notificationDevices ?? "—",label:"Push audience",note:"Registered devices",icon:"◇",tone:styles.dashboardIconPurple},
+    {value:outOfStock,label:"Out of stock",note:`${lowStock} additional low-stock variants`,icon:"!",tone:outOfStock?styles.dashboardIconRed:styles.dashboardIconAmber},
+  ];
   const maxDay=Math.max(1,...(summary?.days.map(day=>day.value)??[1]));
-  return <div className={styles.content}>
-    <section className={styles.opsHero}><div><p>STORE OPERATIONS</p><h2>Mobile app workspace</h2><span>Content, marketing, and customer operations are managed from one place.</span></div><div className={styles.opsHeroActions}><button className={styles.primary} onClick={() => setView("editor")}>Open editor</button><button className={styles.primary} onClick={() => setView("marketing")}>Create campaign</button></div></section>
-    {analyticsError&&<section className={styles.card}>Analytics unavailable: {analyticsError}</section>}
-    <div className={styles.metricGrid}>{metrics.map(([value, label, note]) => <article className={styles.metric} key={label}><div className={styles.metricIcon}>↗</div><p>{label}</p><strong>{value}</strong><span>{note}</span></article>)}</div>
-    <div className={styles.dashboardGrid}>
-      <section className={styles.card}><div className={styles.cardHead}><div><h2>Visitors overview</h2><p>Real recorded sessions · last 7 days</p></div></div><div className={styles.chart}>{(summary?.days??[]).map((day) => <div key={day.label} className={styles.barWrap}><div className={styles.bar} style={{height:`${Math.max(3,(day.value/maxDay)*100)}%`}} /><small>{day.label}</small></div>)}</div></section>
-      <section className={styles.card}><div className={styles.cardHead}><div><h2>Quick actions</h2><p>Manage your app</p></div></div><button className={styles.quick} onClick={() => setView("editor")}><span>✦</span><div><strong>Edit app homepage</strong><small>Change sections, images and text</small></div><b>→</b></button><button className={styles.quick} onClick={() => setView("marketing")}><span>◈</span><div><strong>Send a notification</strong><small>{summary?.notificationDevices??0} registered devices</small></div><b>→</b></button><div className={styles.published}><span>✓</span><div><strong>Latest publish</strong><small>{publishedAt}</small></div></div></section>
-    </div>
-    <section className={styles.card}><div className={styles.cardHead}><div><h2>Production readiness</h2><p>Connection status for the features customers depend on.</p></div></div><div className={styles.readinessGrid}>{[["Content API","Connected","Live sections publish to bundled app content"],["Push delivery","Partial","Local queue works; production provider needs final credentials"],["Shopify customer data","Pending","Admin customer directory requires secure Admin API auth"],["Audit log","Pending","Persistent admin activity database is not connected"]].map(([title,status,copy])=><div className={styles.readinessItem} key={title}><span className={status==="Connected"?styles.readyOk:status==="Partial"?styles.readyWarn:styles.readyWait}>{status}</span><strong>{title}</strong><small>{copy}</small></div>)}</div></section>
-    <section className={styles.card}><div className={styles.cardHead}><div><h2>Customer journey</h2><p>Only measured events are shown; purchases require a Shopify webhook.</p></div></div><div className={styles.funnel}>{[[summary?.sessions??0,"Visitors"],[summary?.productViews??0,"Product views"],[summary?.cartViews??0,"Cart views"],[summary?.purchases??"—","Purchased"]].map(([v,l],i)=><div key={String(l)}><strong>{v}</strong><span>{l}</span>{i<3 && <b>→</b>}</div>)}</div></section>
+  const actionItems=[
+    {count:unfulfilled,title:"Orders need fulfillment",copy:"Review the latest unfulfilled Shopify orders.",view:"orders" as View,tone:unfulfilled?styles.dashboardActionWarn:""},
+    {count:outOfStock,title:"Variants are out of stock",copy:`${lowStock} more loaded variants are running low.`,view:"inventory" as View,tone:outOfStock?styles.dashboardActionDanger:""},
+    {count:activePromotions,title:"Active promotions",copy:"Review offers currently available to customers.",view:"promotions" as View,tone:styles.dashboardActionBlue},
+  ];
+  return <div className={`${styles.content} ${styles.dashboardPage}`}>
+    <section className={styles.dashboardWelcome}><div className={styles.dashboardWelcomeCopy}><div className={styles.dashboardDate}>{new Intl.DateTimeFormat(undefined,{weekday:"long",month:"long",day:"numeric"}).format(new Date())}</div><h2>Good to see you, Store admin.</h2><p>Here is what is happening across the Carter&apos;s mobile storefront.</p></div><div className={styles.dashboardHeroActions}><button className={styles.secondary} disabled={loading} onClick={()=>void refresh()}>{loading?"Refreshing…":"↻ Refresh data"}</button><button className={styles.primary} onClick={()=>setView("editor")}>Open app editor</button></div></section>
+    {analyticsError&&<div className={styles.dashboardNotice}><span>!</span>{analyticsError}</div>}
+    <section className={styles.dashboardMetricGrid}>{metrics.map(metric=><article className={styles.dashboardMetric} key={metric.label}><div className={styles.dashboardMetricTop}><span className={`${styles.dashboardMetricIcon} ${metric.tone}`}>{metric.icon}</span><i>{loading?"Updating":"Live"}</i></div><p>{metric.label}</p><strong>{metric.value}</strong><small>{metric.note}</small></article>)}</section>
+    <section className={styles.dashboardMainGrid}>
+      <article className={`${styles.dashboardCard} ${styles.dashboardChartCard}`}><header className={styles.dashboardCardHeader}><div><h3>App engagement</h3><p>Recorded sessions over the last 7 days</p></div><button onClick={()=>setView("analytics")}>View analytics →</button></header><div className={styles.dashboardChartSummary}><div><strong>{summary?.sessions??"—"}</strong><span>Total sessions · 30 days</span></div><div><strong>{summary?.screenViews??"—"}</strong><span>Screen views</span></div><div><strong>{summary?.productViews??"—"}</strong><span>Product views</span></div></div><div className={styles.dashboardChart}>{(summary?.days??[]).length?(summary?.days??[]).map(day=><div key={day.label} className={styles.dashboardBarColumn}><div><span style={{height:`${Math.max(5,(day.value/maxDay)*100)}%`}}/></div><small>{day.label}</small></div>):<div className={styles.dashboardEmpty}>{loading?"Loading engagement…":"No recorded sessions yet"}</div>}</div></article>
+      <article className={`${styles.dashboardCard} ${styles.dashboardActions}`}><header className={styles.dashboardCardHeader}><div><h3>Action center</h3><p>Items that may need your attention</p></div><span className={styles.dashboardBadge}>{actionItems.reduce((sum,item)=>sum+item.count,0)} items</span></header><div>{actionItems.map(item=><button key={item.title} className={`${styles.dashboardActionItem} ${item.tone}`} onClick={()=>setView(item.view)}><span>{item.count}</span><div><strong>{item.title}</strong><small>{item.copy}</small></div><b>›</b></button>)}</div></article>
+    </section>
+    <section className={styles.dashboardQuickGrid}>{[
+      ["✦","Customize app","Edit homepage sections and content","editor"],["◈","Create campaign","Send a push notification","marketing"],["▦","Update inventory","Manage stock and variants","inventory"],["%","Manage offers","Review active promotions","promotions"],
+    ].map(([icon,title,copy,target])=><button className={styles.dashboardQuickAction} key={title} onClick={()=>setView(target as View)}><span>{icon}</span><div><strong>{title}</strong><small>{copy}</small></div><b>→</b></button>)}</section>
+    <section className={styles.dashboardLowerGrid}>
+      <article className={styles.dashboardCard}><header className={styles.dashboardCardHeader}><div><h3>Recent orders</h3><p>Latest activity from Shopify</p></div><button onClick={()=>setView("orders")}>View all orders →</button></header><div className={styles.dashboardOrderList}>{operations.orders.length?operations.orders.slice(0,5).map(order=><button key={order.id} className={styles.dashboardOrderRow} onClick={()=>setView("orders")}><span className={styles.dashboardOrderIcon}>▤</span><div><strong>{order.name}</strong><small>{order.customer} · {new Date(order.createdAt).toLocaleDateString()}</small></div><div className={styles.dashboardOrderMeta}><strong>{order.total?new Intl.NumberFormat(undefined,{style:"currency",currency:order.total.currencyCode}).format(Number(order.total.amount)):"—"}</strong><small>{order.fulfillmentStatus.toLowerCase().replaceAll("_"," ")}</small></div></button>):<div className={styles.dashboardEmpty}>{loading?"Loading Shopify orders…":"No orders were returned"}</div>}</div></article>
+      <article className={`${styles.dashboardCard} ${styles.dashboardHealth}`}><header className={styles.dashboardCardHeader}><div><h3>Store health</h3><p>Live service and publishing status</p></div></header><div className={styles.dashboardHealthList}><div><span className={styles.dashboardHealthOk}/><div><strong>Shopify connection</strong><small>{operations.orders.length||operations.inventory.length?"Live commerce data connected":"Waiting for commerce data"}</small></div><b>{operations.orders.length||operations.inventory.length?"Connected":"Check"}</b></div><div><span className={styles.dashboardHealthOk}/><div><strong>Mobile content</strong><small>Latest app homepage publication</small></div><b>{publishedAt}</b></div><div><span className={summary?.notificationDevices?styles.dashboardHealthOk:styles.dashboardHealthWarn}/><div><strong>Push delivery</strong><small>{summary?.notificationDevices?`${summary.notificationDevices} registered devices`:"Expo Go local delivery mode"}</small></div><b>{summary?.notificationDevices?"Ready":"Development"}</b></div><div><span className={styles.dashboardHealthOk}/><div><strong>Analytics recording</strong><small>Mobile engagement events</small></div><b>{summary?"Active":"Loading"}</b></div></div></article>
+    </section>
+    <section className={`${styles.dashboardCard} ${styles.dashboardJourney}`}><header className={styles.dashboardCardHeader}><div><h3>Customer journey</h3><p>Measured mobile events from discovery through checkout</p></div></header><div className={styles.funnel}>{[[summary?.sessions??0,"Sessions"],[summary?.productViews??0,"Product views"],[summary?.cartViews??0,"Cart views"],[summary?.purchases??"—","Purchases"]].map(([value,label],index)=><div key={String(label)}><strong>{value}</strong><span>{label}</span>{index<3&&<b>→</b>}</div>)}</div></section>
   </div>;
 }
 
-function Editor({ sections, selected, selectedId, setSelectedId, update, move, remove, add }: { sections: Section[]; selected?: Section; selectedId: string; setSelectedId: (id:string)=>void; update:(p:Partial<Section>)=>void; move:(i:number,d:-1|1)=>void; remove:(id:string)=>void; add:(t:SectionType,p?:Placement)=>void }) {
-  const [showAdd, setShowAdd] = useState(false);
+function Editor({ sections, selected, selectedId, setSelectedId, update, move, remove, duplicate, setSectionVisibility, add }: { sections: Section[]; selected?: Section; selectedId: string; setSelectedId: (id:string)=>void; update:(p:Partial<Section>)=>void; move:(i:number,d:-1|1)=>void; remove:(id:string)=>void; duplicate:(id:string)=>void; setSectionVisibility:(id:string,enabled:boolean)=>void; add:(t:SectionType,p?:Placement)=>void }) {
+  const [showAdd,setShowAdd]=useState(false);
+  const [search,setSearch]=useState("");
+  const [device,setDevice]=useState<"mobile"|"tablet">("mobile");
+  const [inspectorTab,setInspectorTab]=useState<"content"|"design">("content");
+  const sectionDescriptions:Record<SectionType,string>={hero:"Large campaign image and call to action",text:"Flexible editorial copy and button",products:"Curated product collection",announcement:"Compact store-wide message"};
+  const sectionIcons:Record<SectionType,string>={hero:"▣",text:"¶",products:"▦",announcement:"◇"};
+  const visibleSections=sections.filter(section=>`${section.title} ${sectionNames[section.type]}`.toLowerCase().includes(search.trim().toLowerCase()));
+  const selectedIndex=selected?sections.findIndex(section=>section.id===selected.id):-1;
+  const deleteSelected=()=>{if(selected&&window.confirm(`Delete “${selected.title||sectionNames[selected.type]}”?`))remove(selected.id)};
   return <div className={styles.editor}>
-    <section className={styles.sectionPanel}><div className={`${styles.panelTitle} ${styles.panelTitlePro}`}><div><h2>Homepage sections</h2><p>Custom content around Shopify blocks</p></div><button className={styles.addButton} onClick={() => setShowAdd(!showAdd)}>＋</button></div>
-      {showAdd && <div className={styles.addMenu}>{(Object.keys(sectionNames) as SectionType[]).map((type)=><button key={type} onClick={()=>{add(type);setShowAdd(false)}}><span>＋</span>{sectionNames[type]}</button>)}</div>}
-      <div className={styles.sectionList}>{sections.map((section,index)=><div key={section.id} className={`${styles.sectionRow} ${selectedId===section.id?styles.sectionSelected:""}`} onClick={()=>setSelectedId(section.id)}><span className={styles.drag}>⠿</span><div><strong>{section.title || sectionNames[section.type]}</strong><small>{sectionNames[section.type]} · {placements.find(p=>p.value===(section.placement??"before-hero"))?.label}</small></div><div className={styles.rowActions}><button onClick={(e)=>{e.stopPropagation();move(index,-1)}}>↑</button><button onClick={(e)=>{e.stopPropagation();move(index,1)}}>↓</button></div></div>)}</div>
-      <div className={styles.shopifyMap}><p>LIVE SHOPIFY SECTIONS</p><button className={styles.insertSlot} onClick={()=>add("text","before-hero")}>＋ Insert section before Shopify hero</button>{shopifySections.map((item,index)=><section key={item.name}><div className={styles.shopifyRow}><span>{index+1}</span><div><strong>{item.name}</strong><small>Content managed by Shopify</small></div><b>Locked</b></div><button className={styles.insertSlot} onClick={()=>add("text",item.after)}>＋ Insert section after {item.name}</button></section>)}</div>
+    <section className={styles.sectionPanel}>
+      <div className={`${styles.panelTitle} ${styles.panelTitlePro}`}><div><h2>Homepage</h2><p>{sections.length} custom sections · {sections.filter(item=>item.enabled).length} visible</p></div><button className={styles.addButton} type="button" aria-label="Add section" onClick={()=>setShowAdd(value=>!value)}>{showAdd?"×":"＋"}</button></div>
+      {showAdd&&<div className={styles.editorAddMenu}><div><strong>Add section</strong><small>Choose a block for your homepage</small></div>{(Object.keys(sectionNames) as SectionType[]).map(type=><button key={type} type="button" onClick={()=>{add(type);setShowAdd(false)}}><span>{sectionIcons[type]}</span><div><strong>{sectionNames[type]}</strong><small>{sectionDescriptions[type]}</small></div><b>＋</b></button>)}</div>}
+      <div className={styles.editorSearch}><span>⌕</span><input value={search} onChange={event=>setSearch(event.target.value)} placeholder="Search sections"/>{search&&<button type="button" onClick={()=>setSearch("")}>×</button>}</div>
+      <div className={styles.sectionList}>{visibleSections.length?visibleSections.map(section=><div key={section.id} className={`${styles.sectionRow} ${selectedId===section.id?styles.sectionSelected:""} ${!section.enabled?styles.sectionHidden:""}`} onClick={()=>{setSelectedId(section.id);setInspectorTab("content")}}><span className={styles.sectionTypeIcon}>{sectionIcons[section.type]}</span><div><strong>{section.title||sectionNames[section.type]}</strong><small>{sectionNames[section.type]} · {section.enabled?"Visible":"Hidden"}</small></div><span className={styles.sectionChevron}>›</span></div>):<div className={styles.editorEmptyState}><span>⌕</span><strong>No sections found</strong><small>Try a different search.</small></div>}</div>
+      <details className={styles.shopifyMap}><summary>Shopify sections <span>{shopifySections.length} locked</span></summary><button className={styles.insertSlot} onClick={()=>add("text","before-hero")}>＋ Insert before Shopify hero</button>{shopifySections.map((item,index)=><section key={item.name}><div className={styles.shopifyRow}><span>{index+1}</span><div><strong>{item.name}</strong><small>Managed by Shopify</small></div><b>Locked</b></div><button className={styles.insertSlot} onClick={()=>add("text",item.after)}>＋ Insert after {item.name}</button></section>)}</details>
     </section>
-    <section className={`${styles.previewPanel} ${styles.previewWorkspace}`}><div className={`${styles.previewToolbar} ${styles.previewToolbarPro}`}><span>Live mobile preview</span><div><b>{sections.filter(s=>s.enabled).length}</b> active sections</div></div><div className={styles.phone}><div className={styles.phoneTop}><b>9:41</b><span>● ◒ ▰</span></div><div className={styles.appHeader}><span>☰</span><strong>Carter&apos;s</strong><span>⌕　♧</span></div><div className={styles.phoneBody}>{sections.filter(s=>s.enabled).map(section=><PreviewSection key={section.id} section={section} selected={section.id===selectedId} onClick={()=>setSelectedId(section.id)} />)}</div><div className={styles.appTabs}><span>⌂<small>Home</small></span><span>⌕<small>Search</small></span><span>♡<small>Wishlist</small></span><span>♙<small>Account</small></span></div></div></section>
-    <section className={styles.settingsPanel}>{selected ? <><div className={`${styles.panelTitle} ${styles.panelTitlePro}`}><div><h2>Section inspector</h2><p>{sectionNames[selected.type]}</p></div><label className={styles.switch}><input type="checkbox" checked={selected.enabled} onChange={e=>update({enabled:e.target.checked})}/><span /></label></div><div className={styles.editorStatus}><span className={selected.enabled?styles.readyOk:styles.readyWait}>{selected.enabled?"Visible":"Hidden"}</span><small>{placements.find(p=>p.value===(selected.placement??"before-hero"))?.label}</small></div><div className={styles.editorForm}><label>Position in app<select className={styles.selectField} value={selected.placement??"before-hero"} onChange={e=>update({placement:e.target.value as Placement})}>{placements.map(item=><option key={item.value} value={item.value}>{item.label}</option>)}</select></label><label>Title<input value={selected.title} onChange={e=>update({title:e.target.value})}/></label><label>Description<textarea rows={4} value={selected.subtitle} onChange={e=>update({subtitle:e.target.value})}/></label>{selected.type!=="announcement"&&<label>Button label<input value={selected.buttonLabel} onChange={e=>update({buttonLabel:e.target.value})}/></label>}{selected.type==="hero"&&<label>Image URL<input value={selected.image} placeholder="https://..." onChange={e=>update({image:e.target.value})}/></label>}<label>Background color<div className={styles.colorField}><input type="color" value={selected.background} onChange={e=>update({background:e.target.value})}/><input value={selected.background} onChange={e=>update({background:e.target.value})}/></div></label><div className={styles.dangerZone}><strong>Danger zone</strong><button className={styles.delete} onClick={()=>remove(selected.id)}>Delete section</button></div></div></>:<div className={styles.empty}>Select a section to edit it.</div>}</section>
+    <section className={`${styles.previewPanel} ${styles.previewWorkspace}`}>
+      <div className={`${styles.previewToolbar} ${styles.previewToolbarPro}`}><div className={styles.previewTitle}><span>Preview</span><small>Homepage · live draft</small></div><div className={styles.deviceSwitcher}><button type="button" className={device==="mobile"?styles.deviceActive:""} onClick={()=>setDevice("mobile")}>▯ <span>Mobile</span></button><button type="button" className={device==="tablet"?styles.deviceActive:""} onClick={()=>setDevice("tablet")}>▭ <span>Tablet</span></button></div><div className={styles.previewCount}><b>{sections.filter(item=>item.enabled).length}</b> active</div></div>
+      <div className={`${styles.deviceStage} ${device==="tablet"?styles.deviceStageTablet:""}`}><div className={styles.phone}><div className={styles.phoneTop}><b>9:41</b><span>● ◒ ▰</span></div><div className={styles.appHeader}><span>☰</span><strong>Carter&apos;s</strong><span>⌕　♧</span></div><div className={styles.phoneBody}>{sections.some(item=>item.enabled)?sections.filter(item=>item.enabled).map(section=><PreviewSection key={section.id} section={section} selected={section.id===selectedId} onClick={()=>setSelectedId(section.id)}/>):<div className={styles.previewEmpty}><span>＋</span><strong>Your homepage is empty</strong><small>Enable or add a section to preview it.</small></div>}</div><div className={styles.appTabs}><span>⌂<small>Home</small></span><span>⌕<small>Search</small></span><span>♡<small>Wishlist</small></span><span>♙<small>Account</small></span></div></div></div>
+    </section>
+    <section className={styles.settingsPanel}>{selected?<><div className={`${styles.panelTitle} ${styles.panelTitlePro}`}><div><h2>{selected.title||sectionNames[selected.type]}</h2><p>{sectionNames[selected.type]}</p></div><label className={styles.switch} title={selected.enabled?"Visible":"Hidden"}><input type="checkbox" checked={selected.enabled} onChange={event=>update({enabled:event.target.checked})}/><span/></label></div><div className={styles.inspectorSectionActions}><button type="button" onClick={()=>setSectionVisibility(selected.id,!selected.enabled)}>{selected.enabled?"○ Hide":"◉ Show"}</button><button type="button" onClick={()=>duplicate(selected.id)}>⧉ Duplicate</button><button type="button" disabled={selectedIndex<=0} onClick={()=>move(selectedIndex,-1)}>↑ Up</button><button type="button" disabled={selectedIndex<0||selectedIndex>=sections.length-1} onClick={()=>move(selectedIndex,1)}>↓ Down</button></div><div className={styles.inspectorTabs}><button type="button" className={inspectorTab==="content"?styles.inspectorTabActive:""} onClick={()=>setInspectorTab("content")}>Content</button><button type="button" className={inspectorTab==="design"?styles.inspectorTabActive:""} onClick={()=>setInspectorTab("design")}>Design</button></div><div className={styles.editorForm}>{inspectorTab==="content"?<><label>Title<input maxLength={80} value={selected.title} onChange={event=>update({title:event.target.value})}/><small>{selected.title.length}/80</small></label><label>Description<textarea rows={5} maxLength={220} value={selected.subtitle} onChange={event=>update({subtitle:event.target.value})}/><small>{selected.subtitle.length}/220</small></label>{selected.type!=="announcement"&&<label>Button label<input maxLength={32} value={selected.buttonLabel} onChange={event=>update({buttonLabel:event.target.value})}/><small>{selected.buttonLabel.length}/32</small></label>}</>:<><label>Position<select className={styles.selectField} value={selected.placement??"before-hero"} onChange={event=>update({placement:event.target.value as Placement})}>{placements.map(item=><option key={item.value} value={item.value}>{item.label}</option>)}</select></label>{selected.type==="hero"&&<label>Background image URL<input value={selected.image} placeholder="https://..." onChange={event=>update({image:event.target.value})}/>{selected.image&&<span className={styles.imagePreview} style={{backgroundImage:`url(${selected.image})`}}/>}</label>}<label>Background color<div className={styles.colorField}><input type="color" value={selected.background} onChange={event=>update({background:event.target.value})}/><input value={selected.background} onChange={event=>update({background:event.target.value})}/></div></label><label className={styles.customCssField}>Custom CSS<textarea rows={14} maxLength={4000} spellCheck={false} value={selected.customCss??""} onChange={event=>update({customCss:event.target.value})} placeholder={customCssExample}/><small>{(selected.customCss??"").length}/4000</small></label><div className={styles.customCssHelp}><strong>Supported selectors</strong><code>.section</code><code>.title</code><code>.description</code><code>.button</code><p>Use standard declarations such as color, font-size, padding, border-radius, text-align, and background-color. Styles are scoped to this section and translated for the mobile app.</p><button type="button" onClick={()=>update({customCss:customCssExample})}>Insert example</button></div></>}<div className={styles.inspectorDelete}><button className={styles.delete} type="button" onClick={deleteSelected}>Delete section</button></div></div></>:<div className={styles.editorEmptyState}><span>✦</span><strong>Select a section</strong><small>Choose a block from the list or preview to edit it.</small></div>}</section>
   </div>;
 }
 
 function PreviewSection({section,selected,onClick}:{section:Section;selected:boolean;onClick:()=>void}) {
-  if(section.type==="hero") return <section onClick={onClick} className={`${styles.previewHero} ${selected?styles.previewSelected:""}`} style={{backgroundColor:section.background,backgroundImage:section.image?`linear-gradient(90deg,rgba(0,0,0,.36),rgba(0,0,0,.02)),url(${section.image})`:undefined}}><h3>{section.title}</h3><p>{section.subtitle}</p><button>{section.buttonLabel}</button></section>;
-  if(section.type==="announcement") return <section onClick={onClick} className={`${styles.previewNotice} ${selected?styles.previewSelected:""}`} style={{background:section.background}}>{section.title}</section>;
-  if(section.type==="products") return <section onClick={onClick} className={`${styles.previewProducts} ${selected?styles.previewSelected:""}`}><h3>{section.title}</h3><p>{section.subtitle}</p><div>{["#f5ddd2","#dce8ef","#efe4d4"].map((c,i)=><span key={c} style={{background:c}}><i>Product {i+1}</i><b>${18+i*7}.00</b></span>)}</div></section>;
-  return <section onClick={onClick} className={`${styles.previewText} ${selected?styles.previewSelected:""}`} style={{background:section.background}}><h3>{section.title}</h3><p>{section.subtitle}</p><button>{section.buttonLabel}</button></section>;
+  const custom=parsePreviewCustomCss(section.customCss);
+  if(section.type==="hero") return <section onClick={onClick} className={`${styles.previewHero} ${selected?styles.previewSelected:""}`} style={{backgroundColor:section.background,backgroundImage:section.image?`linear-gradient(90deg,rgba(0,0,0,.36),rgba(0,0,0,.02)),url(${section.image})`:undefined,...custom.section}}><h3 style={custom.title}>{section.title}</h3><p style={custom.description}>{section.subtitle}</p><button style={custom.button}>{section.buttonLabel}</button></section>;
+  if(section.type==="announcement") return <section onClick={onClick} className={`${styles.previewNotice} ${selected?styles.previewSelected:""}`} style={{background:section.background,...custom.section}}><span style={custom.title}>{section.title}</span></section>;
+  if(section.type==="products") return <section onClick={onClick} className={`${styles.previewProducts} ${selected?styles.previewSelected:""}`} style={custom.section}><h3 style={custom.title}>{section.title}</h3><p style={custom.description}>{section.subtitle}</p><div>{["#f5ddd2","#dce8ef","#efe4d4"].map((c,i)=><span key={c} style={{background:c}}><i>Product {i+1}</i><b>${18+i*7}.00</b></span>)}</div></section>;
+  return <section onClick={onClick} className={`${styles.previewText} ${selected?styles.previewSelected:""}`} style={{background:section.background,...custom.section}}><h3 style={custom.title}>{section.title}</h3><p style={custom.description}>{section.subtitle}</p><button style={custom.button}>{section.buttonLabel}</button></section>;
 }
 
 export function InventoryReadOnly(){
@@ -229,8 +342,12 @@ function Inventory(){
   const [editing,setEditing]=useState<InventoryItem|null>(null);
   const [productDraft,setProductDraft]=useState<ProductDraft|null>(null);
   const [productSaving,setProductSaving]=useState(false);
+  const [productDeleting,setProductDeleting]=useState(false);
+  const [productImage,setProductImage]=useState<File|null>(null);
+  const [productImageAlt,setProductImageAlt]=useState("");
+  const [bulkEditor,setBulkEditor]=useState(false);
   const [pageInfo,setPageInfo]=useState<{hasNextPage:boolean;endCursor:string|null}>({hasNextPage:false,endCursor:null});
-  const load=async(term:string,after:string|null)=>{setLoading(true);setMessage("");try{const params=new URLSearchParams();if(term.trim())params.set("search",term.trim());if(after)params.set("after",after);const response=await fetch(`/api/shopify/inventory?${params}`,{cache:"no-store"});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to load inventory.");const next=Array.isArray(data.inventory)?data.inventory:[];setItems(current=>after?[...current,...next]:next);const nextLocations=Array.isArray(data.locations)?data.locations:[];setLocations(nextLocations);setLocationId(current=>current||nextLocations[0]?.id||"");setPageInfo(data.pageInfo||{hasNextPage:false,endCursor:null});if(!next.length)setMessage(term?"No inventory matches this search.":"No Shopify inventory was returned.")}catch(error){setMessage(error instanceof Error?error.message:"Unable to load inventory.");if(!after)setItems([])}finally{setLoading(false)}};
+  const load=async(term:string,after:string|null,limit=50)=>{setLoading(true);setMessage("");try{const params=new URLSearchParams();params.set("limit",String(limit));if(term.trim())params.set("search",term.trim());if(after)params.set("after",after);const response=await fetch(`/api/shopify/inventory?${params}`,{cache:"no-store"});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to load inventory.");const next=Array.isArray(data.inventory)?data.inventory:[];setItems(current=>after?[...current,...next]:next);const nextLocations=Array.isArray(data.locations)?data.locations:[];setLocations(nextLocations);setLocationId(current=>current||nextLocations[0]?.id||"");setPageInfo(data.pageInfo||{hasNextPage:false,endCursor:null});if(!next.length)setMessage(term?"No inventory matches this search.":"No Shopify inventory was returned.")}catch(error){setMessage(error instanceof Error?error.message:"Unable to load inventory.");if(!after)setItems([])}finally{setLoading(false)}};
   useEffect(()=>{/* eslint-disable react-hooks/set-state-in-effect */void load("",null);/* eslint-enable react-hooks/set-state-in-effect */},[]);
   const quantityAt=(item:InventoryItem)=>locationId?(item.levels.find(level=>level.locationId===locationId)?.quantity??0):item.quantity;
   const filtered=items.filter(item=>{
@@ -240,6 +357,19 @@ function Inventory(){
   });
   const toggle=(id:string)=>setSelected(current=>current.includes(id)?current.filter(item=>item!==id):[...current,id]);
   const selectVisible=()=>setSelected(current=>filtered.every(item=>current.includes(item.id))?current.filter(id=>!filtered.some(item=>item.id===id)):[...new Set([...current,...filtered.map(item=>item.id)])]);
+  const selectAllProducts=async()=>{
+    setLoading(true);setMessage("Loading all Shopify inventory...");
+    try{
+      const allItems:InventoryItem[]=[];let after:string|null=null;let hasNextPage=true;let loadedLocations:InventoryLocation[]=locations;let page=0;
+      while(hasNextPage){
+        const params=new URLSearchParams({limit:"250"});if(locationId)params.set("locationId",locationId);if(after)params.set("after",after);
+        const response=await fetch(`/api/shopify/inventory?${params}`,{cache:"no-store"});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to load all inventory.");
+        allItems.push(...(Array.isArray(data.inventory)?data.inventory:[]));if(Array.isArray(data.locations)&&data.locations.length)loadedLocations=data.locations;
+        page+=1;hasNextPage=Boolean(data.pageInfo?.hasNextPage&&data.pageInfo?.endCursor);after=hasNextPage?data.pageInfo.endCursor:null;if(hasNextPage)setMessage(`Loading all Shopify inventory... ${allItems.length} variants loaded (${page} page${page===1?"":"s"}).`);
+      }
+      const uniqueItems=[...new Map(allItems.map(item=>[item.id,item])).values()];setItems(uniqueItems);setLocations(loadedLocations);setLocationId(current=>current||loadedLocations[0]?.id||"");setPageInfo({hasNextPage:false,endCursor:null});setSelected(uniqueItems.map(item=>item.id));setMessage(`Selected all ${uniqueItems.length} product variants.`);
+    }catch(error){setMessage(error instanceof Error?error.message:"Unable to select all products.")}finally{setLoading(false)}
+  };
   const applyBulk=async()=>{
     if(!locationId||!selected.length){setMessage("Choose a location and select at least one variant.");return}
     const amount=Math.max(0,Math.floor(Number(bulkValue)||0));
@@ -254,16 +384,108 @@ function Inventory(){
     if(!changes.length){setMessage("The selected inventory already has that quantity, or inventory tracking is disabled.");return}
     if(bulkMode==="zero"&&!window.confirm(`Set ${changes.length} selected inventor${changes.length===1?"y":"ies"} to zero at this location?`))return;
     setSaving(true);setMessage("Updating Shopify inventory...");
-    try{const response=await fetch("/api/shopify/inventory",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({changes})});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to update inventory.");setMessage(`Updated ${data.changed} inventory item${data.changed===1?"":"s"}.`);setSelected([]);await load(search,null)}catch(error){setMessage(error instanceof Error?error.message:"Unable to update inventory.")}finally{setSaving(false)}
+    try{let changed=0;for(let index=0;index<changes.length;index+=250){const batch=changes.slice(index,index+250);const response=await fetch("/api/shopify/inventory",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({changes:batch})});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to update inventory.");changed+=Number(data.changed||batch.length)}setMessage(`Updated ${changed} inventory item${changed===1?"":"s"}.`);setSelected([]);await load(search,null)}catch(error){setMessage(error instanceof Error?error.message:"Unable to update inventory.")}finally{setSaving(false)}
   };
-  const openProduct=(item:InventoryItem)=>{setEditing(item);setProductDraft({title:item.product,status:item.productStatus,sku:item.sku,barcode:item.barcode,price:item.price,compareAtPrice:item.compareAtPrice||"",inventoryPolicy:item.policy,tracked:item.tracked});setMessage("")};
-  const closeProduct=()=>{setEditing(null);setProductDraft(null)};
+  const openProduct=(item:InventoryItem)=>{setEditing(item);setProductDraft({title:item.product,descriptionHtml:item.descriptionHtml||"",vendor:item.vendor||"",productType:item.productType||"",tags:(item.tags||[]).join(", "),seoTitle:item.seoTitle||"",seoDescription:item.seoDescription||"",status:item.productStatus,options:item.selectedOptions||[],sku:item.sku,barcode:item.barcode,price:item.price,compareAtPrice:item.compareAtPrice||"",inventoryPolicy:item.policy,tracked:item.tracked});setProductImage(null);setProductImageAlt(item.image?.altText||item.product);setMessage("");window.scrollTo({top:0,behavior:"smooth"})};
+  const closeProduct=()=>{setEditing(null);setProductDraft(null);setProductImage(null)};
   const saveProduct=async()=>{
     if(!editing||!productDraft)return;
     if(!productDraft.title.trim()){setMessage("Product title is required.");return}
     setProductSaving(true);setMessage("Updating product in Shopify...");
-    try{const response=await fetch("/api/shopify/inventory",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({productId:editing.productId,variantId:editing.id,product:{title:productDraft.title,status:productDraft.status},variant:{sku:productDraft.sku,barcode:productDraft.barcode,price:productDraft.price,compareAtPrice:productDraft.compareAtPrice,inventoryPolicy:productDraft.inventoryPolicy,tracked:productDraft.tracked}})});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to update product.");setMessage(`${productDraft.title} was updated in Shopify.`);closeProduct();await load(search,null)}catch(error){setMessage(error instanceof Error?error.message:"Unable to update product.")}finally{setProductSaving(false)}
+    try{
+      const response=await fetch("/api/shopify/inventory",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({productId:editing.productId,variantId:editing.id,product:{title:productDraft.title,descriptionHtml:productDraft.descriptionHtml,vendor:productDraft.vendor,productType:productDraft.productType,tags:productDraft.tags.split(",").map(tag=>tag.trim()).filter(Boolean),seoTitle:productDraft.seoTitle,seoDescription:productDraft.seoDescription,status:productDraft.status},variant:{optionValues:productDraft.options,sku:productDraft.sku,barcode:productDraft.barcode,price:productDraft.price,compareAtPrice:productDraft.compareAtPrice,inventoryPolicy:productDraft.inventoryPolicy,tracked:productDraft.tracked}})});
+      const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to update product.");
+      if(productImage){setMessage("Uploading the product image to Shopify...");const imageForm=new FormData();imageForm.append("productId",editing.productId);imageForm.append("alt",productImageAlt);imageForm.append("image",productImage);const imageResponse=await fetch("/api/shopify/inventory",{method:"POST",body:imageForm});const imageData=await imageResponse.json();if(!imageResponse.ok)throw new Error(imageData.error||"Product details saved, but the image could not be uploaded.")}
+      closeProduct();await load(search,null);setMessage(`${productDraft.title} was updated in Shopify.`)
+    }catch(error){setMessage(error instanceof Error?error.message:"Unable to update product.")}finally{setProductSaving(false)}
   };
+  const deleteProduct=async()=>{
+    if(!editing)return;
+    const productName=editing.product;
+    if(!window.confirm(`Permanently delete ${productName}? This deletes the product, every variant, its images, and inventory from Shopify. This cannot be undone.`))return;
+    setProductDeleting(true);setMessage(`Deleting ${productName} from Shopify...`);
+    try{const response=await fetch(`/api/shopify/inventory?productId=${encodeURIComponent(editing.productId)}`,{method:"DELETE"});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to delete product.");const deletedIds=items.filter(item=>item.productId===editing.productId).map(item=>item.id);setItems(current=>current.filter(item=>item.productId!==editing.productId));setSelected(current=>current.filter(id=>!deletedIds.includes(id)));closeProduct();setMessage(`${productName} was permanently deleted from Shopify.`)}catch(error){setMessage(error instanceof Error?error.message:"Unable to delete product.")}finally{setProductDeleting(false)}
+  };
+  const openBulkEditor=async()=>{await load("",null,250);setBulkEditor(true)};
+  if(bulkEditor)return <InventoryBulkEditor items={items} locations={locations} initialLocationId={locationId} onClose={()=>setBulkEditor(false)} onSaved={async changed=>{setBulkEditor(false);await load(search,null);setMessage(`Updated ${changed} inventory item${changed===1?"":"s"} from the bulk editor.`)}}/>;
+  if(editing&&productDraft)return <div className={styles.productWorkspace}>
+    <header className={styles.productWorkspaceHeader}>
+      <div className={styles.productWorkspaceTitle}>
+        <button className={styles.productBack} type="button" onClick={closeProduct}>←</button>
+        <div><button type="button" onClick={closeProduct}>Products</button><h2>{productDraft.title}</h2><span>{editing.variant}</span></div>
+        <i className={`${styles.tag} ${productDraft.status==="ACTIVE"?styles.tagGreen:styles.tagGray}`}>{productDraft.status.toLowerCase()}</i>
+      </div>
+      <div className={styles.productWorkspaceActions}>
+        <button className={styles.secondary} type="button" disabled={productSaving||productDeleting} onClick={closeProduct}>Discard</button>
+        <button className={styles.primary} type="button" disabled={productSaving||productDeleting} onClick={()=>void saveProduct()}>{productSaving?"Saving...":"Save"}</button>
+      </div>
+    </header>
+    {message&&<div className={styles.productWorkspaceMessage}>{message}</div>}
+    <div className={styles.productWorkspaceBody}>
+      <main className={styles.productWorkspaceMain}>
+        <section className={styles.productWorkspaceCard}>
+          <div className={styles.productCardHeading}><div><h3>Product details</h3><p>The title and publishing status customers see in Shopify.</p></div></div>
+          <div className={styles.productDetailsLead}>
+            <InventoryProductImage item={editing} large/>
+            <label>Title<input value={productDraft.title} onChange={event=>setProductDraft(current=>current&&({...current,title:event.target.value}))}/></label>
+          </div>
+          <label>Description<textarea rows={7} value={productDraft.descriptionHtml} onChange={event=>setProductDraft(current=>current&&({...current,descriptionHtml:event.target.value}))} placeholder="Describe the product. Basic HTML is supported."/></label>
+          <label>Status<select value={productDraft.status} onChange={event=>setProductDraft(current=>current&&({...current,status:event.target.value}))}><option value="ACTIVE">Active</option><option value="DRAFT">Draft</option><option value="ARCHIVED">Archived</option></select></label>
+        </section>
+        <section className={styles.productWorkspaceCard}>
+          <div className={styles.productCardHeading}><div><h3>Product organization</h3><p>Information used to organize and search your Shopify catalog.</p></div></div>
+          <div className={styles.productWorkspaceGrid}>
+            <label>Vendor<input value={productDraft.vendor} onChange={event=>setProductDraft(current=>current&&({...current,vendor:event.target.value}))} placeholder="Carter's"/></label>
+            <label>Product type<input value={productDraft.productType} onChange={event=>setProductDraft(current=>current&&({...current,productType:event.target.value}))} placeholder="Clothing"/></label>
+          </div>
+          <label>Tags<input value={productDraft.tags} onChange={event=>setProductDraft(current=>current&&({...current,tags:event.target.value}))} placeholder="baby, clothing, summer"/><small>Separate tags with commas.</small></label>
+        </section>
+        <section className={styles.productWorkspaceCard}>
+          <div className={styles.productCardHeading}><div><h3>Pricing</h3><p>Set the selling and comparison prices for this variant.</p></div></div>
+          <div className={styles.productWorkspaceGrid}>
+            <label>Price<input type="number" min="0" step="0.01" value={productDraft.price} onChange={event=>setProductDraft(current=>current&&({...current,price:event.target.value}))}/></label>
+            <label>Compare-at price<input type="number" min="0" step="0.01" value={productDraft.compareAtPrice} onChange={event=>setProductDraft(current=>current&&({...current,compareAtPrice:event.target.value}))} placeholder="No compare-at price"/></label>
+          </div>
+        </section>
+        <section className={styles.productWorkspaceCard}>
+          <div className={styles.productCardHeading}><div><h3>Inventory</h3><p>Manage identifiers and stock behavior for {editing.variant}.</p></div></div>
+          {productDraft.options.filter(option=>!(option.name==="Title"&&option.value==="Default Title")).length>0&&<div className={styles.productOptionGrid}>{productDraft.options.map((option,index)=>option.name==="Title"&&option.value==="Default Title"?null:<label key={`${option.name}-${index}`}>{option.name}<input value={option.value} onChange={event=>setProductDraft(current=>current&&({...current,options:current.options.map((entry,entryIndex)=>entryIndex===index?{...entry,value:event.target.value}:entry)}))}/></label>)}</div>}
+          <div className={styles.productWorkspaceGrid}>
+            <label>SKU<input value={productDraft.sku} onChange={event=>setProductDraft(current=>current&&({...current,sku:event.target.value}))}/></label>
+            <label>Barcode<input value={productDraft.barcode} onChange={event=>setProductDraft(current=>current&&({...current,barcode:event.target.value}))}/></label>
+          </div>
+          <label className={styles.productWorkspaceCheck}><input type="checkbox" checked={productDraft.tracked} onChange={event=>setProductDraft(current=>current&&({...current,tracked:event.target.checked}))}/><span><strong>Track quantity</strong><small>Shopify will maintain available inventory for this variant.</small></span></label>
+          <div className={styles.productWorkspaceLocations}><div><strong>Location</strong><strong>Available</strong></div>{editing.levels.length?editing.levels.map(level=><div key={level.locationId}><span>{level.locationName}</span><b>{level.quantity}</b></div>):<small>No active inventory levels.</small>}</div>
+        </section>
+        <section className={styles.productWorkspaceCard}>
+          <div className={styles.productCardHeading}><div><h3>Search engine listing</h3><p>Control how this product can appear in search results.</p></div></div>
+          <label>Page title<input maxLength={70} value={productDraft.seoTitle} onChange={event=>setProductDraft(current=>current&&({...current,seoTitle:event.target.value}))} placeholder={productDraft.title}/><small>{productDraft.seoTitle.length}/70 characters</small></label>
+          <label>Meta description<textarea rows={4} maxLength={320} value={productDraft.seoDescription} onChange={event=>setProductDraft(current=>current&&({...current,seoDescription:event.target.value}))}/><small>{productDraft.seoDescription.length}/320 characters</small></label>
+        </section>
+      </main>
+      <aside className={styles.productWorkspaceAside}>
+        <section className={styles.productWorkspaceCard}>
+          <div className={styles.productCardHeading}><div><h3>Media</h3><p>Add a new product image to Shopify.</p></div></div>
+          <div className={styles.productMediaPreview}><InventoryProductImage item={editing} large/></div>
+          <label className={styles.productImageUpload}>Image<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={event=>setProductImage(event.target.files?.[0]||null)}/><span>{productImage?productImage.name:"Choose image"}</span></label>
+          <label>Alternative text<input value={productImageAlt} onChange={event=>setProductImageAlt(event.target.value)} placeholder="Describe the image"/></label>
+          <small className={styles.productMediaNote}>JPG, PNG, WebP, or GIF up to 10 MB. Saving adds the image to the product gallery.</small>
+        </section>
+        <section className={styles.productWorkspaceCard}>
+          <div className={styles.productCardHeading}><div><h3>Variant</h3><p>{editing.variant}</p></div></div>
+          <dl className={styles.productSummaryList}><div><dt>SKU</dt><dd>{productDraft.sku||"Not set"}</dd></div><div><dt>Available</dt><dd>{editing.tracked?editing.quantity:"Not tracked"}</dd></div><div><dt>Last updated</dt><dd>{editing.updatedAt?new Date(editing.updatedAt).toLocaleDateString():"—"}</dd></div></dl>
+        </section>
+        <section className={styles.productWorkspaceCard}>
+          <div className={styles.productCardHeading}><div><h3>Selling when out of stock</h3><p>Choose how Shopify handles orders after inventory reaches zero.</p></div></div>
+          <label>Inventory policy<select value={productDraft.inventoryPolicy} onChange={event=>setProductDraft(current=>current&&({...current,inventoryPolicy:event.target.value}))}><option value="DENY">Stop selling</option><option value="CONTINUE">Continue selling</option></select></label>
+        </section>
+        <section className={`${styles.productWorkspaceCard} ${styles.productDangerZone}`}>
+          <div><h3>Delete product</h3><p>Permanently removes this product, all variants, images, and inventory from Shopify.</p></div>
+          <button className={styles.delete} type="button" disabled={productSaving||productDeleting} onClick={()=>void deleteProduct()}>{productDeleting?"Deleting...":"Delete product"}</button>
+        </section>
+      </aside>
+    </div>
+  </div>;
   const lowStock=filtered.filter(item=>item.tracked&&quantityAt(item)>0&&quantityAt(item)<=5).length;const outOfStock=filtered.filter(item=>item.tracked&&quantityAt(item)<=0).length;const totalUnits=filtered.reduce((sum,item)=>sum+Math.max(0,quantityAt(item)),0);
   return <div className={styles.content}>
     <div className={styles.actionHeader}>
@@ -271,6 +493,7 @@ function Inventory(){
       <form className={styles.customerSearch} onSubmit={event=>{event.preventDefault();void load(search,null)}}>
         <input className={styles.smallSearch} placeholder="Search product, variant, or SKU" value={search} onChange={event=>setSearch(event.target.value)}/>
         <button className={styles.primary} disabled={loading}>Search</button>
+        <button className={styles.secondary} type="button" disabled={loading||!items.length} onClick={()=>void openBulkEditor()}>{loading?"Loading...":"Open bulk editor"}</button>
         {search&&<button className={styles.secondary} type="button" onClick={()=>{setSearch("");void load("",null)}}>Clear</button>}
       </form>
     </div>
@@ -280,72 +503,213 @@ function Inventory(){
       <label>Product status<select value={statusFilter} onChange={event=>setStatusFilter(event.target.value)}><option value="all">All statuses</option><option value="ACTIVE">Active</option><option value="DRAFT">Draft</option><option value="ARCHIVED">Archived</option></select></label>
     </div>
     <div className={styles.segmentGrid}>{[["Variants","Matching filters",filtered.length],["Available units","At selected location",totalUnits],["Low stock","Five units or fewer",lowStock],["Out of stock","Tracked with no stock",outOfStock]].map(([title,copy,value])=><article className={styles.segment} key={title}><span>▦</span><div><strong>{title}</strong><small>{copy}</small></div><b>{value}</b></article>)}</div>
-    {selected.length>0&&<div className={styles.bulkBar}><strong>{selected.length} selected</strong><select value={bulkMode} onChange={event=>setBulkMode(event.target.value as typeof bulkMode)}><option value="set">Set quantity to</option><option value="add">Add quantity</option><option value="subtract">Subtract quantity</option><option value="zero">Set to zero</option></select>{bulkMode!=="zero"&&<input type="number" min="0" value={bulkValue} onChange={event=>setBulkValue(event.target.value)}/>}<button className={styles.primary} disabled={saving} onClick={()=>void applyBulk()}>{saving?"Updating...":"Apply bulk edit"}</button><button className={styles.secondary} onClick={()=>setSelected([])}>Clear selection</button></div>}
+    {selected.length>0&&<div className={styles.bulkBar}>
+      <strong>{selected.length} selected</strong>
+      <button className={styles.secondary} type="button" disabled={loading} onClick={()=>void selectAllProducts()}>{loading?"Loading all...":"Select all products"}</button>
+      <select value={bulkMode} onChange={event=>setBulkMode(event.target.value as typeof bulkMode)}><option value="set">Set quantity to</option><option value="add">Add quantity</option><option value="subtract">Subtract quantity</option><option value="zero">Set to zero</option></select>
+      {bulkMode!=="zero"&&<input type="number" min="0" value={bulkValue} onChange={event=>setBulkValue(event.target.value)}/>}
+      <button className={styles.primary} disabled={saving||loading} onClick={()=>void applyBulk()}>{saving?"Updating...":"Apply bulk edit"}</button>
+      <button className={styles.secondary} disabled={saving||loading} onClick={()=>setSelected([])}>Clear selection</button>
+    </div>}
     <section className={`${styles.card} ${styles.inventoryManageTable}`}>
       <div className={styles.cardHead}><div><h2>Stock directory</h2><p>{message||"Select variants to change quantities in bulk. Setting zero removes available stock, not the product."}</p></div><i className={`${styles.tag} ${message?styles.tagGray:styles.tagGreen}`}>{loading?"Loading":message?"Notice":"Connected"}</i></div>
       <div className={styles.dataTable}>
-        <div className={styles.tableHead}><input type="checkbox" aria-label="Select visible inventory" checked={Boolean(filtered.length)&&filtered.every(item=>selected.includes(item.id))} onChange={selectVisible}/><span>Product</span><span>SKU</span><span>Price</span><span>Available</span><span>Status</span><span>Updated</span><span>Action</span></div>
-        {filtered.length?filtered.map(item=><div className={styles.tableRow} key={item.id}><input type="checkbox" aria-label={`Select ${item.name}`} checked={selected.includes(item.id)} onChange={()=>toggle(item.id)}/><div className={styles.customerCell}><strong>{item.product}</strong><small>{item.variant} · {item.productStatus.toLowerCase()}</small></div><span>{item.sku||"—"}</span><span>{item.price}</span><strong className={quantityAt(item)<=0?styles.stockEmpty:quantityAt(item)<=5?styles.stockLow:styles.stockOk}>{item.tracked?quantityAt(item):"Not tracked"}</strong><span><i className={`${styles.tag} ${quantityAt(item)<=0?styles.tagGray:styles.tagGreen}`}>{quantityAt(item)>0?"In stock":"Out of stock"}</i></span><span>{item.updatedAt?new Date(item.updatedAt).toLocaleDateString():"—"}</span><button className={styles.secondary} type="button" onClick={()=>openProduct(item)}>View / edit</button></div>):<div className={styles.empty}>{loading?"Loading Shopify inventory...":message||"No inventory matches these filters."}</div>}
+        <div className={styles.tableHead}><input type="checkbox" aria-label="Select visible inventory" checked={Boolean(filtered.length)&&filtered.every(item=>selected.includes(item.id))} onChange={selectVisible}/><span>Product</span><span>SKU</span><span>Price</span><span>Available</span><span>Status</span><span>Image</span><span>Updated</span><span>Action</span></div>
+        {filtered.length?filtered.map(item=><div className={styles.tableRow} key={item.id}><input type="checkbox" aria-label={`Select ${item.name}`} checked={selected.includes(item.id)} onChange={()=>toggle(item.id)}/><div className={styles.customerCell}><strong>{item.product}</strong><small>{item.variant} · {item.productStatus.toLowerCase()}</small></div><span>{item.sku||"—"}</span><span>{item.price}</span><strong className={quantityAt(item)<=0?styles.stockEmpty:quantityAt(item)<=5?styles.stockLow:styles.stockOk}>{item.tracked?quantityAt(item):"Not tracked"}</strong><span><i className={`${styles.tag} ${quantityAt(item)<=0?styles.tagGray:styles.tagGreen}`}>{quantityAt(item)>0?"In stock":"Out of stock"}</i></span><InventoryProductImage item={item}/><span>{item.updatedAt?new Date(item.updatedAt).toLocaleDateString():"—"}</span><button className={styles.secondary} type="button" onClick={()=>openProduct(item)}>View / edit</button></div>):<div className={styles.empty}>{loading?"Loading Shopify inventory...":message||"No inventory matches these filters."}</div>}
       </div>
       {pageInfo.hasNextPage&&<div className={styles.inlineActions}><button className={styles.secondary} disabled={loading} onClick={()=>void load(search,pageInfo.endCursor)}>Load more</button></div>}
     </section>
-    {editing&&productDraft&&<section className={`${styles.card} ${styles.productEditor}`}>
-      <div className={styles.cardHead}><div><h2>View or edit product</h2><p>{editing.variant} · Changes are saved directly to Shopify.</p></div><button className={styles.secondary} type="button" onClick={closeProduct}>Close</button></div>
-      <div className={styles.productEditorGrid}>
-        <label>Product title<input value={productDraft.title} onChange={event=>setProductDraft(current=>current&&({...current,title:event.target.value}))}/></label>
-        <label>Product status<select value={productDraft.status} onChange={event=>setProductDraft(current=>current&&({...current,status:event.target.value}))}><option value="ACTIVE">Active</option><option value="DRAFT">Draft</option><option value="ARCHIVED">Archived</option></select></label>
-        <label>SKU<input value={productDraft.sku} onChange={event=>setProductDraft(current=>current&&({...current,sku:event.target.value}))}/></label>
-        <label>Barcode<input value={productDraft.barcode} onChange={event=>setProductDraft(current=>current&&({...current,barcode:event.target.value}))}/></label>
-        <label>Price<input type="number" min="0" step="0.01" value={productDraft.price} onChange={event=>setProductDraft(current=>current&&({...current,price:event.target.value}))}/></label>
-        <label>Compare-at price<input type="number" min="0" step="0.01" value={productDraft.compareAtPrice} onChange={event=>setProductDraft(current=>current&&({...current,compareAtPrice:event.target.value}))} placeholder="No compare-at price"/></label>
-        <label>Out-of-stock policy<select value={productDraft.inventoryPolicy} onChange={event=>setProductDraft(current=>current&&({...current,inventoryPolicy:event.target.value}))}><option value="DENY">Stop selling</option><option value="CONTINUE">Continue selling</option></select></label>
-        <label className={styles.productCheck}><input type="checkbox" checked={productDraft.tracked} onChange={event=>setProductDraft(current=>current&&({...current,tracked:event.target.checked}))}/>Track inventory for this variant</label>
-      </div>
-      <div className={styles.productLocations}><strong>Inventory by location</strong>{editing.levels.length?editing.levels.map(level=><div key={level.locationId}><span>{level.locationName}</span><b>{level.quantity}</b></div>):<small>No active inventory levels.</small>}</div>
-      <div className={styles.inlineActions}><button className={styles.secondary} type="button" onClick={closeProduct}>Cancel</button><button className={styles.primary} type="button" disabled={productSaving} onClick={()=>void saveProduct()}>{productSaving?"Saving...":"Save product"}</button></div>
-    </section>}
   </div>
 }
 
+function InventoryBulkEditor({items,locations,initialLocationId,onClose,onSaved}:{items:InventoryItem[];locations:InventoryLocation[];initialLocationId:string;onClose:()=>void;onSaved:(changed:number)=>Promise<void>}){
+  const quantityAtLocation=(item:InventoryItem,targetLocationId:string)=>item.levels.find(level=>level.locationId===targetLocationId)?.quantity??0;
+  const makeDraft=(targetLocationId:string)=>Object.fromEntries(items.map(item=>[item.id,String(quantityAtLocation(item,targetLocationId))]));
+  const [locationId,setLocationId]=useState(initialLocationId||locations[0]?.id||"");
+  const [draft,setDraft]=useState<Record<string,string>>(()=>makeDraft(initialLocationId||locations[0]?.id||""));
+  const [query,setQuery]=useState("");
+  const [stockFilter,setStockFilter]=useState("all");
+  const [statusFilter,setStatusFilter]=useState("all");
+  const [changedOnly,setChangedOnly]=useState(false);
+  const [fillValue,setFillValue]=useState("");
+  const [saving,setSaving]=useState(false);
+  const [message,setMessage]=useState("");
+  const normalizedQuery=query.trim().toLowerCase();
+  const changedIds=items.filter(item=>item.tracked&&Math.max(0,Math.floor(Number(draft[item.id])||0))!==quantityAtLocation(item,locationId)).map(item=>item.id);
+  const visible=items.filter(item=>{
+    const quantity=Math.max(0,Math.floor(Number(draft[item.id])||0));
+    const matchesQuery=!normalizedQuery||[item.product,item.variant,item.sku,item.barcode].some(value=>value.toLowerCase().includes(normalizedQuery));
+    const matchesStatus=statusFilter==="all"||item.productStatus===statusFilter;
+    const matchesStock=stockFilter==="all"||(stockFilter==="in"&&item.tracked&&quantity>0)||(stockFilter==="low"&&item.tracked&&quantity>0&&quantity<=5)||(stockFilter==="out"&&item.tracked&&quantity<=0)||(stockFilter==="untracked"&&!item.tracked);
+    return matchesQuery&&matchesStatus&&matchesStock&&(!changedOnly||changedIds.includes(item.id));
+  });
+  const changeLocation=(nextLocationId:string)=>{setLocationId(nextLocationId);setDraft(makeDraft(nextLocationId));setMessage("")};
+  const resetChanges=()=>{setDraft(makeDraft(locationId));setMessage("")};
+  const fillVisible=()=>{if(fillValue.trim()==="")return;const quantity=String(Math.max(0,Math.floor(Number(fillValue)||0)));setDraft(current=>({...current,...Object.fromEntries(visible.filter(item=>item.tracked).map(item=>[item.id,quantity]))}))};
+  const save=async()=>{
+    const changedItems=items.filter(item=>changedIds.includes(item.id)&&item.inventoryItemId);
+    const changes:{inventoryItemId:string;locationId:string;delta?:number;activateQuantity?:number}[]=[];
+    changedItems.forEach(item=>{const level=item.levels.find(entry=>entry.locationId===locationId);const current=level?.quantity??0;const target=Math.max(0,Math.floor(Number(draft[item.id])||0));if(!level){if(target>0)changes.push({inventoryItemId:item.inventoryItemId,locationId,activateQuantity:target});return}const delta=target-current;if(delta)changes.push({inventoryItemId:item.inventoryItemId,locationId,delta})});
+    if(!changes.length){setMessage("No inventory quantities have changed.");return}
+    setSaving(true);setMessage(`Saving ${changes.length} changed row${changes.length===1?"":"s"} to Shopify...`);
+    try{const response=await fetch("/api/shopify/inventory",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({changes})});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to save bulk inventory.");await onSaved(data.changed||changes.length)}catch(error){setMessage(error instanceof Error?error.message:"Unable to save bulk inventory.");setSaving(false)}
+  };
+  return <div className={styles.bulkEditorPage}>
+    <header className={styles.bulkEditorHeader}>
+      <div><small>INVENTORY / BULK EDITOR</small><h2>Spreadsheet inventory editor</h2><p>Edit quantities directly in the Available column, then save all changed rows together.</p></div>
+      <div><button className={styles.secondary} disabled={saving||!changedIds.length} onClick={resetChanges}>Reset changes</button><button className={styles.secondary} disabled={saving} onClick={onClose}>Close</button><button className={styles.primary} disabled={saving||!changedIds.length} onClick={()=>void save()}>{saving?"Saving...":`Save ${changedIds.length} change${changedIds.length===1?"":"s"}`}</button></div>
+    </header>
+    <section className={styles.bulkEditorFilters}>
+      <label className={styles.bulkSearch}>Search products<input value={query} onChange={event=>setQuery(event.target.value)} placeholder="Product, variant, SKU, or barcode"/></label>
+      <label>Location<select value={locationId} onChange={event=>changeLocation(event.target.value)}>{locations.map(location=><option key={location.id} value={location.id}>{location.name}</option>)}</select></label>
+      <label>Stock<select value={stockFilter} onChange={event=>setStockFilter(event.target.value)}><option value="all">All inventory</option><option value="in">In stock</option><option value="low">Low stock</option><option value="out">Out of stock</option><option value="untracked">Not tracked</option></select></label>
+      <label>Status<select value={statusFilter} onChange={event=>setStatusFilter(event.target.value)}><option value="all">All statuses</option><option value="ACTIVE">Active</option><option value="DRAFT">Draft</option><option value="ARCHIVED">Archived</option></select></label>
+      <label className={styles.bulkChangedCheck}><input type="checkbox" checked={changedOnly} onChange={event=>setChangedOnly(event.target.checked)}/>Changed rows only</label>
+      <div className={styles.bulkFill}><label>Set visible quantities<input type="number" min="0" value={fillValue} onChange={event=>setFillValue(event.target.value)} placeholder="0"/></label><button className={styles.secondary} disabled={!visible.some(item=>item.tracked)||fillValue.trim()===""} onClick={fillVisible}>Apply</button></div>
+    </section>
+    {message&&<div className={styles.bulkEditorMessage}>{message}</div>}
+    <div className={styles.bulkSheetWrap}>
+      <table className={styles.bulkSheet}>
+        <thead><tr><th>#</th><th>Product</th><th>Variant</th><th>SKU</th><th>Price</th><th>Status</th><th>Tracking</th><th>Available</th></tr></thead>
+        <tbody>{visible.length?visible.map((item,index)=>{const changed=changedIds.includes(item.id);return <tr key={item.id} className={changed?styles.bulkRowChanged:""}><td>{index+1}</td><td><strong>{item.product}</strong></td><td>{item.variant}</td><td>{item.sku||"—"}</td><td>{item.price}</td><td><i className={[styles.tag,item.productStatus==="ACTIVE"?styles.tagGreen:styles.tagGray].join(" ")}>{item.productStatus.toLowerCase()}</i></td><td>{item.tracked?"Tracked":"Not tracked"}</td><td><input type="number" min="0" disabled={!item.tracked} aria-label={`Available quantity for ${item.name}`} value={draft[item.id]??"0"} onChange={event=>setDraft(current=>({...current,[item.id]:event.target.value}))}/>{changed&&<span>Edited</span>}</td></tr>}):<tr><td colSpan={8} className={styles.bulkSheetEmpty}>No inventory matches these filters.</td></tr>}</tbody>
+      </table>
+    </div>
+    <footer className={styles.bulkEditorFooter}><span>{visible.length} visible of {items.length} loaded variants</span><strong>{changedIds.length} unsaved change{changedIds.length===1?"":"s"}</strong></footer>
+  </div>;
+}
+
+const emptyPromotionDraft=():PromotionDraft=>({method:"code",title:"",code:"",valueType:"percentage",value:"10",minimumSubtotal:"",usageLimit:"",startsAt:"",endsAt:"",appliesOncePerCustomer:false});
+const toDateTimeLocal=(value?:string|null)=>{if(!value)return "";const date=new Date(value);if(Number.isNaN(date.getTime()))return "";return new Date(date.getTime()-date.getTimezoneOffset()*60000).toISOString().slice(0,16)};
+
 function Promotions(){
-  const [items,setItems]=useState<Promotion[]>([]);const [search,setSearch]=useState("");const [statusFilter,setStatusFilter]=useState("all");const [methodFilter,setMethodFilter]=useState("all");const [loading,setLoading]=useState(true);const [message,setMessage]=useState("");const [showCreate,setShowCreate]=useState(false);const [pageInfo,setPageInfo]=useState<{hasNextPage:boolean;endCursor:string|null}>({hasNextPage:false,endCursor:null});
-  const [draft,setDraft]=useState({method:"code",title:"",code:"",valueType:"percentage",value:"10",minimumSubtotal:"",usageLimit:"",startsAt:"",endsAt:"",appliesOncePerCustomer:false});
+  const [items,setItems]=useState<Promotion[]>([]);const [search,setSearch]=useState("");const [statusFilter,setStatusFilter]=useState("all");const [methodFilter,setMethodFilter]=useState("all");const [loading,setLoading]=useState(true);const [message,setMessage]=useState("");const [showCreate,setShowCreate]=useState(false);const [editing,setEditing]=useState<Promotion|null>(null);const [pageInfo,setPageInfo]=useState<{hasNextPage:boolean;endCursor:string|null}>({hasNextPage:false,endCursor:null});
+  const [draft,setDraft]=useState<PromotionDraft>(emptyPromotionDraft);
   const load=async(term:string,after:string|null)=>{setLoading(true);setMessage("");try{const params=new URLSearchParams();if(term.trim())params.set("search",term.trim());if(after)params.set("after",after);const response=await fetch(`/api/shopify/promotions?${params}`,{cache:"no-store"});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to load promotions.");const next=Array.isArray(data.promotions)?data.promotions:[];setItems(current=>after?[...current,...next]:next);setPageInfo(data.pageInfo||{hasNextPage:false,endCursor:null});if(!next.length)setMessage(term?"No promotions match this search.":"No Shopify promotions were returned.")}catch(error){setMessage(error instanceof Error?error.message:"Unable to load promotions.");if(!after)setItems([])}finally{setLoading(false)}};
   useEffect(()=>{/* eslint-disable react-hooks/set-state-in-effect */void load("",null);/* eslint-enable react-hooks/set-state-in-effect */},[]);
-  const methodOf=(item:Promotion)=>item.type.startsWith("Automatic")?"automatic":"code";const filtered=items.filter(item=>(statusFilter==="all"||item.status===statusFilter)&&(methodFilter==="all"||methodOf(item)===methodFilter));
-  const createPromotion=async()=>{setLoading(true);setMessage("Creating promotion in Shopify...");try{const payload={...draft,startsAt:draft.startsAt?new Date(draft.startsAt).toISOString():undefined,endsAt:draft.endsAt?new Date(draft.endsAt).toISOString():undefined};const response=await fetch("/api/shopify/promotions",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to create promotion.");setMessage("Promotion created in Shopify.");setShowCreate(false);setDraft({method:"code",title:"",code:"",valueType:"percentage",value:"10",minimumSubtotal:"",usageLimit:"",startsAt:"",endsAt:"",appliesOncePerCustomer:false});await load("",null)}catch(error){setMessage(error instanceof Error?error.message:"Unable to create promotion.")}finally{setLoading(false)}};
+  const methodOf=(item:Promotion):PromotionDraft["method"]=>item.type.startsWith("Automatic")?"automatic":"code";const filtered=items.filter(item=>(statusFilter==="all"||item.status===statusFilter)&&(methodFilter==="all"||methodOf(item)===methodFilter));
+  const closePromotionForm=()=>{setShowCreate(false);setEditing(null);setDraft(emptyPromotionDraft())};
+  const openCreatePromotion=()=>{if(showCreate&&!editing){closePromotionForm();return}setEditing(null);setDraft(emptyPromotionDraft());setShowCreate(true)};
+  const openEditPromotion=(item:Promotion)=>{if(!item.editable){setMessage("This promotion is controlled by a Shopify app and must be edited in Shopify.");return}setEditing(item);setDraft({method:methodOf(item),title:item.title,code:methodOf(item)==="code"?item.code:"",valueType:item.valueType||"percentage",value:String(item.value||10),minimumSubtotal:item.minimumSubtotal||"",usageLimit:item.usageLimit?String(item.usageLimit):"",startsAt:toDateTimeLocal(item.startsAt),endsAt:toDateTimeLocal(item.endsAt),appliesOncePerCustomer:Boolean(item.appliesOncePerCustomer)});setShowCreate(true);window.scrollTo({top:0,behavior:"smooth"})};
+  const savePromotion=async()=>{const updating=Boolean(editing);setLoading(true);setMessage(updating?"Updating promotion in Shopify...":"Creating promotion in Shopify...");try{const payload={...draft,id:editing?.id,type:editing?.type,startsAt:draft.startsAt?new Date(draft.startsAt).toISOString():undefined,endsAt:draft.endsAt?new Date(draft.endsAt).toISOString():undefined};const response=await fetch("/api/shopify/promotions",{method:updating?"PATCH":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});const data=await response.json();if(!response.ok)throw new Error(data.error||(updating?"Unable to update promotion.":"Unable to create promotion."));setMessage(updating?"Promotion updated in Shopify.":"Promotion created in Shopify.");closePromotionForm();await load("",null)}catch(error){setMessage(error instanceof Error?error.message:updating?"Unable to update promotion.":"Unable to create promotion.")}finally{setLoading(false)}};
   const deletePromotion=async(item:Promotion)=>{if(!window.confirm(`Delete ${item.title}? This permanently removes the promotion from Shopify.`))return;setLoading(true);setMessage("Deleting promotion...");try{const response=await fetch(`/api/shopify/promotions?id=${encodeURIComponent(item.id)}&method=${methodOf(item)}`,{method:"DELETE"});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to delete promotion.");setItems(current=>current.filter(entry=>entry.id!==item.id));setMessage(`${item.title} was deleted.`)}catch(error){setMessage(error instanceof Error?error.message:"Unable to delete promotion.")}finally{setLoading(false)}};
   const active=filtered.filter(item=>item.status==="ACTIVE").length;const scheduled=filtered.filter(item=>item.status==="SCHEDULED").length;const uses=filtered.reduce((sum,item)=>sum+item.usageCount,0);
-  return <div className={styles.content}><div className={styles.actionHeader}><div><h2>Promotions</h2><p>Create and manage Shopify discounts.</p></div><div className={styles.inlineActions}><button className={styles.primary} onClick={()=>setShowCreate(value=>!value)}>{showCreate?"Close creator":"Create promotion"}</button></div></div>{showCreate&&<section className={`${styles.card} ${styles.promotionCreator}`}><div className={styles.cardHead}><div><h2>New promotion</h2><p>Basic percentage or fixed-amount discount for all products.</p></div></div><div className={styles.promotionForm}><label>Method<select value={draft.method} onChange={event=>setDraft(current=>({...current,method:event.target.value}))}><option value="code">Discount code</option><option value="automatic">Automatic discount</option></select></label><label>Title<input value={draft.title} onChange={event=>setDraft(current=>({...current,title:event.target.value}))} placeholder="Summer sale"/></label>{draft.method==="code"&&<label>Code<input value={draft.code} onChange={event=>setDraft(current=>({...current,code:event.target.value.toUpperCase()}))} placeholder="SUMMER20"/></label>}<label>Value type<select value={draft.valueType} onChange={event=>setDraft(current=>({...current,valueType:event.target.value}))}><option value="percentage">Percentage</option><option value="fixed">Fixed amount</option></select></label><label>Discount value<input type="number" min="0.01" step="0.01" value={draft.value} onChange={event=>setDraft(current=>({...current,value:event.target.value}))}/></label><label>Minimum subtotal<input type="number" min="0" step="0.01" value={draft.minimumSubtotal} onChange={event=>setDraft(current=>({...current,minimumSubtotal:event.target.value}))} placeholder="No minimum"/></label>{draft.method==="code"&&<label>Usage limit<input type="number" min="1" value={draft.usageLimit} onChange={event=>setDraft(current=>({...current,usageLimit:event.target.value}))} placeholder="Unlimited"/></label>}<label>Starts<input type="datetime-local" value={draft.startsAt} onChange={event=>setDraft(current=>({...current,startsAt:event.target.value}))}/></label><label>Ends<input type="datetime-local" value={draft.endsAt} onChange={event=>setDraft(current=>({...current,endsAt:event.target.value}))}/></label>{draft.method==="code"&&<label className={styles.promotionCheck}><input type="checkbox" checked={draft.appliesOncePerCustomer} onChange={event=>setDraft(current=>({...current,appliesOncePerCustomer:event.target.checked}))}/>Limit to one use per customer</label>}</div><div className={styles.inlineActions}><button className={styles.secondary} onClick={()=>setShowCreate(false)}>Cancel</button><button className={styles.primary} disabled={loading} onClick={()=>void createPromotion()}>{loading?"Creating...":"Create in Shopify"}</button></div></section>}<div className={styles.promotionFilters}><form className={styles.customerSearch} onSubmit={event=>{event.preventDefault();void load(search,null)}}><input className={styles.smallSearch} placeholder="Search promotion title" value={search} onChange={event=>setSearch(event.target.value)}/><button className={styles.primary} disabled={loading}>Search</button></form><select value={statusFilter} onChange={event=>setStatusFilter(event.target.value)}><option value="all">All statuses</option><option value="ACTIVE">Active</option><option value="SCHEDULED">Scheduled</option><option value="EXPIRED">Expired</option></select><select value={methodFilter} onChange={event=>setMethodFilter(event.target.value)}><option value="all">All methods</option><option value="code">Discount code</option><option value="automatic">Automatic</option></select></div><div className={styles.segmentGrid}>{[["Promotions","Matching filters",filtered.length],["Active","Currently available",active],["Scheduled","Starting later",scheduled],["Uses","Reported by Shopify",uses]].map(([title,copy,value])=><article className={styles.segment} key={title}><span>%</span><div><strong>{title}</strong><small>{copy}</small></div><b>{value}</b></article>)}</div><section className={`${styles.card} ${styles.promotionManageTable}`}><div className={styles.cardHead}><div><h2>Promotion directory</h2><p>{message||"Shopify code and automatic discounts."}</p></div><i className={`${styles.tag} ${message?styles.tagGray:styles.tagGreen}`}>{loading?"Loading":message?"Notice":"Connected"}</i></div><div className={styles.dataTable}><div className={styles.tableHead}><span>Promotion</span><span>Method</span><span>Status</span><span>Starts</span><span>Ends</span><span>Uses</span><span>Action</span></div>{filtered.length?filtered.map(item=><div className={styles.tableRow} key={item.id}><div className={styles.customerCell}><strong>{item.title}</strong><small>{item.type.replace(/([a-z])([A-Z])/g,"$1 $2")}</small></div><strong>{item.code}</strong><span><i className={`${styles.tag} ${item.status==="ACTIVE"?styles.tagGreen:item.status==="SCHEDULED"?styles.tagBlue:styles.tagGray}`}>{item.status.toLowerCase()}</i></span><span>{item.startsAt?new Date(item.startsAt).toLocaleDateString():"Immediately"}</span><span>{item.endsAt?new Date(item.endsAt).toLocaleDateString():"No end date"}</span><strong>{item.usageCount}</strong><button className={styles.delete} disabled={loading} onClick={()=>void deletePromotion(item)}>Delete</button></div>):<div className={styles.empty}>{loading?"Loading Shopify promotions...":message||"No promotions match these filters."}</div>}</div>{pageInfo.hasNextPage&&<div className={styles.inlineActions}><button className={styles.secondary} disabled={loading} onClick={()=>void load(search,pageInfo.endCursor)}>Load more</button></div>}</section></div>
+  return <div className={styles.content}>
+    <div className={styles.actionHeader}>
+      <div><h2>Promotions</h2><p>Create and manage Shopify discounts.</p></div>
+      <div className={styles.inlineActions}><button className={styles.primary} onClick={openCreatePromotion}>{showCreate&&!editing?"Close creator":"Create promotion"}</button></div>
+    </div>
+    {showCreate&&<section className={[styles.card,styles.promotionCreator].join(" ")}>
+      <div className={styles.cardHead}><div><h2>{editing?"Edit promotion":"New promotion"}</h2><p>{editing?(editing.valueEditable?"Update the discount details directly in Shopify.":"Update the title, code, usage limits, and schedule. Product rules stay unchanged."):"Basic percentage or fixed-amount discount for all products."}</p></div></div>
+      <div className={styles.promotionForm}>
+        <label>Method<select value={draft.method} disabled={Boolean(editing)} onChange={event=>setDraft(current=>({...current,method:event.target.value as PromotionDraft["method"]}))}><option value="code">Discount code</option><option value="automatic">Automatic discount</option></select></label>
+        <label>Title<input value={draft.title} onChange={event=>setDraft(current=>({...current,title:event.target.value}))} placeholder="Summer sale"/></label>
+        {draft.method==="code"&&<label>Code<input value={draft.code} onChange={event=>setDraft(current=>({...current,code:event.target.value.toUpperCase()}))} placeholder="SUMMER20"/></label>}
+        {(!editing||editing.valueEditable)&&<><label>Value type<select value={draft.valueType} onChange={event=>setDraft(current=>({...current,valueType:event.target.value as PromotionDraft["valueType"]}))}><option value="percentage">Percentage</option><option value="fixed">Fixed amount</option></select></label>
+        <label>Discount value<input type="number" min="0.01" step="0.01" value={draft.value} onChange={event=>setDraft(current=>({...current,value:event.target.value}))}/></label>
+        <label>Minimum subtotal<input type="number" min="0" step="0.01" value={draft.minimumSubtotal} onChange={event=>setDraft(current=>({...current,minimumSubtotal:event.target.value}))} placeholder="No minimum"/></label></>}
+        {draft.method==="code"&&<label>Usage limit<input type="number" min="1" value={draft.usageLimit} onChange={event=>setDraft(current=>({...current,usageLimit:event.target.value}))} placeholder="Unlimited"/></label>}
+        <label>Starts<input type="datetime-local" value={draft.startsAt} onChange={event=>setDraft(current=>({...current,startsAt:event.target.value}))}/></label>
+        <label>Ends<input type="datetime-local" value={draft.endsAt} onChange={event=>setDraft(current=>({...current,endsAt:event.target.value}))}/></label>
+        {draft.method==="code"&&<label className={styles.promotionCheck}><input type="checkbox" checked={draft.appliesOncePerCustomer} onChange={event=>setDraft(current=>({...current,appliesOncePerCustomer:event.target.checked}))}/>Limit to one use per customer</label>}
+      </div>
+      <div className={styles.inlineActions}><button className={styles.secondary} onClick={closePromotionForm}>Cancel</button><button className={styles.primary} disabled={loading} onClick={()=>void savePromotion()}>{loading?(editing?"Saving...":"Creating..."):(editing?"Save changes":"Create in Shopify")}</button></div>
+    </section>}
+    <div className={styles.promotionFilters}>
+      <form className={styles.customerSearch} onSubmit={event=>{event.preventDefault();void load(search,null)}}><input className={styles.smallSearch} placeholder="Search promotion title" value={search} onChange={event=>setSearch(event.target.value)}/><button className={styles.primary} disabled={loading}>Search</button></form>
+      <select value={statusFilter} onChange={event=>setStatusFilter(event.target.value)}><option value="all">All statuses</option><option value="ACTIVE">Active</option><option value="SCHEDULED">Scheduled</option><option value="EXPIRED">Expired</option></select>
+      <select value={methodFilter} onChange={event=>setMethodFilter(event.target.value)}><option value="all">All methods</option><option value="code">Discount code</option><option value="automatic">Automatic</option></select>
+    </div>
+    <div className={styles.segmentGrid}>{[["Promotions","Matching filters",filtered.length],["Active","Currently available",active],["Scheduled","Starting later",scheduled],["Uses","Reported by Shopify",uses]].map(([title,copy,value])=><article className={styles.segment} key={title}><span>%</span><div><strong>{title}</strong><small>{copy}</small></div><b>{value}</b></article>)}</div>
+    <section className={[styles.card,styles.promotionManageTable].join(" ")}>
+      <div className={styles.cardHead}><div><h2>Promotion directory</h2><p>{message||"Shopify code and automatic discounts."}</p></div><i className={[styles.tag,message?styles.tagGray:styles.tagGreen].join(" ")}>{loading?"Loading":message?"Notice":"Connected"}</i></div>
+      <div className={styles.dataTable}>
+        <div className={styles.tableHead}><span>Promotion</span><span>Method</span><span>Status</span><span>Starts</span><span>Ends</span><span>Uses</span><span>Action</span></div>
+        {filtered.length?filtered.map(item=><div className={styles.tableRow} key={item.id}>
+          <div className={styles.customerCell}><strong>{item.title}</strong><small>{item.type.replace(/([a-z])([A-Z])/g,"$1 $2")}</small></div>
+          <strong>{item.code}</strong>
+          <span><i className={[styles.tag,item.status==="ACTIVE"?styles.tagGreen:item.status==="SCHEDULED"?styles.tagBlue:styles.tagGray].join(" ")}>{item.status.toLowerCase()}</i></span>
+          <span>{item.startsAt?new Date(item.startsAt).toLocaleDateString():"Immediately"}</span>
+          <span>{item.endsAt?new Date(item.endsAt).toLocaleDateString():"No end date"}</span>
+          <strong>{item.usageCount}</strong>
+          <div className={styles.promotionActions}><button className={styles.secondary} disabled={loading||!item.editable} title={item.editable?"Edit promotion":"App-controlled promotions must be edited in Shopify"} onClick={()=>openEditPromotion(item)}>Edit</button><button className={styles.delete} disabled={loading} onClick={()=>void deletePromotion(item)}>Delete</button></div>
+        </div>):<div className={styles.empty}>{loading?"Loading Shopify promotions...":message||"No promotions match these filters."}</div>}
+      </div>
+      {pageInfo.hasNextPage&&<div className={styles.inlineActions}><button className={styles.secondary} disabled={loading} onClick={()=>void load(search,pageInfo.endCursor)}>Load more</button></div>}
+    </section>
+  </div>;
+}
+
+function AppActivityChart({data}:{data:AppAnalytics["daily"]}){
+  const width=720;const height=230;const inset=14;const max=Math.max(1,...data.map(day=>day.views));const step=data.length>1?(width-inset*2)/(data.length-1):0;
+  const points=data.map((day,index)=>({x:inset+index*step,y:height-inset-(day.views/max)*(height-inset*2),...day}));
+  const line=points.map(point=>`${point.x},${point.y}`).join(" ");const area=points.length?`M ${points[0].x} ${height-inset} L ${points.map(point=>`${point.x} ${point.y}`).join(" L ")} L ${points.at(-1)?.x} ${height-inset} Z`:"";const labelEvery=Math.max(1,Math.ceil(data.length/7));
+  return <div className={styles.salesChart}><div className={styles.salesChartValue}><strong>{data.reduce((sum,day)=>sum+day.views,0).toLocaleString()}</strong><span>Screen views in selected period</span></div><svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Daily app screen views"><defs><linearGradient id="app-activity-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#4d92c8" stopOpacity=".32"/><stop offset="100%" stopColor="#4d92c8" stopOpacity=".02"/></linearGradient></defs>{[.25,.5,.75,1].map(value=><line key={value} x1={inset} x2={width-inset} y1={height-inset-value*(height-inset*2)} y2={height-inset-value*(height-inset*2)} stroke="#e7edf1" strokeWidth="1"/>)}{area&&<path d={area} fill="url(#app-activity-fill)"/>}<polyline points={line} fill="none" stroke="#397ab5" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round"/>{data.length<=30&&points.map(point=><circle key={point.date} cx={point.x} cy={point.y} r="3" fill="#fff" stroke="#397ab5" strokeWidth="2"/>)}</svg><div className={styles.analyticsAxis}>{data.map((day,index)=>index%labelEvery===0||index===data.length-1?<span key={day.date}>{day.label}</span>:null)}</div></div>
+}
+
+function DeviceActivityChart({data}:{data:AppAnalytics["daily"]}){
+  const max=Math.max(1,...data.map(day=>day.devices));const display=data.length>30?data.filter((_,index)=>index%Math.ceil(data.length/30)===0):data;
+  return <div className={styles.orderVolumeChart}>{display.map(day=><div key={day.date} title={`${day.label}: ${day.devices} active devices`}><span style={{height:`${Math.max(3,(day.devices/max)*100)}%`}}/><small>{display.length<=10?day.label:""}</small></div>)}</div>
+}
+
+function AnalyticsBreakdown({title,items,unit="devices"}:{title:string;items:{label:string;value:number}[];unit?:string}){
+  const colors=["#397ab5","#70a8cf","#96c6b0","#e3b86b","#d98787","#9a86c8"];const total=items.reduce((sum,item)=>sum+item.value,0);let cursor=0;const stops=items.map((item,index)=>{const start=cursor;cursor+=total?(item.value/total)*100:0;return `${colors[index%colors.length]} ${start}% ${cursor}%`});
+  return <section className={styles.analyticsBreakdown}><div className={styles.analyticsDonut} style={{background:total?`conic-gradient(${stops.join(",")})`:"#edf1f4"}}><div><strong>{total}</strong><small>{unit}</small></div></div><div className={styles.analyticsLegend}><h3>{title}</h3>{items.length?items.map((item,index)=><div key={item.label}><i style={{background:colors[index%colors.length]}}/><span>{item.label.toLowerCase().replaceAll("_"," ")}</span><strong>{item.value}</strong></div>):<small>No app activity in this period.</small>}</div></section>
 }
 
 function Analytics(){
-  const [summary,setSummary]=useState<AnalyticsSummary|null>(null);const [message,setMessage]=useState("");
-  useEffect(()=>{fetch("/api/analytics/summary",{cache:"no-store"}).then(async response=>{if(!response.ok)throw new Error("Analytics API unavailable.");setSummary(await response.json())}).catch(error=>setMessage(error.message))},[]);
-  const maxDay=Math.max(1,...(summary?.days.map(day=>day.value)||[1]));const productRate=summary?.screenViews?Math.round((summary.productViews/summary.screenViews)*100):0;const cartRate=summary?.productViews?Math.round((summary.cartViews/summary.productViews)*100):0;
-  return <div className={styles.content}><section className={styles.opsHero}><div><p>APP ANALYTICS</p><h2>Last 30 days</h2><span>Recorded app sessions, screen activity and shopping intent.</span></div><i className={`${styles.tag} ${message?styles.tagGray:styles.tagGreen}`}>{message?"Unavailable":"Live records"}</i></section>{message&&<section className={styles.card}>{message}</section>}<div className={styles.metricGrid}>{[[summary?.sessions??"—","Unique devices","Recorded sessions"],[summary?.screenViews??"—","Screen views","All tracked screens"],[summary?.productViews??"—","Product views",`${productRate}% of screen views`],[summary?.cartViews??"—","Cart views",`${cartRate}% of product views`]].map(([value,label,note])=><article className={styles.metric} key={label}><div className={styles.metricIcon}>↗</div><p>{label}</p><strong>{value}</strong><span>{note}</span></article>)}</div><div className={styles.dashboardGrid}><section className={styles.card}><div className={styles.cardHead}><div><h2>Daily active devices</h2><p>Unique devices with screen views · last 7 days</p></div></div><div className={styles.chart}>{(summary?.days||[]).map(day=><div key={day.label} className={styles.barWrap}><div className={styles.bar} style={{height:`${Math.max(3,(day.value/maxDay)*100)}%`}}/><small>{day.label}</small></div>)}</div></section><section className={styles.card}><div className={styles.cardHead}><div><h2>Engagement signals</h2><p>Current local analytics coverage</p></div></div><div className={styles.analyticsSignals}><div><strong>{summary?.notificationDevices??"—"}</strong><small>Push-enabled devices</small></div><div><strong>{productRate}%</strong><small>Screen-to-product rate</small></div><div><strong>{cartRate}%</strong><small>Product-to-cart rate</small></div><div><strong>{summary?.purchases??"—"}</strong><small>Purchases require webhooks</small></div></div></section></div></div>
+  const [analytics,setAnalytics]=useState<AppAnalytics|null>(null);const [range,setRange]=useState<7|30|90>(30);const [loading,setLoading]=useState(true);const [message,setMessage]=useState("");
+  useEffect(()=>{let active=true;fetch(`/api/analytics/summary?days=${range}`,{cache:"no-store"}).then(async response=>{const data=await response.json();if(!response.ok)throw new Error(data.error||"App analytics unavailable.");if(active)setAnalytics(data)}).catch(error=>{if(active)setMessage(error instanceof Error?error.message:"App analytics unavailable.")}).finally(()=>{if(active)setLoading(false)});return()=>{active=false}},[range]);
+  const maxProduct=Math.max(1,...(analytics?.topProducts.map(product=>product.views)||[1]));const maxScreen=Math.max(1,...(analytics?.screens.map(screen=>screen.views)||[1]));const maxHour=Math.max(1,...(analytics?.hours.map(hour=>hour.value)||[1]));
+  const metrics=analytics?[{label:"Unique devices",value:analytics.metrics.uniqueDevices,change:analytics.changes.uniqueDevices},{label:"Sessions",value:analytics.metrics.sessions,change:analytics.changes.sessions},{label:"Screen views",value:analytics.metrics.screenViews,change:analytics.changes.screenViews},{label:"Product views",value:analytics.metrics.productViews,change:analytics.changes.productViews},{label:"Cart views",value:analytics.metrics.cartViews,change:analytics.changes.cartViews}]:[];
+  return <div className={`${styles.content} ${styles.analyticsPage}`}>
+    <section className={styles.analyticsHero}><div><p>APP ANALYTICS</p><h2>Mobile app performance</h2><span>A Shopify-style overview of activity inside your Carter&apos;s mobile app.</span></div><div className={styles.analyticsHeroActions}><label>Date range<select value={range} onChange={event=>{setLoading(true);setMessage("");setRange(Number(event.target.value) as 7|30|90)}}><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option></select></label><i className={`${styles.tag} ${message?styles.tagGray:styles.tagGreen}`}>{loading?"Loading":message?"Unavailable":"Live app events"}</i></div></section>
+    {message&&<section className={`${styles.card} ${styles.analyticsNotice}`}>{message}</section>}
+    <div className={styles.commerceMetricGrid}>{loading&&!analytics?Array.from({length:5},(_,index)=><article className={`${styles.metric} ${styles.analyticsSkeleton}`} key={index}/>):metrics.map(metric=><article className={styles.metric} key={metric.label}><div className={styles.metricIcon}>{metric.change>=0?"↗":"↘"}</div><p>{metric.label}</p><strong>{metric.value.toLocaleString()}</strong><span className={metric.change>=0?styles.analyticsPositive:styles.analyticsNegative}>{metric.change>=0?"+":""}{metric.change}% <i>vs previous period</i></span></article>)}</div>
+    <div className={styles.analyticsPrimaryGrid}><section className={styles.card}><div className={styles.cardHead}><div><h2>App activity over time</h2><p>Daily screen views · last {range} days</p></div><span className={styles.analyticsRefunds}>{analytics?.metrics.viewsPerSession??"—"} views / session</span></div>{analytics?<AppActivityChart data={analytics.daily}/>:<div className={styles.analyticsChartEmpty}>Loading app activity...</div>}</section><section className={styles.card}><div className={styles.cardHead}><div><h2>Active devices</h2><p>Unique devices active each day</p></div></div>{analytics?<DeviceActivityChart data={analytics.daily}/>:<div className={styles.analyticsChartEmpty}>Loading devices...</div>}</section></div>
+    <div className={styles.analyticsPrimaryGrid}><section className={styles.card}><div className={styles.cardHead}><div><h2>Engagement funnel</h2><p>How active devices move from browsing to cart</p></div></div><div className={styles.analyticsFunnel}>{analytics?.funnel.map((step,index)=><div key={step.label}><span>{index+1}</span><div><strong>{step.label}</strong><small>{step.rate}% of active devices</small><i><b style={{width:`${step.rate}%`}}/></i></div><em>{step.value}</em></div>)}</div></section><section className={`${styles.card} ${styles.analyticsBreakdowns}`}><AnalyticsBreakdown title="Device platform" items={analytics?.platforms||[]}/><AnalyticsBreakdown title="New vs returning" items={analytics?.audience||[]}/></section></div>
+    <div className={styles.analyticsPrimaryGrid}><section className={styles.card}><div className={styles.cardHead}><div><h2>Popular screens</h2><p>Most-viewed destinations in the app</p></div></div><div className={styles.analyticsScreenList}>{analytics?.screens.length?analytics.screens.map((screen,index)=><div key={screen.path}><b>{index+1}</b><div><strong>{screen.label}</strong><small>{screen.path} · {screen.devices} device{screen.devices===1?"":"s"}</small><span><i style={{width:`${Math.max(3,(screen.views/maxScreen)*100)}%`}}/></span></div><em>{screen.views} views</em></div>):<div className={styles.empty}>No screen views in this period.</div>}</div></section><section className={styles.card}><div className={styles.cardHead}><div><h2>Activity by hour</h2><p>Screen views by local hour</p></div></div><div className={styles.analyticsHourly}>{analytics?.hours.map(hour=><div key={hour.hour} title={`${hour.hour}:00 · ${hour.value} views`}><span style={{height:`${Math.max(3,(hour.value/maxHour)*100)}%`}}/><small>{hour.hour%6===0?`${hour.hour}:00`:""}</small></div>)}</div></section></div>
+    <div className={styles.analyticsPrimaryGrid}><section className={styles.card}><div className={styles.cardHead}><div><h2>Top viewed products</h2><p>Product pages receiving the most app attention</p></div></div><div className={styles.analyticsProducts}>{analytics?.topProducts.length?analytics.topProducts.map((product,index)=><div key={product.path}><b>{index+1}</b><span className={styles.analyticsProductFallback}>▦</span><div><strong>{product.label}</strong><small>{product.devices} device{product.devices===1?"":"s"}</small><span><i style={{width:`${Math.max(3,(product.views/maxProduct)*100)}%`}}/></span></div><em>{product.views} views</em></div>):<div className={styles.empty}>No product views in this period.</div>}</div></section><section className={styles.card}><div className={styles.cardHead}><div><h2>Engagement quality</h2><p>Supporting app health indicators</p></div></div><div className={styles.appAnalyticsStrip}>{[[analytics?.metrics.viewsPerSession??"—","Views / session"],[analytics?`${analytics.metrics.bounceRate}%`:"—","Single-view sessions"],[analytics?.metrics.activeDevices24h??"—","Active devices · 24h"],[analytics?.metrics.notificationOpens??"—","Notification opens"],[analytics?.metrics.pushDevices??"—","Push-enabled devices"],[analytics?.recordingSince?new Date(analytics.recordingSince).toLocaleDateString():"—","Recording since"]].map(([value,label])=><div key={label}><strong>{value}</strong><small>{label}</small></div>)}</div></section></div>
+  </div>
 }
 
 function Chat(){return <div className={styles.content}><div className={styles.actionHeader}><div><h2>Customer chat</h2><p>Realtime support inbox readiness.</p></div><button className={styles.secondary}>Configure inbox</button></div><div className={styles.supportGrid}><section className={styles.card}><div className={styles.cardHead}><div><h2>Inbox status</h2><p>Supabase Realtime is required before live chat can be enabled.</p></div></div><div className={styles.empty}>No recorded conversations yet.</div></section><section className={styles.card}><div className={styles.cardHead}><div><h2>Setup checklist</h2><p>Required production pieces.</p></div></div><div className={styles.checkList}>{["Create conversations table","Enable realtime channel","Add staff assignment rules","Connect notification alerts"].map((item)=><div key={item}><span>○</span><strong>{item}</strong></div>)}</div></section></div></div>}
 
 function Marketing(){
-  const [composer,setComposer]=useState(false);
-  const [pushTitle,setPushTitle]=useState("New arrivals are here");
-  const [pushMessage,setPushMessage]=useState("Discover the latest styles in the Carter's app.");
-  const [pushUrl,setPushUrl]=useState("/collection/new-collection-ss26");
-  const [sendStatus,setSendStatus]=useState("");
-  const [campaigns,setCampaigns]=useState<{id:string;title:string;createdAt:string;recipientCount:number;status:string;opens:number;openRate:number|null}[]>([]);
-  const [deviceCount,setDeviceCount]=useState<number|null>(null);
-  const [refreshMessage,setRefreshMessage]=useState("");
+  type Campaign={id:string;title:string;message:string;url:string;createdAt:string;recipientCount:number;status:string;opens:number;openRate:number|null};
+  const templates=[{name:"New arrivals",icon:"✦",title:"New arrivals are here",message:"Discover fresh styles made for every little adventure.",url:"/collection/new-collection-ss26"},{name:"Limited offer",icon:"%",title:"A special offer just for you",message:"Open the Carter's app and shop the latest limited-time offer.",url:"/promotions"},{name:"Back in stock",icon:"↻",title:"Your favorite is back",message:"The item you were waiting for is available again. Shop before it sells out.",url:"/notifications"}];
+  const [composer,setComposer]=useState(false);const [step,setStep]=useState<"compose"|"review">("compose");const [sending,setSending]=useState(false);
+  const [pushTitle,setPushTitle]=useState("New arrivals are here");const [pushMessage,setPushMessage]=useState("Discover fresh styles made for every little adventure.");const [pushUrl,setPushUrl]=useState("/collection/new-collection-ss26");
+  const [sendStatus,setSendStatus]=useState("");const [campaigns,setCampaigns]=useState<Campaign[]>([]);const [deviceCount,setDeviceCount]=useState<number|null>(null);const [refreshMessage,setRefreshMessage]=useState("");
+  const validUrl=pushUrl.startsWith("/")||/^https:\/\//i.test(pushUrl);const canReview=Boolean(pushTitle.trim()&&pushMessage.trim()&&pushTitle.length<=65&&pushMessage.length<=180&&validUrl);
+  const measuredRates=campaigns.flatMap(campaign=>campaign.openRate===null?[]:[campaign.openRate]);const averageOpenRate=measuredRates.length?Math.round(measuredRates.reduce((sum,value)=>sum+value,0)/measuredRates.length*10)/10:null;const totalRecipients=campaigns.reduce((sum,campaign)=>sum+campaign.recipientCount,0);
   const refreshCampaigns=async()=>{setRefreshMessage("Refreshing…");try{const response=await fetch(`/api/push/campaigns?t=${Date.now()}`,{cache:"no-store"});if(!response.ok)throw new Error("Refresh failed");const data=await response.json();setCampaigns(Array.isArray(data.campaigns)?data.campaigns:[]);setRefreshMessage(`Updated ${new Date().toLocaleTimeString()}`)}catch{setRefreshMessage("Unable to refresh")}};
   useEffect(()=>{fetch("/api/analytics/summary").then(response=>response.json()).then(data=>setDeviceCount(Number(data.notificationDevices)||0)).catch(()=>setDeviceCount(null));fetch("/api/push/campaigns").then(response=>response.json()).then(data=>setCampaigns(Array.isArray(data.campaigns)?data.campaigns:[])).catch(()=>setCampaigns([]))},[]);
-  const sendPush=async()=>{setSendStatus("Sending…");try{const response=await fetch("/api/push/send",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({title:pushTitle,message:pushMessage,url:pushUrl})});const result=await response.json();if(!response.ok)throw new Error(result.error||"Unable to send");setSendStatus(result.queued&&result.sent===0?"Queued for local app testing ✓":`Sent to ${result.sent} device${result.sent===1?"":"s"} ✓`);await refreshCampaigns()}catch(error){setSendStatus(error instanceof Error?error.message:"Unable to send")}};
-  return <div className={styles.content}>
-    <div className={styles.actionHeader}><div><h2>Push notifications</h2><p>Create campaigns, reminders and targeted offers.</p></div><button className={styles.primary} onClick={()=>setComposer(true)}>＋ New campaign</button></div>
-    <div className={styles.metricGrid}><MiniMetric value={deviceCount===null?"—":String(deviceCount)} label="Reachable devices" note="Registered push tokens"/><MiniMetric value="—" label="Average open rate" note="Delivery receipts not connected"/><MiniMetric value="—" label="Campaign revenue" note="Shopify attribution not connected"/><MiniMetric value="0" label="Active automations" note="Scheduler not connected"/></div>
-    {composer&&<section className={`${styles.card} ${styles.composer}`}><div className={styles.cardHead}><div><h2>Create push campaign</h2><p>Send immediately to registered app devices or the local test queue.</p></div><button className={styles.iconButton} onClick={()=>setComposer(false)}>×</button></div><div className={styles.formGrid}><label>Notification title<input value={pushTitle} onChange={e=>setPushTitle(e.target.value)}/></label><label>Audience<select defaultValue="all"><option value="all">All registered app users</option></select></label><label>Notification message<input value={pushMessage} onChange={e=>setPushMessage(e.target.value)}/></label><label>Deep link<input value={pushUrl} onChange={e=>setPushUrl(e.target.value)}/></label></div><div className={styles.inlineActions}>{sendStatus&&<span>{sendStatus}</span>}<button className={styles.secondary} onClick={()=>setComposer(false)}>Cancel</button><button className={styles.primary} onClick={sendPush}>Send now</button></div></section>}
-    <section className={styles.card}><div className={styles.cardHead}><div><h2>Sent notifications</h2><p>Unique opens are recorded when a customer taps a notification. {refreshMessage}</p></div><button className={styles.secondary} onClick={refreshCampaigns}>Refresh</button></div>{campaigns.length?<div className={styles.dataTable}><div className={styles.tableHead}><span>Notification</span><span>Sent</span><span>Status</span><span>Recipients</span><span>Opens</span></div>{campaigns.map(c=><div className={styles.tableRow} key={c.id}><strong>{c.title}</strong><span>{new Date(c.createdAt).toLocaleString()}</span><span><i className={`${styles.tag} ${c.status==="submitted"?styles.tagGreen:styles.tagGray}`}>{c.status==="test-queued"?"Local test":c.status}</i></span><span>{c.recipientCount||"Test queue"}</span><span>{c.openRate===null?`${c.opens} test`:`${c.opens} (${c.openRate}%)`}</span></div>)}</div>:<div className={styles.empty}>No sent notifications yet.</div>}</section>
-    <section className={styles.card}><div className={styles.cardHead}><div><h2>Automations</h2><p>These remain off until a persistent job scheduler is connected.</p></div></div><div className={styles.automationGrid}>{[["Cart reminder","Send 2 hours after cart abandonment"],["Back in stock","Notify customers watching a product"],["Birthday offer","Send a personal discount"]].map(([title,text])=><div className={styles.automation} key={title}><span>⚡</span><div><strong>{title}</strong><small>{text}</small></div><label className={styles.switch}><input type="checkbox" disabled/><span/></label></div>)}</div></section>
+  const openComposer=(campaign?:Campaign)=>{if(campaign){setPushTitle(campaign.title);setPushMessage(campaign.message);setPushUrl(campaign.url)}setStep("compose");setSendStatus("");setComposer(true);window.scrollTo({top:0,behavior:"smooth"})};
+  const applyTemplate=(template:(typeof templates)[number])=>{setPushTitle(template.title);setPushMessage(template.message);setPushUrl(template.url);setSendStatus("")};
+  const sendPush=async()=>{if(!canReview||sending)return;setSending(true);setSendStatus("Sending campaign…");try{const response=await fetch("/api/push/send",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({title:pushTitle,message:pushMessage,url:pushUrl})});const result=await response.json();if(!response.ok)throw new Error(result.error||"Unable to send campaign.");setSendStatus(result.queued&&result.sent===0?"Campaign added to the local test inbox.":`Campaign sent to ${result.sent} device${result.sent===1?"":"s"}.`);setComposer(false);setStep("compose");await refreshCampaigns()}catch(error){setSendStatus(error instanceof Error?error.message:"Unable to send campaign.")}finally{setSending(false)}};
+  return <div className={`${styles.content} ${styles.notificationPage}`}>
+    <section className={styles.notificationHero}><div><p>CUSTOMER ENGAGEMENT</p><h2>Push notifications</h2><span>Create concise campaigns, review them before delivery, and measure customer opens.</span></div><button className={styles.primary} onClick={()=>openComposer()}>＋ Create campaign</button></section>
+    {sendStatus&&!composer&&<div className={styles.notificationNotice}>{sendStatus}</div>}
+    <div className={styles.metricGrid}><MiniMetric value={deviceCount===null?"—":deviceCount.toLocaleString()} label="Reachable devices" note="Registered push tokens"/><MiniMetric value={averageOpenRate===null?"—":`${averageOpenRate}%`} label="Average open rate" note="Unique campaign opens"/><MiniMetric value={totalRecipients.toLocaleString()} label="Notifications delivered" note="Recorded campaign recipients"/><MiniMetric value={campaigns.length.toLocaleString()} label="Campaign history" note="Latest 100 retained"/></div>
+    {composer&&<section className={styles.notificationComposer}>
+      <header><div><small>NEW CAMPAIGN</small><h2>{step==="compose"?"Create notification":"Review and send"}</h2><p>{step==="compose"?"Write a focused message and choose where customers land.":"Confirm the audience and message before notifying customers."}</p></div><button className={styles.iconButton} type="button" aria-label="Close composer" onClick={()=>setComposer(false)}>×</button></header>
+      <div className={styles.notificationSteps}><span className={step==="compose"?styles.notificationStepActive:styles.notificationStepDone}><b>{step==="review"?"✓":"1"}</b>Compose</span><i/><span className={step==="review"?styles.notificationStepActive:""}><b>2</b>Review</span></div>
+      {step==="compose"?<div className={styles.notificationComposerBody}>
+        <main>
+          <section className={styles.notificationCard}><div className={styles.notificationCardHead}><div><h3>Message</h3><p>Keep the most important words visible on the lock screen.</p></div></div><label>Title <span>{pushTitle.length}/65</span><input maxLength={65} value={pushTitle} onChange={event=>setPushTitle(event.target.value)} placeholder="Notification title"/></label><label>Message <span>{pushMessage.length}/180</span><textarea rows={5} maxLength={180} value={pushMessage} onChange={event=>setPushMessage(event.target.value)} placeholder="Tell customers what is new"/></label></section>
+          <section className={styles.notificationCard}><div className={styles.notificationCardHead}><div><h3>Destination</h3><p>Open a relevant app screen after the customer taps.</p></div></div><label>Deep link<input value={pushUrl} onChange={event=>setPushUrl(event.target.value)} placeholder="/notifications"/>{!validUrl&&<small className={styles.notificationError}>Use an app path beginning with / or a secure HTTPS link.</small>}</label><div className={styles.deepLinkPresets}>{[["Notifications","/notifications"],["Promotions","/promotions"],["New collection","/collection/new-collection-ss26"]].map(([label,url])=><button type="button" key={url} onClick={()=>setPushUrl(url)}>{label}</button>)}</div></section>
+        </main>
+        <aside><section className={styles.notificationPreviewCard}><div><span>9:41</span><b>•••</b></div><article><span className={styles.notificationAppIcon}>C</span><div><small>CARTER&apos;S · NOW</small><strong>{pushTitle||"Notification title"}</strong><p>{pushMessage||"Your notification message will appear here."}</p></div></article><small>Preview appearance varies by device.</small></section><section className={styles.notificationTemplateCard}><h3>Quick templates</h3><p>Start with a proven campaign structure.</p>{templates.map(template=><button type="button" key={template.name} onClick={()=>applyTemplate(template)}><span>{template.icon}</span><div><strong>{template.name}</strong><small>{template.title}</small></div><b>→</b></button>)}</section></aside>
+      </div>:<div className={styles.notificationReview}>
+        <section className={styles.notificationReviewSummary}><div><span>Audience</span><strong>All registered app users</strong><small>{deviceCount===null?"Recipient count unavailable":`${deviceCount.toLocaleString()} reachable device${deviceCount===1?"":"s"}`}</small></div><div><span>Delivery</span><strong>Send immediately</strong><small>Scheduling is not enabled.</small></div><div><span>Destination</span><strong>{pushUrl}</strong><small>Opened when the notification is tapped.</small></div></section>
+        <section className={styles.notificationReviewMessage}><span className={styles.notificationAppIcon}>C</span><div><small>CARTER&apos;S</small><strong>{pushTitle}</strong><p>{pushMessage}</p></div></section>
+        <div className={styles.notificationWarning}><span>!</span><p><strong>This action notifies customers immediately.</strong> Confirm the message, destination, and reachable audience before sending.</p></div>
+      </div>}
+      {sendStatus&&<div className={styles.notificationComposerStatus}>{sendStatus}</div>}
+      <footer><button className={styles.secondary} type="button" disabled={sending} onClick={()=>step==="review"?setStep("compose"):setComposer(false)}>{step==="review"?"Back to edit":"Cancel"}</button><button className={styles.primary} type="button" disabled={!canReview||sending} onClick={()=>step==="compose"?setStep("review"):void sendPush()}>{step==="compose"?"Review campaign":sending?"Sending…":"Send notification"}</button></footer>
+    </section>}
+    <section className={`${styles.card} ${styles.notificationHistory}`}><div className={styles.cardHead}><div><h2>Campaign history</h2><p>Unique opens are recorded when a customer taps a notification. {refreshMessage}</p></div><button className={styles.secondary} onClick={refreshCampaigns}>↻ Refresh</button></div>{campaigns.length?<div className={styles.dataTable}><div className={styles.tableHead}><span>Campaign</span><span>Sent</span><span>Status</span><span>Recipients</span><span>Performance</span><span>Action</span></div>{campaigns.map(c=><div className={styles.tableRow} key={c.id}><div className={styles.notificationCampaignCell}><strong>{c.title}</strong><small>{c.message}</small></div><span>{new Date(c.createdAt).toLocaleString()}</span><span><i className={`${styles.tag} ${c.status==="submitted"?styles.tagGreen:c.status==="failed"?styles.tagGray:styles.tagBlue}`}>{c.status==="test-queued"?"Local test":c.status}</i></span><strong>{c.recipientCount||"Test"}</strong><span>{c.openRate===null?`${c.opens} opens`:`${c.opens} opens · ${c.openRate}%`}</span><button className={styles.secondary} type="button" onClick={()=>openComposer(c)}>Use again</button></div>)}</div>:<div className={styles.notificationEmpty}><span>◇</span><strong>No campaigns yet</strong><p>Create your first notification to start measuring customer engagement.</p><button className={styles.primary} onClick={()=>openComposer()}>Create campaign</button></div>}</section>
+    <section className={styles.notificationAutomationNotice}><span>⚙</span><div><strong>Automations are not enabled yet</strong><p>Cart reminders, back-in-stock alerts, and birthday messages require a persistent scheduler and customer targeting rules.</p></div><i className={`${styles.tag} ${styles.tagGray}`}>Setup required</i></section>
   </div>
 }
 
@@ -356,6 +720,13 @@ function OrderProductImage({item}:{item:OrderLineItem}){
   // Shopify serves order product images from its CDN; preserve the exact historic line-item image URL.
   // eslint-disable-next-line @next/next/no-img-element
   return <img className={styles.orderProductImage} src={item.image.url} alt={item.image.altText||item.name}/>;
+}
+
+function InventoryProductImage({item,large=false}:{item:InventoryItem;large?:boolean}){
+  if(!item.image?.url)return <span className={`${styles.inventoryImageFallback} ${large?styles.productWorkspaceImage:""}`} aria-label="No product image">▦</span>;
+  // Shopify serves product images from its CDN.
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img className={`${styles.inventoryProductImage} ${large?styles.productWorkspaceImage:""}`} src={item.image.url} alt={item.image.altText||item.name}/>;
 }
 
 function Orders(){

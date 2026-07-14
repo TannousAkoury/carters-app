@@ -53,11 +53,11 @@
       "SHOPIFY_DOMAIN": "cartersoshkosh.myshopify.com",
       "SHOPIFY_API_VERSION": "2025-10",
       "SHOPIFY_TOKEN": "fd3b447b5632d42e4efc5bd1c172d60f",
-      "ADMIN_API_URL": "http://192.168.0.164:3000",
+      "ADMIN_API_URL": "http://192.168.8.116:3001",
       "ADMIN_API_URLS": [
-        "http://192.168.0.164:3000",
-        "http://192.168.8.111:3000",
-        "http://localhost:3000"
+        "http://192.168.8.116:3001",
+        "http://192.168.8.172:3001",
+        "http://localhost:3001"
       ]
     }
   }

@@ -129,7 +129,10 @@ export function NotificationProvider({ children }: PropsWithChildren) {
       if (permission.status !== "granted") throw new Error("Notification permission was not granted.");
       setEnabled(true);
       const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
-      if (!projectId) throw new Error("EAS project ID is not configured yet.");
+      // Expo Go cannot receive remote push notifications on current Android SDKs.
+      // Permission is still useful: the development inbox poller turns admin
+      // campaigns into local notifications while the app is running.
+      if (!projectId) return null;
       const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
       await SecureStore.setItemAsync(EXPO_PUSH_TOKEN_KEY, token);
       if (adminApiUrls().length) {

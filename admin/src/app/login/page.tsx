@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { FormEvent, useState } from "react";
 import styles from "./page.module.css";
 
@@ -33,22 +34,9 @@ export default function LoginPage() {
 
   return (
     <main className={styles.loginShell}>
-      <aside className={styles.loginAside}>
-        <p>CARTER&apos;S MOBILE APP</p>
-        <h2>Operations workspace for content, campaigns, and app controls.</h2>
-        <div>
-          <span>Content publishing</span>
-          <span>Push notifications</span>
-          <span>Customer readiness</span>
-        </div>
-      </aside>
       <section className={styles.loginPanel}>
         <div className={styles.brand}>
-          <span>C</span>
-          <div>
-            <strong>Carter&apos;s</strong>
-            <small>Admin Studio</small>
-          </div>
+          <Image className={styles.brandLogo} src="/carters-logo.png" alt="Carter's and OshKosh B'gosh" width={306} height={91} priority />
         </div>
 
         <div className={styles.copy}>

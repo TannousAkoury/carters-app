@@ -1042,5 +1042,16 @@
       "path": "/"
     },
     "createdAt": "2026-07-10T09:03:21.644Z"
+  },
+  {
+    "id": "11e4e573-5695-47f4-8106-9d7982374484",
+    "name": "screen_view",
+    "sessionId": "1784036934834-c8a8ok3e1cv",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/notifications",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-14T13:56:47.303Z"
   }
 ]

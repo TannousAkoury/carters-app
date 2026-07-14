@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { FormEvent, useState } from "react";
 import styles from "./page.module.css";
 
@@ -30,7 +31,7 @@ export default function SetPasswordPage() {
     setDone(true);
   };
 
-  return <main className={styles.shell}><section className={styles.panel}><div className={styles.brand}><span>C</span><div><strong>Carter&apos;s</strong><small>Admin Studio</small></div></div>{done ? <><h1>Password ready</h1><p>Your admin password was saved. You can now sign in with your email.</p><a href="/login">Go to login</a></> : <><p className={styles.eyebrow}>Member setup</p><h1>Choose your password</h1><p>Use this secure invite link to finish your Carter&apos;s admin account.</p><form onSubmit={submit}><label>Invite token or setup link<input value={token} onChange={event=>setToken(event.target.value)} placeholder="Paste the setup link here" autoComplete="off"/></label><label>Password<input type="password" value={password} onChange={event=>setPassword(event.target.value)} autoComplete="new-password"/></label><label>Confirm password<input type="password" value={confirm} onChange={event=>setConfirm(event.target.value)} autoComplete="new-password"/></label>{message&&<p className={styles.error}>{message}</p>}<button disabled={loading}>{loading?"Saving...":"Set password"}</button></form></>}</section></main>;
+  return <main className={styles.shell}><section className={styles.panel}><div className={styles.brand}><Image className={styles.brandLogo} src="/carters-logo.png" alt="Carter's and OshKosh B'gosh" width={306} height={91} priority /></div>{done ? <><h1>Password ready</h1><p>Your admin password was saved. You can now sign in with your email.</p><a href="/login">Go to login</a></> : <><p className={styles.eyebrow}>Member setup</p><h1>Choose your password</h1><p>Use this secure invite link to finish your Carter&apos;s admin account.</p><form onSubmit={submit}><label>Invite token or setup link<input value={token} onChange={event=>setToken(event.target.value)} placeholder="Paste the setup link here" autoComplete="off"/></label><label>Password<input type="password" value={password} onChange={event=>setPassword(event.target.value)} autoComplete="new-password"/></label><label>Confirm password<input type="password" value={confirm} onChange={event=>setConfirm(event.target.value)} autoComplete="new-password"/></label>{message&&<p className={styles.error}>{message}</p>}<button disabled={loading}>{loading?"Saving...":"Set password"}</button></form></>}</section></main>;
 }
 
 function extractToken(value: string) {

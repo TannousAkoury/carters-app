@@ -88,3 +88,76 @@
   overflow-y: auto;
   scrollbar-width: thin;
 }
+
+.brandLogo {
+  display: block;
+  width: 190px;
+  height: auto;
+  object-fit: contain;
+}
+
+/* Modern action buttons */
+.primary,
+.secondary,
+.pill {
+  min-height: 40px;
+  border-radius: 10px;
+  padding: 10px 17px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease,
+    border-color 160ms ease;
+}
+
+.primary {
+  border: 1px solid #1768b5;
+  background: linear-gradient(135deg, #2f86d5 0%, #1768b5 55%, #0f579b 100%);
+  color: #fff;
+  text-shadow: 0 1px 1px #063d7040;
+  box-shadow: 0 7px 16px #1768b52e, 0 2px 5px #0b29441f;
+}
+
+.primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #3b94e3 0%, #1f73c2 55%, #105da6 100%);
+  box-shadow: 0 10px 21px #1768b53d, 0 3px 7px #0b294426;
+  transform: translateY(-1px);
+}
+
+.primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 4px 10px #1768b52b;
+}
+
+.secondary,
+.pill {
+  border-color: #d2dce5;
+  background: #fff;
+  color: #3e5264;
+  box-shadow: 0 2px 6px #18354d0d;
+}
+
+.secondary:hover:not(:disabled),
+.pill:hover:not(:disabled) {
+  border-color: #9dbbd3;
+  background: #f4f9fd;
+  color: #185f99;
+  box-shadow: 0 5px 12px #18354d12;
+  transform: translateY(-1px);
+}
+
+.primary:focus-visible,
+.secondary:focus-visible,
+.pill:focus-visible {
+  outline: 3px solid #82bdf2;
+  outline-offset: 2px;
+}
+
+.primary:disabled,
+.secondary:disabled,
+.pill:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+  box-shadow: none;
+  transform: none;
+}

@@ -12,7 +12,13 @@ export async function GET() {
 export async function PUT(request: Request) {
   const body = await request.json();
   if (!Array.isArray(body?.sections)) return NextResponse.json({ error: "sections must be an array" }, { status: 400, headers: cors });
-  const content = { version: Date.now(), publishedAt: new Date().toISOString(), sections: body.sections };
+  const sections = body.sections.map((section: unknown) => {
+    if (!section || typeof section !== "object") return section;
+    const item = section as Record<string, unknown>;
+    const customCss = typeof item.customCss === "string" ? item.customCss.slice(0, 4000).replace(/@import|expression\s*\(|url\s*\(/gi, "") : "";
+    return { ...item, customCss };
+  });
+  const content = { version: Date.now(), publishedAt: new Date().toISOString(), sections };
   await writeJson("app-content.json", content);
   await writeBundledAppContent(content);
   return NextResponse.json(content, { headers: cors });

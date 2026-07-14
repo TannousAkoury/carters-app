@@ -1,10 +1,15 @@
 import Constants from "expo-constants";
 
 export function adminApiUrls(): string[] {
+  const hostUri = Constants.expoConfig?.hostUri;
+  const metroHost = typeof hostUri === "string" ? hostUri.split(":")[0] : "";
+  const developmentUrl = metroHost ? `http://${metroHost}:3001` : "";
   const configured = Constants.expoConfig?.extra?.ADMIN_API_URLS;
-  if (Array.isArray(configured)) return configured.filter((url): url is string => typeof url === "string");
+  if (Array.isArray(configured)) {
+    return [...new Set([developmentUrl, ...configured.filter((url): url is string => typeof url === "string")].filter(Boolean))];
+  }
   const single = Constants.expoConfig?.extra?.ADMIN_API_URL;
-  return typeof single === "string" ? [single] : [];
+  return [...new Set([developmentUrl, typeof single === "string" ? single : ""].filter(Boolean))];
 }
 
 export async function fetchAdmin(path: string, init?: RequestInit) {
@@ -15,7 +20,7 @@ export async function fetchAdmin(path: string, init?: RequestInit) {
     try {
       const response = await fetch(`${baseUrl}${path}`, { ...init, signal: init?.signal ?? controller.signal });
       clearTimeout(timeout);
-      if (response.ok || response.status < 500) return response;
+      if (response.ok || (response.status < 500 && response.status !== 404)) return response;
       errors.push(`${baseUrl}: HTTP ${response.status}`);
     } catch (error) { errors.push(`${baseUrl}: ${error instanceof Error ? error.message : "connection failed"}`); }
     finally { clearTimeout(timeout); }

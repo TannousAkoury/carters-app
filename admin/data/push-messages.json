@@ -12,5 +12,35 @@
     "message": "Discover the latest styles in the Carter's app.",
     "url": "/collection/new-collection-ss26",
     "createdAt": "2026-07-06T12:05:54.931Z"
+  },
+  {
+    "id": "f2a7e102-8aca-4297-8d38-d01ed10d66ab",
+    "title": "zeina",
+    "message": "test1",
+    "url": "/collection/new-collection-ss26",
+    "createdAt": "2026-07-14T13:48:22.027Z",
+    "recipientCount": 0,
+    "status": "test-queued",
+    "kind": "campaign"
+  },
+  {
+    "id": "9ad83457-8431-46f8-a7c6-55ad00514a88",
+    "title": "zeina",
+    "message": "test3",
+    "url": "/collection/new-collection-ss26",
+    "createdAt": "2026-07-14T13:50:49.486Z",
+    "recipientCount": 0,
+    "status": "test-queued",
+    "kind": "campaign"
+  },
+  {
+    "id": "e6194107-f4b6-47e7-be97-b86284e0984a",
+    "title": "zeina",
+    "message": "test3",
+    "url": "/collection/new-collection-ss26",
+    "createdAt": "2026-07-14T13:55:19.236Z",
+    "recipientCount": 0,
+    "status": "test-queued",
+    "kind": "campaign"
   }
 ]
