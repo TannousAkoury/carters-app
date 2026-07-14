@@ -106,8 +106,10 @@ export async function GET(request: Request) {
   if (unauthorized) return unauthorized;
   const url = new URL(request.url);
   const search = url.searchParams.get("search")?.trim() || "";
+  const status = url.searchParams.get("status")?.trim() || "all";
   const after = url.searchParams.get("after");
-  const queryFilter = search ? (search.startsWith("#") ? `name:${search.slice(1)}` : search) : null;
+  const searchFilter = search ? (search.startsWith("#") ? `name:${search.slice(1)}` : search) : "";
+  const queryFilter = [status === "pending" ? "status:open" : "", searchFilter].filter(Boolean).join(" ") || null;
   const query = `
     query getOrders($first: Int!, $after: String, $query: String) {
       orders(first: $first, after: $after, query: $query, sortKey: PROCESSED_AT, reverse: true) {
@@ -130,6 +132,7 @@ export async function GET(request: Request) {
           lineItems(first: 50) { nodes { name quantity sku variantTitle image { url altText } } }
         }
       }
+      pendingOrders: ordersCount(query: "status:open", limit: null) { count precision }
     }
   `;
 
@@ -139,11 +142,12 @@ export async function GET(request: Request) {
       configured: true,
       orders: ((data?.orders?.nodes || []) as ShopifyOrder[]).map(mapOrder),
       pageInfo: data?.orders?.pageInfo || { hasNextPage: false, endCursor: null },
+      counts: { pending: Number(data?.pendingOrders?.count || 0), pendingPrecision: data?.pendingOrders?.precision || "EXACT" },
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Shopify request failed.";
     return NextResponse.json(
-      { configured: !message.startsWith("Set a real"), error: message, orders: [], pageInfo: { hasNextPage: false, endCursor: null } },
+      { configured: !message.startsWith("Set a real"), error: message, orders: [], pageInfo: { hasNextPage: false, endCursor: null }, counts: { pending: 0, pendingPrecision: "EXACT" } },
       { status: message.startsWith("Set a real") ? 503 : 502 },
     );
   }

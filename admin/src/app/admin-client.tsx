@@ -28,6 +28,7 @@ type Section = {
   customCss?: string;
 };
 type View = "dashboard" | "editor" | "inventory" | "promotions" | "analytics" | "marketing" | "orders" | "customers" | "chat" | "team" | "settings";
+type OrderFilter = "all" | "pending" | "unfulfilled" | "unpaid" | "paid" | "cancelled";
 type Placement = "before-hero" | "after-hero" | "after-promos" | "after-ages" | "after-top-picks" | "after-categories" | "after-explore" | "after-essentials" | "after-brands" | "after-latest";
 type AdminRole = { id: string; name: string; scope: string; description: string; members: number };
 type StaffUser = { id: string; email: string; role: string; status: "invited" | "active"; inviteExpiresAt?: string; createdAt: string; updatedAt: string };
@@ -56,6 +57,14 @@ type AppAnalytics = {
   hours:{hour:number;value:number}[];
   generatedAt:string;
   recordingSince:string|null;
+};
+type CommerceAnalytics = {
+  range:{days:number;start:string;end:string};
+  currencyCode:string;
+  totals:{sales:number;revenue:number;customers:number;orders:number};
+  daily:{date:string;label:string;sales:number;revenue:number;customers:number;orders:number}[];
+  truncated:boolean;
+  generatedAt:string;
 };
 type CustomerDraft = { firstName:string; lastName:string; email:string; phone:string };
 const placements: { value: Placement; label: string }[] = [
@@ -107,6 +116,7 @@ function newSection(type: SectionType): Section {
 
 export default function Home() {
   const [view, setView] = useState<View>("dashboard");
+  const [orderFilter, setOrderFilter] = useState<OrderFilter>("all");
   const [sections, setSections] = useState<Section[]>(defaults);
   const [selectedId, setSelectedId] = useState(defaults[0].id);
   const [saved, setSaved] = useState(true);
@@ -175,6 +185,7 @@ export default function Home() {
   };
   const setSectionVisibility = (id:string,enabled:boolean) => { setSections(items=>items.map(item=>item.id===id?{...item,enabled}:item));setSaved(false); };
   const add = (type: SectionType, placement: Placement = "before-hero") => { const item = { ...newSection(type), placement }; setSections((items) => [...items, item]); setSelectedId(item.id); setSaved(false); };
+  const openOrders = (filter: OrderFilter = "all") => { setOrderFilter(filter); setView("orders"); };
 
   if (!ready) return null;
   return (
@@ -190,7 +201,7 @@ export default function Home() {
           <Nav active={view === "promotions"} onClick={() => setView("promotions")} icon="%" label="Promotions" />
           <Nav active={view === "analytics"} onClick={() => setView("analytics")} icon="↗" label="Analytics" />
           <Nav active={view === "marketing"} onClick={() => setView("marketing")} icon="◈" label="Marketing" />
-          <Nav active={view === "orders"} onClick={() => setView("orders")} icon="▤" label="Orders" />
+          <Nav active={view === "orders"} onClick={() => openOrders("all")} icon="▤" label="Orders" />
           <Nav active={view === "customers"} onClick={() => setView("customers")} icon="♙" label="Customers" />
           <Nav active={view === "chat"} onClick={() => setView("chat")} icon="◌" label="Customer chat" badge="3" />
           <Nav active={view === "team"} onClick={() => setView("team")} icon="☷" label="Team & activity" />
@@ -201,13 +212,13 @@ export default function Home() {
 
       <main className={styles.main}>
         <header className={styles.topbar}><div className={styles.topbarTitle}><p className={styles.eyebrow}>CARTER&apos;S MOBILE APP</p><h1>{pageTitles[view].title}</h1><small>{pageTitles[view].copy}</small></div><div className={styles.topActions}><span className={styles.statusDot}>{publishMessage || "● App live"}</span>{view === "editor" && <><button className={styles.secondary} onClick={saveDraft}>{saved ? "Draft saved" : "Save draft"}</button><button className={styles.primary} onClick={publish}>Publish changes</button></>}<button className={styles.secondary} onClick={logout}>Log out</button></div></header>
-        {view === "dashboard" && <Dashboard setView={setView} publishedAt={publishedAt} />}
+        {view === "dashboard" && <Dashboard setView={setView} openOrders={openOrders} publishedAt={publishedAt} />}
         {view === "editor" && <Editor sections={sections} selected={selected} selectedId={selectedId} setSelectedId={setSelectedId} update={update} move={move} remove={remove} duplicate={duplicate} setSectionVisibility={setSectionVisibility} add={add} />}
         {view === "inventory" && <Inventory />}
         {view === "promotions" && <Promotions />}
         {view === "analytics" && <Analytics />}
         {view === "marketing" && <Marketing />}
-        {view === "orders" && <Orders />}
+        {view === "orders" && <Orders initialFilter={orderFilter} />}
         {view === "customers" && <Customers />}
         {view === "chat" && <Chat />}
         {view === "team" && <Team />}
@@ -221,22 +232,32 @@ function Nav({ active, onClick, icon, label, badge }: { active: boolean; onClick
   return <button className={`${styles.navItem} ${active ? styles.navActive : ""}`} onClick={onClick}><span>{icon}</span>{label}{badge && <b>{badge}</b>}</button>;
 }
 
-function Dashboard({ setView, publishedAt }: { setView: (v: View) => void; publishedAt: string }) {
+function DashboardCommerceChart({title,copy,value,data,color,formatPoint}:{title:string;copy:string;value:string;data:{date:string;label:string;value:number}[];color:string;formatPoint:(value:number)=>string}){
+  const width=560;const height=170;const inset=12;const max=Math.max(1,...data.map(point=>point.value));const step=data.length>1?(width-inset*2)/(data.length-1):0;
+  const points=data.map((point,index)=>({...point,x:inset+index*step,y:height-inset-(point.value/max)*(height-inset*2)}));
+  const line=points.map(point=>`${point.x},${point.y}`).join(" ");const area=points.length?`M ${points[0].x} ${height-inset} L ${points.map(point=>`${point.x} ${point.y}`).join(" L ")} L ${points.at(-1)?.x} ${height-inset} Z`:"";const labelEvery=Math.max(1,Math.ceil(data.length/5));const gradientId=`dashboard-${title.toLowerCase().replaceAll(" ","-")}`;
+  return <article className={styles.dashboardCommerceCard}><header><div><p>{title}</p><strong>{value}</strong><small>{copy}</small></div><span style={{background:`${color}18`,color}}>↗</span></header><div className={styles.dashboardCommerceChart}>{data.length?<><svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${title} over the last 30 days`}><defs><linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity=".28"/><stop offset="100%" stopColor={color} stopOpacity=".02"/></linearGradient></defs>{[.25,.5,.75,1].map(level=><line key={level} x1={inset} x2={width-inset} y1={height-inset-level*(height-inset*2)} y2={height-inset-level*(height-inset*2)} stroke="#e9eef2"/>)}{area&&<path d={area} fill={`url(#${gradientId})`}/>}<polyline points={line} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>{points.map(point=><circle key={point.date} cx={point.x} cy={point.y} r="3" fill="#fff" stroke={color} strokeWidth="2"><title>{point.label}: {formatPoint(point.value)}</title></circle>)}</svg><div className={styles.dashboardCommerceAxis}>{data.map((point,index)=>index%labelEvery===0||index===data.length-1?<span key={point.date}>{point.label}</span>:null)}</div></>:<div className={styles.dashboardEmpty}>No commerce activity in this period</div>}</div></article>;
+}
+
+function Dashboard({ setView, openOrders, publishedAt }: { setView: (v: View) => void; openOrders: (filter: OrderFilter) => void; publishedAt: string }) {
   type Summary = { sessions:number; screenViews:number; productViews:number; cartViews:number; notificationDevices:number; purchases:number|null; days:{label:string;value:number}[] };
-  type Operations = { orders:AdminOrder[]; inventory:InventoryItem[]; promotions:Promotion[] };
+  type Operations = { orders:AdminOrder[]; inventory:InventoryItem[]; promotions:Promotion[]; pendingOrders:number };
   const [summary,setSummary]=useState<Summary|null>(null);
-  const [operations,setOperations]=useState<Operations>({orders:[],inventory:[],promotions:[]});
+  const [operations,setOperations]=useState<Operations>({orders:[],inventory:[],promotions:[],pendingOrders:0});
+  const [commerce,setCommerce]=useState<CommerceAnalytics|null>(null);
   const [loading,setLoading]=useState(true);
   const [analyticsError,setAnalyticsError]=useState("");
+  const [commerceError,setCommerceError]=useState("");
   const refresh=useCallback(async()=>{
-    setLoading(true);setAnalyticsError("");
+    setLoading(true);setAnalyticsError("");setCommerceError("");
     const requests=await Promise.allSettled([
-      fetch("/api/analytics/summary",{cache:"no-store"}),fetch("/api/shopify/orders",{cache:"no-store"}),fetch("/api/shopify/inventory?limit=50",{cache:"no-store"}),fetch("/api/shopify/promotions",{cache:"no-store"}),
+      fetch("/api/analytics/summary",{cache:"no-store"}),fetch("/api/shopify/orders",{cache:"no-store"}),fetch("/api/shopify/inventory?limit=50",{cache:"no-store"}),fetch("/api/shopify/promotions",{cache:"no-store"}),fetch("/api/analytics/commerce?days=30",{cache:"no-store"}),
     ]);
     const read=async(result:PromiseSettledResult<Response>)=>{if(result.status!=="fulfilled"||!result.value.ok)return null;return result.value.json()};
-    const [analytics,orders,inventory,promotions]=await Promise.all(requests.map(read));
+    const [analytics,orders,inventory,promotions,commerceData]=await Promise.all(requests.map(read));
     if(analytics)setSummary(analytics);else setAnalyticsError("Some live dashboard data is temporarily unavailable.");
-    setOperations({orders:Array.isArray(orders?.orders)?orders.orders:[],inventory:Array.isArray(inventory?.inventory)?inventory.inventory:[],promotions:Array.isArray(promotions?.promotions)?promotions.promotions:[]});
+    if(commerceData)setCommerce(commerceData);else setCommerceError("Shopify commerce charts are temporarily unavailable.");
+    setOperations({orders:Array.isArray(orders?.orders)?orders.orders:[],inventory:Array.isArray(inventory?.inventory)?inventory.inventory:[],promotions:Array.isArray(promotions?.promotions)?promotions.promotions:[],pendingOrders:Number(orders?.counts?.pending||0)});
     setLoading(false);
   },[]);
   useEffect(()=>{/* eslint-disable react-hooks/set-state-in-effect */void refresh();/* eslint-enable react-hooks/set-state-in-effect */},[refresh]);
@@ -246,9 +267,12 @@ function Dashboard({ setView, publishedAt }: { setView: (v: View) => void; publi
   const activePromotions=operations.promotions.filter(item=>item.status==="ACTIVE").length;
   const revenue=operations.orders.reduce((sum,order)=>sum+Number(order.total?.amount||0),0);
   const currency=operations.orders.find(order=>order.total?.currencyCode)?.total?.currencyCode||"USD";
+  const commerceCurrency=commerce?.currencyCode||currency;
+  const formatCommerceMoney=(amount:number)=>{try{return new Intl.NumberFormat(undefined,{style:"currency",currency:commerceCurrency,maximumFractionDigits:2}).format(amount)}catch{return `${amount.toFixed(2)} ${commerceCurrency}`}};
   const metrics = [
     {value:summary?.sessions ?? "—",label:"App sessions",note:"Last 30 days",icon:"↗",tone:styles.dashboardIconBlue},
     {value:operations.orders.length||"—",label:"Recent orders",note:revenue?`${new Intl.NumberFormat(undefined,{style:"currency",currency}).format(revenue)} loaded value`:"Latest Shopify activity",icon:"▤",tone:styles.dashboardIconGreen},
+    {value:operations.pendingOrders,label:"Pending orders",note:"All open Shopify orders",icon:"◷",tone:operations.pendingOrders?styles.dashboardIconAmber:styles.dashboardIconGreen,view:"pending" as OrderFilter},
     {value:summary?.notificationDevices ?? "—",label:"Push audience",note:"Registered devices",icon:"◇",tone:styles.dashboardIconPurple},
     {value:outOfStock,label:"Out of stock",note:`${lowStock} additional low-stock variants`,icon:"!",tone:outOfStock?styles.dashboardIconRed:styles.dashboardIconAmber},
   ];
@@ -261,11 +285,12 @@ function Dashboard({ setView, publishedAt }: { setView: (v: View) => void; publi
   return <div className={`${styles.content} ${styles.dashboardPage}`}>
     <section className={styles.dashboardWelcome}><div className={styles.dashboardWelcomeCopy}><div className={styles.dashboardDate}>{new Intl.DateTimeFormat(undefined,{weekday:"long",month:"long",day:"numeric"}).format(new Date())}</div><h2>Good to see you, Store admin.</h2><p>Here is what is happening across the Carter&apos;s mobile storefront.</p></div><div className={styles.dashboardHeroActions}><button className={styles.secondary} disabled={loading} onClick={()=>void refresh()}>{loading?"Refreshing…":"↻ Refresh data"}</button><button className={styles.primary} onClick={()=>setView("editor")}>Open app editor</button></div></section>
     {analyticsError&&<div className={styles.dashboardNotice}><span>!</span>{analyticsError}</div>}
-    <section className={styles.dashboardMetricGrid}>{metrics.map(metric=><article className={styles.dashboardMetric} key={metric.label}><div className={styles.dashboardMetricTop}><span className={`${styles.dashboardMetricIcon} ${metric.tone}`}>{metric.icon}</span><i>{loading?"Updating":"Live"}</i></div><p>{metric.label}</p><strong>{metric.value}</strong><small>{metric.note}</small></article>)}</section>
+    <section className={styles.dashboardMetricGrid}>{metrics.map(metric=>metric.view?<button type="button" className={`${styles.dashboardMetric} ${styles.dashboardMetricButton}`} key={metric.label} onClick={()=>openOrders(metric.view)}><div className={styles.dashboardMetricTop}><span className={`${styles.dashboardMetricIcon} ${metric.tone}`}>{metric.icon}</span><i>{loading?"Updating":"Open queue"}</i></div><p>{metric.label}</p><strong>{metric.value}</strong><small>{metric.note}</small></button>:<article className={styles.dashboardMetric} key={metric.label}><div className={styles.dashboardMetricTop}><span className={`${styles.dashboardMetricIcon} ${metric.tone}`}>{metric.icon}</span><i>{loading?"Updating":"Live"}</i></div><p>{metric.label}</p><strong>{metric.value}</strong><small>{metric.note}</small></article>)}</section>
     <section className={styles.dashboardMainGrid}>
       <article className={`${styles.dashboardCard} ${styles.dashboardChartCard}`}><header className={styles.dashboardCardHeader}><div><h3>App engagement</h3><p>Recorded sessions over the last 7 days</p></div><button onClick={()=>setView("analytics")}>View analytics →</button></header><div className={styles.dashboardChartSummary}><div><strong>{summary?.sessions??"—"}</strong><span>Total sessions · 30 days</span></div><div><strong>{summary?.screenViews??"—"}</strong><span>Screen views</span></div><div><strong>{summary?.productViews??"—"}</strong><span>Product views</span></div></div><div className={styles.dashboardChart}>{(summary?.days??[]).length?(summary?.days??[]).map(day=><div key={day.label} className={styles.dashboardBarColumn}><div><span style={{height:`${Math.max(5,(day.value/maxDay)*100)}%`}}/></div><small>{day.label}</small></div>):<div className={styles.dashboardEmpty}>{loading?"Loading engagement…":"No recorded sessions yet"}</div>}</div></article>
       <article className={`${styles.dashboardCard} ${styles.dashboardActions}`}><header className={styles.dashboardCardHeader}><div><h3>Action center</h3><p>Items that may need your attention</p></div><span className={styles.dashboardBadge}>{actionItems.reduce((sum,item)=>sum+item.count,0)} items</span></header><div>{actionItems.map(item=><button key={item.title} className={`${styles.dashboardActionItem} ${item.tone}`} onClick={()=>setView(item.view)}><span>{item.count}</span><div><strong>{item.title}</strong><small>{item.copy}</small></div><b>›</b></button>)}</div></article>
     </section>
+    <section className={styles.dashboardCommerceSection}><header className={styles.dashboardSectionHeader}><div><p>SHOPIFY COMMERCE</p><h2>Store performance</h2><span>Sales activity from non-cancelled orders over the last 30 days.</span></div><i className={`${styles.tag} ${commerceError?styles.tagGray:styles.tagGreen}`}>{loading?"Loading":commerceError?"Unavailable":"Live Shopify data"}</i></header>{commerceError&&<div className={styles.dashboardNotice}><span>!</span>{commerceError}</div>}<div className={styles.dashboardCommerceGrid}>{commerce? <><DashboardCommerceChart title="Sales" copy={`Gross order value · ${commerceCurrency}`} value={formatCommerceMoney(commerce.totals.sales)} color="#397ab5" formatPoint={formatCommerceMoney} data={commerce.daily.map(day=>({date:day.date,label:day.label,value:day.sales}))}/><DashboardCommerceChart title="Revenue" copy={`Payments received minus refunds · ${commerceCurrency}`} value={formatCommerceMoney(commerce.totals.revenue)} color="#19805c" formatPoint={formatCommerceMoney} data={commerce.daily.map(day=>({date:day.date,label:day.label,value:day.revenue}))}/><DashboardCommerceChart title="Customers" copy="Unique purchasing customers" value={commerce.totals.customers.toLocaleString()} color="#7254a5" formatPoint={value=>`${value.toLocaleString()} customer${value===1?"":"s"}`} data={commerce.daily.map(day=>({date:day.date,label:day.label,value:day.customers}))}/><DashboardCommerceChart title="Orders" copy="Non-cancelled orders" value={commerce.totals.orders.toLocaleString()} color="#a86b13" formatPoint={value=>`${value.toLocaleString()} order${value===1?"":"s"}`} data={commerce.daily.map(day=>({date:day.date,label:day.label,value:day.orders}))}/></>:Array.from({length:4},(_,index)=><article className={`${styles.dashboardCommerceCard} ${styles.dashboardCommerceSkeleton}`} key={index}/>)}</div>{commerce?.truncated&&<small className={styles.dashboardCommerceWarning}>The chart reached the safe Shopify pagination limit; totals may be incomplete for this period.</small>}</section>
     <section className={styles.dashboardQuickGrid}>{[
       ["✦","Customize app","Edit homepage sections and content","editor"],["◈","Create campaign","Send a push notification","marketing"],["▦","Update inventory","Manage stock and variants","inventory"],["%","Manage offers","Review active promotions","promotions"],
     ].map(([icon,title,copy,target])=><button className={styles.dashboardQuickAction} key={title} onClick={()=>setView(target as View)}><span>{icon}</span><div><strong>{title}</strong><small>{copy}</small></div><b>→</b></button>)}</section>
@@ -741,12 +766,13 @@ function InventoryProductImage({item,large=false}:{item:InventoryItem;large?:boo
   return <img className={`${styles.inventoryProductImage} ${large?styles.productWorkspaceImage:""}`} src={item.image.url} alt={item.image.altText||item.name}/>;
 }
 
-function Orders(){
+function Orders({initialFilter}:{initialFilter:OrderFilter}){
   const [orders,setOrders]=useState<AdminOrder[]>([]);
+  const [pendingCount,setPendingCount]=useState(0);
   const [search,setSearch]=useState("");
   const [loading,setLoading]=useState(true);
   const [message,setMessage]=useState("");
-  const [statusFilter,setStatusFilter]=useState("all");
+  const [statusFilter,setStatusFilter]=useState<OrderFilter>(initialFilter);
   const [selectedOrderIds,setSelectedOrderIds]=useState<string[]>([]);
   const [bulkNotifyCustomer,setBulkNotifyCustomer]=useState(false);
   const [selectedId,setSelectedId]=useState("");
@@ -754,40 +780,43 @@ function Orders(){
   const [notifyCustomer,setNotifyCustomer]=useState(false);
   const [draft,setDraft]=useState<OrderDraft|null>(null);
   const [pageInfo,setPageInfo]=useState<{hasNextPage:boolean;endCursor:string|null}>({hasNextPage:false,endCursor:null});
-  const loadOrders=async(term:string,after:string|null)=>{
+  const loadOrders=useCallback(async(term:string,after:string|null,filter:OrderFilter)=>{
     setLoading(true);setMessage("");
     try{
       const params=new URLSearchParams();
       if(term.trim())params.set("search",term.trim());
+      if(filter==="pending")params.set("status","pending");
       if(after)params.set("after",after);
       const response=await fetch(`/api/shopify/orders?${params.toString()}`,{cache:"no-store"});
       const data=await response.json();
       if(!response.ok)throw new Error(data.error||"Unable to load Shopify orders.");
       const next=Array.isArray(data.orders)?data.orders:[];
       setOrders(items=>after?[...items,...next]:next);
+      setPendingCount(Number(data.counts?.pending||0));
       setPageInfo(data.pageInfo||{hasNextPage:false,endCursor:null});
-      if(!next.length)setMessage(term?"No Shopify orders match this search.":"No Shopify orders were returned.");
+      if(!next.length)setMessage(term?"No Shopify orders match this search.":filter==="pending"?"There are no open Shopify orders.":"No Shopify orders were returned.");
     }catch(error){setMessage(error instanceof Error?error.message:"Unable to load Shopify orders.");if(!after)setOrders([])}
     finally{setLoading(false)}
-  };
+  },[]);
   useEffect(()=>{
     /* eslint-disable react-hooks/set-state-in-effect */
-    void loadOrders("",null);
+    void loadOrders("",null,initialFilter);
     /* eslint-enable react-hooks/set-state-in-effect */
     // Initial Shopify load only; search and pagination are explicit actions.
-  },[]);
+  },[initialFilter,loadOrders]);
   const money=(value:AdminOrder["total"])=>{if(!value)return "—";try{return new Intl.NumberFormat(undefined,{style:"currency",currency:value.currencyCode}).format(Number(value.amount))}catch{return `${value.amount} ${value.currencyCode}`}};
   const paidCount=orders.filter(order=>order.financialStatus==="PAID").length;
   const openFulfillmentCount=orders.filter(order=>!(["FULFILLED","RESTOCKED"] as string[]).includes(order.fulfillmentStatus)).length;
   const sales=orders.reduce((sum,order)=>sum+(Number(order.total?.amount)||0),0);
   const currency=orders.find(order=>order.total?.currencyCode)?.total?.currencyCode;
   const salesLabel=currency?money({amount:String(sales),currencyCode:currency}):"—";
-  const filteredOrders=orders.filter(order=>statusFilter==="all"||(statusFilter==="unfulfilled"&&!order.cancelledAt&&order.fulfillmentStatus!=="FULFILLED")||(statusFilter==="unpaid"&&!order.cancelledAt&&order.financialStatus!=="PAID")||(statusFilter==="paid"&&!order.cancelledAt&&order.financialStatus==="PAID")||(statusFilter==="cancelled"&&Boolean(order.cancelledAt)));
+  const filteredOrders=orders.filter(order=>statusFilter==="all"||statusFilter==="pending"||(statusFilter==="unfulfilled"&&!order.cancelledAt&&order.fulfillmentStatus!=="FULFILLED")||(statusFilter==="unpaid"&&!order.cancelledAt&&order.financialStatus!=="PAID")||(statusFilter==="paid"&&!order.cancelledAt&&order.financialStatus==="PAID")||(statusFilter==="cancelled"&&Boolean(order.cancelledAt)));
   const selectedOrders=orders.filter(order=>selectedOrderIds.includes(order.id));
   const fulfillableSelected=selectedOrders.filter(order=>!order.cancelledAt&&order.fulfillmentStatus!=="FULFILLED");
   const selectedOrder=orders.find(order=>order.id===selectedId);
   const toggleOrder=(id:string)=>setSelectedOrderIds(current=>current.includes(id)?current.filter(value=>value!==id):[...current,id]);
   const selectVisibleOrders=()=>setSelectedOrderIds(current=>filteredOrders.every(order=>current.includes(order.id))?current.filter(id=>!filteredOrders.some(order=>order.id===id)):[...new Set([...current,...filteredOrders.map(order=>order.id)])]);
+  const changeOrderFilter=(filter:OrderFilter)=>{setStatusFilter(filter);setSelectedOrderIds([]);void loadOrders(search,null,filter)};
   const openOrder=(order:AdminOrder)=>{setSelectedId(order.id);setDraft({email:order.email,note:order.note,tags:order.tags.join(", "),shippingAddress:{...order.shippingAddress}});setNotifyCustomer(false);setMessage("")};
   const closeOrder=()=>{setSelectedId("");setDraft(null)};
   const updateAddress=(key:keyof OrderAddress,value:string)=>setDraft(current=>current?{...current,shippingAddress:{...current.shippingAddress,[key]:value}}:current);
@@ -813,7 +842,7 @@ function Orders(){
       const response=await fetch("/api/shopify/orders",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:selectedOrder.id,action,notifyCustomer})});
       const data=await response.json();
       if(!response.ok)throw new Error(data.error||"Unable to update order status.");
-      await loadOrders(search,null);
+      await loadOrders(search,null,statusFilter);
       setMessage(action==="mark_paid"?`${selectedOrder.name} is now marked paid.`:`${selectedOrder.name} is now marked fulfilled${notifyCustomer?" and the customer was notified":""}.`);
     }catch(error){setMessage(error instanceof Error?error.message:"Unable to update order status.")}
     finally{setSaving(false)}
@@ -825,7 +854,7 @@ function Orders(){
     try{
       const ids=fulfillableSelected.map(order=>order.id);const failedIds:string[]=[];let fulfilledCount=0;
       for(let index=0;index<ids.length;index+=50){const batch=ids.slice(index,index+50);const response=await fetch("/api/shopify/orders",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ids:batch,action:"bulk_fulfill",notifyCustomer:bulkNotifyCustomer})});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to fulfill selected orders.");fulfilledCount+=Number(data.fulfilledOrders)||0;if(Array.isArray(data.failed))failedIds.push(...data.failed.map((item:{id:string})=>item.id))}
-      await loadOrders(search,null);
+      await loadOrders(search,null,statusFilter);
       setSelectedOrderIds(failedIds);
       setMessage(failedIds.length?`${fulfilledCount} orders fulfilled; ${failedIds.length} could not be fulfilled and remain selected.`:`${fulfilledCount} selected order${fulfilledCount===1?"":"s"} marked fulfilled.`);
     }catch(error){setMessage(error instanceof Error?error.message:"Unable to fulfill selected orders.")}
@@ -842,13 +871,13 @@ function Orders(){
       if(!response.ok)throw new Error(data.error||"Unable to cancel order.");
       setMessage(`${selectedOrder.name} cancellation was submitted to Shopify.`);
       setSelectedId("");setDraft(null);
-      await loadOrders(search,null);
+      await loadOrders(search,null,statusFilter);
     }catch(error){setMessage(error instanceof Error?error.message:"Unable to cancel order.")}
     finally{setSaving(false)}
   };
   return <div className={styles.content}>
-    <div className={styles.actionHeader}><div><h2>Orders</h2><p>Live Shopify orders, newest first.</p></div><form className={styles.customerSearch} onSubmit={event=>{event.preventDefault();void loadOrders(search,null)}}><input className={styles.smallSearch} placeholder="Search order, customer, or email" value={search} onChange={event=>setSearch(event.target.value)}/><button className={styles.primary} disabled={loading} type="submit">Search</button>{search&&<button className={styles.secondary} disabled={loading} type="button" onClick={()=>{setSearch("");void loadOrders("",null)}}>Clear</button>}</form></div>
-    <div className={styles.orderFilters} role="tablist" aria-label="Filter orders">{[["all","All"],["unfulfilled","Unfulfilled"],["unpaid","Unpaid"],["paid","Paid"],["cancelled","Cancelled"]].map(([value,label])=><button key={value} role="tab" aria-selected={statusFilter===value} className={statusFilter===value?styles.orderFilterActive:""} onClick={()=>{setStatusFilter(value);setSelectedOrderIds([])}}>{label}</button>)}</div>
+    <div className={styles.actionHeader}><div><h2>Orders</h2><p>Live Shopify orders, newest first.</p></div><form className={styles.customerSearch} onSubmit={event=>{event.preventDefault();void loadOrders(search,null,statusFilter)}}><input className={styles.smallSearch} placeholder="Search order, customer, or email" value={search} onChange={event=>setSearch(event.target.value)}/><button className={styles.primary} disabled={loading} type="submit">Search</button>{search&&<button className={styles.secondary} disabled={loading} type="button" onClick={()=>{setSearch("");void loadOrders("",null,statusFilter)}}>Clear</button>}</form></div>
+    <div className={styles.orderFilters} role="tablist" aria-label="Filter orders">{([["all","All"],["pending",`Pending (${pendingCount})`],["unfulfilled","Unfulfilled"],["unpaid","Unpaid"],["paid","Paid"],["cancelled","Cancelled"]] as [OrderFilter,string][]).map(([value,label])=><button key={value} role="tab" aria-selected={statusFilter===value} className={statusFilter===value?styles.orderFilterActive:""} onClick={()=>changeOrderFilter(value)}>{label}</button>)}</div>
     {selectedOrders.length>0&&<div className={styles.orderBulkBar}><strong>{selectedOrders.length} selected</strong><label><input type="checkbox" checked={bulkNotifyCustomer} onChange={event=>setBulkNotifyCustomer(event.target.checked)}/>Notify customers</label><button className={styles.secondary} type="button" onClick={printSelectedOrders}>Print orders</button><button className={styles.primary} type="button" disabled={saving||!fulfillableSelected.length} onClick={()=>void bulkFulfillOrders()}>{saving?"Fulfilling...":`Mark fulfilled (${fulfillableSelected.length})`}</button><button className={styles.secondary} type="button" onClick={()=>setSelectedOrderIds([])}>Clear</button></div>}
     <div className={styles.segmentGrid}>{[["Loaded orders","Current Shopify results",String(orders.length)],["Paid","Loaded paid orders",String(paidCount)],["Needs fulfillment","Loaded open fulfillments",String(openFulfillmentCount)],["Order value","Loaded page total",salesLabel]].map(([title,copy,value])=><article className={styles.segment} key={title}><span>▤</span><div><strong>{title}</strong><small>{copy}</small></div><b>{value}</b></article>)}</div>
     <section className={`${styles.card} ${styles.orderTable}`}>
@@ -867,7 +896,7 @@ function Orders(){
           <button className={styles.secondary} type="button" onClick={()=>openOrder(order)}>View / edit</button>
         </div>):<div className={styles.empty}>{loading?"Loading Shopify orders...":message||"No orders match this view."}</div>}
       </div>
-      {pageInfo.hasNextPage&&<div className={styles.inlineActions}><button className={styles.secondary} disabled={loading} onClick={()=>void loadOrders(search,pageInfo.endCursor)}>Load more</button></div>}
+      {pageInfo.hasNextPage&&<div className={styles.inlineActions}><button className={styles.secondary} disabled={loading} onClick={()=>void loadOrders(search,pageInfo.endCursor,statusFilter)}>Load more</button></div>}
     </section>
     {selectedOrder&&draft&&<div className={styles.orderOverlay} role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget)closeOrder()}}>
       <section className={styles.orderDrawer} role="dialog" aria-modal="true" aria-labelledby="order-drawer-title">
