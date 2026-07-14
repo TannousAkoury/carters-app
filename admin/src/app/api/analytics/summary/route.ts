@@ -10,6 +10,14 @@ const deviceOf = (event: Event) => event.deviceId || event.sessionId;
 const isProduct = (event: Event) => event.name === "screen_view" && Boolean(event.properties?.path?.startsWith("/product/"));
 const isCart = (event: Event) => event.name === "screen_view" && event.properties?.path === "/cart";
 const percentChange = (current: number, previous: number) => previous ? Math.round(((current - previous) / previous) * 1000) / 10 : current ? 100 : 0;
+const DAY_MS = 86400000;
+const MAX_RANGE_DAYS = 1095;
+const parseDate = (value: string | null) => {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const [year, month, day] = value.split("-").map(Number);
+  const time = Date.UTC(year, month - 1, day);
+  return new Date(time).toISOString().slice(0, 10) === value ? time : null;
+};
 const screenLabel = (path: string) => {
   if (path === "/") return "Home";
   if (path === "/cart") return "Cart";
@@ -25,13 +33,33 @@ export async function GET(request: Request) {
   const unauthorized = await requireAdmin();
   if (unauthorized) return unauthorized;
   const url = new URL(request.url);
-  const requestedDays = Number(url.searchParams.get("days") || 30);
-  const days = [7, 30, 90].includes(requestedDays) ? requestedDays : 30;
+  const requestedStart = url.searchParams.get("start");
+  const requestedEnd = url.searchParams.get("end");
+  let start: number;
+  let end: number;
+  let days: number;
+
+  if (requestedStart || requestedEnd) {
+    const parsedStart = parseDate(requestedStart);
+    const parsedEnd = parseDate(requestedEnd);
+    if (parsedStart === null || parsedEnd === null) {
+      return NextResponse.json({ error: "Choose a valid start and end date." }, { status: 400 });
+    }
+    start = parsedStart;
+    end = parsedEnd + DAY_MS;
+    days = Math.round((end - start) / DAY_MS);
+    if (days < 1) return NextResponse.json({ error: "The end date must be on or after the start date." }, { status: 400 });
+    if (days > MAX_RANGE_DAYS) return NextResponse.json({ error: `Date ranges can include up to ${MAX_RANGE_DAYS} days.` }, { status: 400 });
+  } else {
+    const requestedDays = Number(url.searchParams.get("days") || 30);
+    days = [7, 30, 90].includes(requestedDays) ? requestedDays : 30;
+    end = Date.now();
+    start = end - days * DAY_MS;
+  }
+
   const events = await readJson<Event[]>("analytics-events.json", []);
   const pushDevices = await readJson<Device[]>("push-devices.json", []);
-  const end = Date.now();
-  const start = end - days * 86400000;
-  const previousStart = start - days * 86400000;
+  const previousStart = start - days * DAY_MS;
   const inPeriod = (event: Event, from: number, to: number) => { const time = new Date(event.createdAt).getTime(); return time >= from && time < to; };
   const recent = events.filter((event) => inPeriod(event, start, end));
   const previous = events.filter((event) => inPeriod(event, previousStart, start));
@@ -53,7 +81,7 @@ export async function GET(request: Request) {
   const bounceRate = currentStats.sessions ? (bouncedSessions / currentStats.sessions) * 100 : 0;
 
   const daily = Array.from({ length: days }, (_, index) => {
-    const date = new Date(start + index * 86400000);
+    const date = new Date(start + index * DAY_MS);
     const key = date.toISOString().slice(0, 10);
     const dayEvents = recent.filter((event) => event.createdAt.slice(0, 10) === key);
     const views = dayEvents.filter((event) => event.name === "screen_view");
@@ -97,8 +125,8 @@ export async function GET(request: Request) {
     notificationDevices: pushDevices.length,
     purchases: null,
     days: daily.slice(-7).map((day) => ({ label: day.label, value: day.devices })),
-    range: { days, start: new Date(start).toISOString(), end: new Date(end).toISOString() },
-    metrics: { uniqueDevices: currentStats.devices, sessions: currentStats.sessions, screenViews: currentStats.views.length, productViews: currentStats.productViews, cartViews: currentStats.cartViews, viewsPerSession: Math.round(viewsPerSession * 10) / 10, bounceRate: Math.round(bounceRate * 10) / 10, activeDevices24h: new Set(events.filter((event) => new Date(event.createdAt).getTime() >= end - 86400000).map(deviceOf)).size, notificationOpens: recent.filter((event) => event.name === "notification_open").length, pushDevices: pushDevices.length },
+    range: { days, start: new Date(start).toISOString(), end: new Date(end - 1).toISOString() },
+    metrics: { uniqueDevices: currentStats.devices, sessions: currentStats.sessions, screenViews: currentStats.views.length, productViews: currentStats.productViews, cartViews: currentStats.cartViews, viewsPerSession: Math.round(viewsPerSession * 10) / 10, bounceRate: Math.round(bounceRate * 10) / 10, activeDevices24h: new Set(events.filter((event) => { const time = new Date(event.createdAt).getTime(); return time >= end - DAY_MS && time < end; }).map(deviceOf)).size, notificationOpens: recent.filter((event) => event.name === "notification_open").length, pushDevices: pushDevices.length },
     changes: { uniqueDevices: percentChange(currentStats.devices, previousStats.devices), sessions: percentChange(currentStats.sessions, previousStats.sessions), screenViews: percentChange(currentStats.views.length, previousStats.views.length), productViews: percentChange(currentStats.productViews, previousStats.productViews), cartViews: percentChange(currentStats.cartViews, previousStats.cartViews) },
     daily,
     screens,
