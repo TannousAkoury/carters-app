@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { readJson } from "@/lib/json-store";
-import { requireAdmin } from "@/lib/shopify-admin";
+import { requireAdmin, shopifyAdminGraphql } from "@/lib/shopify-admin";
 
 type Event = { name: string; sessionId: string; deviceId?: string; createdAt: string; properties?: { path?: string; platform?: string } };
 type Device = { token: string };
@@ -102,7 +102,18 @@ export async function GET(request: Request) {
     const item = productMap.get(path) || { path, views: 0, devices: new Set<string>() };
     item.views += 1; item.devices.add(deviceOf(event)); productMap.set(path, item);
   });
-  const topProducts = [...productMap.values()].map((item) => { let label = item.path.split("/").pop() || "Product"; try { label = decodeURIComponent(label); } catch {} return { path: item.path, label: label.replaceAll("-", " "), views: item.views, devices: item.devices.size }; }).sort((a, b) => b.views - a.views).slice(0, 8);
+  let topProducts = [...productMap.values()].map((item) => { let handle = item.path.split("/").pop() || ""; try { handle = decodeURIComponent(handle); } catch {} return { path: item.path, handle, label: handle.replaceAll("-", " ") || "Product", views: item.views, devices: item.devices.size, image: null as { url: string; altText: string } | null }; }).sort((a, b) => b.views - a.views).slice(0, 8);
+  if (topProducts.length) {
+    try {
+      const handles = topProducts.map((item) => item.handle).filter((handle) => /^[a-z0-9][a-z0-9-]*$/i.test(handle));
+      if (handles.length) {
+        const productData = await shopifyAdminGraphql(`query analyticsProductImages($query: String!) { products(first: 25, query: $query) { nodes { handle title featuredImage { url altText } } } }`, { query: handles.map((handle) => `handle:${handle}`).join(" OR ") });
+        const products = (productData?.products?.nodes || []) as { handle: string; title: string; featuredImage?: { url?: string | null; altText?: string | null } | null }[];
+        const byHandle = new Map(products.map((product) => [product.handle, product]));
+        topProducts = topProducts.map((item) => { const product = byHandle.get(item.handle);return { ...item, label: product?.title || item.label, image: product?.featuredImage?.url ? { url: product.featuredImage.url, altText: product.featuredImage.altText || product.title || item.label } : null } });
+      }
+    } catch { /* App analytics remain available if Shopify product media cannot be loaded. */ }
+  }
 
   const platformMap = new Map<string, Set<string>>();
   recent.forEach((event) => { const platform = event.properties?.platform || "unknown"; const set = platformMap.get(platform) || new Set<string>(); set.add(deviceOf(event)); platformMap.set(platform, set); });

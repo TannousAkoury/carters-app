@@ -1053,5 +1053,16 @@
       "platform": "ios"
     },
     "createdAt": "2026-07-14T13:56:47.303Z"
+  },
+  {
+    "id": "fd35dc42-f285-4806-82af-ddcb662a4a90",
+    "name": "screen_view",
+    "sessionId": "1784100311666-4i8qfw2gc1",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-15T07:26:35.510Z"
   }
 ]

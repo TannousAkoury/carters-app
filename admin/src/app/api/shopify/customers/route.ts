@@ -110,10 +110,19 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const search = url.searchParams.get("search")?.trim() ?? "";
   const after = url.searchParams.get("after");
+  const createdFrom = url.searchParams.get("createdFrom")?.trim() ?? "";
+  const createdTo = url.searchParams.get("createdTo")?.trim() ?? "";
+  const validDate = (value: string) => { if (!value) return true;if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;const parsed = new Date(`${value}T00:00:00.000Z`);return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value };
+  if (!validDate(createdFrom) || !validDate(createdTo) || (createdFrom && createdTo && createdFrom > createdTo)) return NextResponse.json({ error: "Choose a valid customer creation date range." }, { status: 400 });
+  const queryParts = [search];
+  if (createdFrom) queryParts.push(`created_at:>=${createdFrom}T00:00:00Z`);
+  if (createdTo) { const exclusiveEnd = new Date(`${createdTo}T00:00:00.000Z`);exclusiveEnd.setUTCDate(exclusiveEnd.getUTCDate() + 1);queryParts.push(`created_at:<${exclusiveEnd.toISOString()}`) }
+  const customerQuery = queryParts.filter(Boolean).join(" ");
+  const sortKey = createdFrom || createdTo ? "CREATED_AT" : "UPDATED_AT";
 
   const query = `
     query getCustomers($first: Int!, $after: String, $query: String) {
-      customers(first: $first, after: $after, query: $query, sortKey: UPDATED_AT, reverse: true) {
+      customers(first: $first, after: $after, query: $query, sortKey: ${sortKey}, reverse: true) {
         pageInfo { hasNextPage endCursor }
         edges {
           cursor
@@ -139,7 +148,7 @@ export async function GET(request: Request) {
 
   let data;
   try {
-    data = await shopifyGraphql(query, { first: 50, after, query: search || null });
+    data = await shopifyGraphql(query, { first: 50, after, query: customerQuery || null });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     return jsonError(error, message.startsWith("Set a real") ? 503 : 502);
