@@ -4,6 +4,7 @@ import {
   ThemeProvider,
 } from "@react-navigation/native";
 import { Stack } from "expo-router";
+import { Image as ExpoImage } from "expo-image";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
 
@@ -33,7 +34,11 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen
             name="account"
-            options={{ presentation: "modal", title: "Carter's Oshkosh B'Gosh Account" }}
+            options={{
+              presentation: "modal",
+              title: "Carter's Account",
+              headerTitle: () => <ExpoImage source={{ uri: "https://carters.com.lb/cdn/shop/files/logo1.png?v=1707301645&width=330" }} style={{ width: 132, height: 38 }} contentFit="contain" accessibilityLabel="Carter's" />,
+            }}
           />
           </Stack>
           <GlobalCartButton />

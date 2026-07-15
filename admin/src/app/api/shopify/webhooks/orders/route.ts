@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { readJson, writeJson } from "@/lib/json-store";
 import { sendClientPush, type PushDevice } from "@/lib/push";
+import { awardPaidOrder, reverseOrderPoints } from "@/lib/loyalty";
 
 type ShopifyOrderWebhook = {
   id?: number | string;
@@ -10,7 +11,12 @@ type ShopifyOrderWebhook = {
   contact_email?: string;
   phone?: string;
   cancelled_at?: string | null;
-  customer?: { email?: string; phone?: string } | null;
+  financial_status?: string;
+  total_price?: string;
+  current_total_price?: string;
+  currency?: string;
+  line_items?: { quantity?: number }[];
+  customer?: { id?: number|string; email?: string; phone?: string; first_name?: string; last_name?: string } | null;
 };
 
 type OrderNotificationLog = {
@@ -37,6 +43,15 @@ export async function POST(request: Request) {
   const orderName = order.name || `#${order.id ?? "order"}`;
   const customerEmail = (order.contact_email || order.email || order.customer?.email || "").trim().toLowerCase();
   const customerPhone = normalizePhone(order.phone || order.customer?.phone || "");
+  const orderId=String(order.id??"");
+  const customerName=[order.customer?.first_name,order.customer?.last_name].filter(Boolean).join(" ")||customerEmail||"Customer";
+  const paid=topic==="orders/paid"||order.financial_status==="paid"||order.financial_status==="partially_paid";
+  const itemCount=(order.line_items||[]).reduce((sum,item)=>sum+Math.max(0,Math.floor(Number(item.quantity)||0)),0);
+  let loyalty:{status:string;points:number;balance?:number}={status:"not-applicable",points:0};
+  if(process.env.SHOPIFY_WEBHOOK_SECRET){
+    if(order.cancelled_at||topic.includes("cancel"))loyalty=await reverseOrderPoints(orderId,orderName);
+    else if(paid)loyalty=await awardPaidOrder({orderId,orderName,customerId:String(order.customer?.id||""),email:customerEmail,name:customerName,itemCount});
+  }else if(paid)loyalty={status:"webhook-secret-required",points:0};
   const devices = await readJson<PushDevice[]>("push-devices.json", []);
   const matchingDevices = devices.filter((device) => {
     const emailMatches = customerEmail && device.customerEmail?.toLowerCase() === customerEmail;
@@ -47,7 +62,7 @@ export async function POST(request: Request) {
   const title = status === "cancelled" ? "Order canceled" : "Order confirmed";
   const message = status === "cancelled"
     ? `Your order ${orderName} has been canceled.`
-    : `Your order ${orderName} is confirmed. We will keep you updated.`;
+    : loyalty.status==="awarded"?`Your order ${orderName} is confirmed. You earned ${loyalty.points} reward point${loyalty.points===1?"":"s"}.`:`Your order ${orderName} is confirmed. We will keep you updated.`;
   const result = await sendClientPush({
     title,
     message,
@@ -61,7 +76,7 @@ export async function POST(request: Request) {
   const logs = await readJson<OrderNotificationLog[]>("order-notifications.json", []);
   await writeJson("order-notifications.json", [...logs.slice(-499), {
     id: crypto.randomUUID(),
-    orderId: String(order.id ?? ""),
+    orderId,
     orderName,
     topic,
     customerEmail: customerEmail || undefined,
@@ -70,7 +85,7 @@ export async function POST(request: Request) {
   }]);
 
   if ("error" in result) return NextResponse.json(result.error, { status: result.status });
-  return NextResponse.json({ ok: true, status, recipients: matchingDevices.length, campaignId: result.campaignId });
+  return NextResponse.json({ ok: true, status, recipients: matchingDevices.length, campaignId: result.campaignId, loyalty });
 }
 
 function verifyShopifyWebhook(rawBody: string, headers: Headers) {

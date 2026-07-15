@@ -1,0 +1,52 @@
+[
+  {
+    "id": "b8d9d701-9a17-47a3-b922-0ee95411d998",
+    "accountId": "0bad267c-4836-40db-b511-e677aec243b6",
+    "customerId": "",
+    "email": "tannousakoury@hotmail.com",
+    "type": "redemption",
+    "points": -50,
+    "rewardCode": "CARTERS-AC039E409B",
+    "rewardAmount": 15,
+    "currencyCode": "USD",
+    "discountId": "gid://shopify/DiscountCodeNode/1565487759426",
+    "expiresAt": "2026-08-14T13:37:50.561Z",
+    "note": "Combined loyalty reward worth 15.00 USD",
+    "createdAt": "2026-07-15T13:37:51.419Z"
+  },
+  {
+    "id": "ae0e420e-d593-4fba-9c3c-81f97598da5b",
+    "accountId": "0bad267c-4836-40db-b511-e677aec243b6",
+    "customerId": "",
+    "email": "tannousakoury@hotmail.com",
+    "type": "redemption",
+    "points": -100,
+    "rewardCode": "CARTERS-14ACF7AA23",
+    "rewardAmount": 10,
+    "currencyCode": "USD",
+    "discountId": "gid://shopify/DiscountCodeNode/1565487562818",
+    "expiresAt": "2026-07-15T14:04:16.576Z",
+    "note": "Merged into reward CARTERS-AC039E409B",
+    "createdAt": "2026-07-15T13:36:33.241Z"
+  },
+  {
+    "id": "6be2044d-7f4f-4b56-b943-1c11c7c6d905",
+    "accountId": "0bad267c-4836-40db-b511-e677aec243b6",
+    "customerId": "",
+    "email": "tannousakoury@hotmail.com",
+    "type": "adjustment",
+    "points": 100,
+    "note": "Manual admin adjustment",
+    "createdAt": "2026-07-15T13:36:20.601Z"
+  },
+  {
+    "id": "db26c312-7cd1-45de-b725-5626c21ad02e",
+    "accountId": "0bad267c-4836-40db-b511-e677aec243b6",
+    "customerId": "",
+    "email": "tannousakoury@hotmail.com",
+    "type": "adjustment",
+    "points": 50,
+    "note": "aa",
+    "createdAt": "2026-07-15T13:19:07.857Z"
+  }
+]

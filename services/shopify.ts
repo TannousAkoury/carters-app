@@ -1301,11 +1301,11 @@ export async function getProduct(handle: string): Promise<ProductDetails | null>
   };
 }
 
-export async function createCheckout(variantId: string, giftChoice: GiftChoice = "none", giftBoxVariantId?: string, customerAccessToken?: string | null): Promise<string> {
+export async function createCheckout(variantId: string, giftChoice: GiftChoice = "none", giftBoxVariantId?: string, customerAccessToken?: string | null, discountCode?: string | null): Promise<string> {
   const mutation = `
     mutation createCart($input: CartInput!) {
       cartCreate(input: $input) {
-        cart { checkoutUrl }
+        cart { id checkoutUrl }
         userErrors { message }
       }
     }
@@ -1323,7 +1323,9 @@ export async function createCheckout(variantId: string, giftChoice: GiftChoice =
   });
   const error = data?.cartCreate?.userErrors?.[0]?.message;
   if (error) throw new Error(error);
-  const url = data?.cartCreate?.cart?.checkoutUrl;
+  const createdCart = data?.cartCreate?.cart as {id?:string;checkoutUrl?:string}|null;
+  if (discountCode && createdCart?.id) {const discountedCart=await applyShopifyCartDiscount(createdCart.id,discountCode);return shopifyCheckoutUrlWithDiscount(discountedCart.checkoutUrl,discountCode)}
+  const url = createdCart?.checkoutUrl;
   if (!url) throw new Error("Checkout could not be created.");
   return url;
 }
@@ -1333,11 +1335,13 @@ export type ShopifyCart = {
   checkoutUrl: string;
   totalQuantity: number;
   cost: { subtotalAmount: ShopifyMoney; totalAmount: ShopifyMoney };
+  discountCodes: { code: string; applicable: boolean }[];
   lines: { edges: { node: { id: string; quantity: number; attributes: { key: string; value: string }[]; merchandise: { id: string; title: string; product: { title: string; handle: string; featuredImage?: { url: string } | null }; price: ShopifyMoney; compareAtPrice?: ShopifyMoney | null } } }[] };
 };
 
 const CART_FIELDS = `
   id checkoutUrl totalQuantity
+  discountCodes { code applicable }
   cost { subtotalAmount { amount currencyCode } totalAmount { amount currencyCode } }
   lines(first: 100) { edges { node { id quantity attributes { key value } merchandise { ... on ProductVariant { id title price { amount currencyCode } compareAtPrice { amount currencyCode } product { title handle featuredImage { url } } } } } } }
 `;
@@ -1398,6 +1402,19 @@ export async function updateShopifyCartLine(cartId: string, lineId: string, quan
   if (payload?.userErrors?.length) throw new Error(payload.userErrors[0].message);
   return payload?.cart as ShopifyCart;
 }
+
+export async function applyShopifyCartDiscount(cartId: string, code: string) {
+  const mutation = `mutation applyDiscount($cartId: ID!, $discountCodes: [String!]!) { cartDiscountCodesUpdate(cartId: $cartId, discountCodes: $discountCodes) { cart { ${CART_FIELDS} } userErrors { message } } }`;
+  const data = await requestStorefront<any>(mutation, { cartId, discountCodes: [code] });
+  const payload = data?.cartDiscountCodesUpdate;
+  if (payload?.userErrors?.length) throw new Error(payload.userErrors[0].message);
+  const cart = payload?.cart as ShopifyCart | null;
+  const applied = cart?.discountCodes?.find((discount) => discount.code.toLowerCase() === code.toLowerCase());
+  if (!cart || !applied?.applicable) throw new Error("This reward code is not applicable to the current cart.");
+  return cart;
+}
+
+export function shopifyCheckoutUrlWithDiscount(checkoutUrl:string,code:string){const separator=checkoutUrl.includes("?")?"&":"?";return `${checkoutUrl}${separator}discount=${encodeURIComponent(code)}`}
 
 export async function markShopifyCartAsAppOrder(cartId: string) {
   const mutation = `
