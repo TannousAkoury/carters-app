@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { ADMIN_AUTH_COOKIE, validateAdminSession } from "@/lib/auth";
+import { requireAnyPermission, requirePermission } from "@/lib/shopify-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -37,11 +36,6 @@ function permissionMessage(message: string) {
     return "Shopify denied order access. Add read_orders and write_orders, plus read_merchant_managed_fulfillment_orders and write_merchant_managed_fulfillment_orders for fulfillment, then update the custom app access token and restart the admin server.";
   }
   return message;
-}
-
-async function unauthorizedResponse() {
-  const session = (await cookies()).get(ADMIN_AUTH_COOKIE)?.value;
-  return await validateAdminSession(session) ? null : NextResponse.json({ error: "Admin authentication required." }, { status: 401 });
 }
 
 async function shopifyGraphql(query: string, variables: Record<string, unknown>) {
@@ -102,7 +96,7 @@ function mapOrder(order: ShopifyOrder) {
 }
 
 export async function GET(request: Request) {
-  const unauthorized = await unauthorizedResponse();
+  const unauthorized = await requireAnyPermission(["Dashboard", "Orders"]);
   if (unauthorized) return unauthorized;
   const url = new URL(request.url);
   const search = url.searchParams.get("search")?.trim() || "";
@@ -154,7 +148,7 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const unauthorized = await unauthorizedResponse();
+  const unauthorized = await requirePermission("Orders");
   if (unauthorized) return unauthorized;
   const body = await request.json().catch(() => null);
   if (typeof body?.id !== "string" || !body.id) return NextResponse.json({ error: "Order id is required." }, { status: 400 });
@@ -194,7 +188,7 @@ export async function PATCH(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const unauthorized = await unauthorizedResponse();
+  const unauthorized = await requirePermission("Orders");
   if (unauthorized) return unauthorized;
   const body = await request.json().catch(() => null);
   const id = typeof body?.id === "string" ? body.id : "";
@@ -249,7 +243,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const unauthorized = await unauthorizedResponse();
+  const unauthorized = await requirePermission("Orders");
   if (unauthorized) return unauthorized;
   const id = new URL(request.url).searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Order id is required." }, { status: 400 });

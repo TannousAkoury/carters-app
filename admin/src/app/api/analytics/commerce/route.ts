@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin, shopifyAdminGraphql } from "@/lib/shopify-admin";
+import { requireAnyPermission, shopifyAdminGraphql } from "@/lib/shopify-admin";
 
 type Money = { amount: string; currencyCode: string };
 type CommerceOrder = {
@@ -22,7 +22,7 @@ const DAY_MS = 86400000;
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const unauthorized = await requireAdmin();
+  const unauthorized = await requireAnyPermission(["Dashboard", "Analytics"]);
   if (unauthorized) return unauthorized;
 
   const url = new URL(request.url);

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { readJson, writeJson } from "@/lib/json-store";
-import { requireAdmin } from "@/lib/shopify-admin";
+import { requirePermission } from "@/lib/shopify-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +29,7 @@ const defaults = {
     minimumVersion: "1.0.0",
     forceUpdate: false,
     updateMessage: "A newer version is available with important improvements.",
+    updateUrl: "",
   },
   notifications: {
     newOrderAlerts: true,
@@ -93,6 +94,7 @@ function sanitize(value: unknown): Settings {
       minimumVersion: text(app.minimumVersion, defaults.app.minimumVersion, 20),
       forceUpdate: flag(app.forceUpdate, defaults.app.forceUpdate),
       updateMessage: text(app.updateMessage, defaults.app.updateMessage, 240),
+      updateUrl: text(app.updateUrl, defaults.app.updateUrl, 500),
     },
     notifications: {
       newOrderAlerts: flag(notifications.newOrderAlerts, defaults.notifications.newOrderAlerts),
@@ -123,14 +125,14 @@ function integrationStatus() {
 }
 
 export async function GET() {
-  const unauthorized = await requireAdmin();
+  const unauthorized = await requirePermission("Settings");
   if (unauthorized) return unauthorized;
   const stored = await readJson<Settings>("admin-settings.json", defaults);
   return NextResponse.json({ settings: sanitize(stored), integrations: integrationStatus() });
 }
 
 export async function PUT(request: Request) {
-  const unauthorized = await requireAdmin();
+  const unauthorized = await requirePermission("Settings");
   if (unauthorized) return unauthorized;
   const body = await request.json().catch(() => null);
   if (!body?.settings || typeof body.settings !== "object") return NextResponse.json({ error: "settings must be an object" }, { status: 400 });

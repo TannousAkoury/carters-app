@@ -60,6 +60,18 @@ export async function deleteAdminUser(id: string) {
   await writeJson(USERS_FILE, users.filter((user) => user.id !== id));
 }
 
+export async function updateAdminUserRole(id: string, role: string) {
+  const cleanRole = role.trim().slice(0, 60);
+  if (!cleanRole) throw new Error("A valid role is required.");
+  const users = await readJson<AdminUser[]>(USERS_FILE, []);
+  const now = new Date().toISOString();
+  const next = users.map((user) => user.id === id ? { ...user, role: cleanRole, updatedAt: now } : user);
+  const updated = next.find((user) => user.id === id);
+  if (!updated) throw new Error("Employee was not found.");
+  await writeJson(USERS_FILE, next);
+  return publicUser(updated);
+}
+
 export async function createPasswordResetInvite(id: string) {
   const users = await readJson<AdminUser[]>(USERS_FILE, []);
   const invite = createInviteToken();

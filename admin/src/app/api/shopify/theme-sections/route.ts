@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/shopify-admin";
+import { requirePermission } from "@/lib/shopify-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +38,7 @@ function directory(html:string) {
 }
 
 export async function GET(){
-  const unauthorized=await requireAdmin();if(unauthorized)return unauthorized;
+  const unauthorized=await requirePermission("App editor");if(unauthorized)return unauthorized;
   const site=(process.env.SHOPIFY_PUBLIC_SITE_URL||process.env.NEXT_PUBLIC_SHOPIFY_SITE_URL||"https://carters.com.lb").replace(/\/$/,"");
   try{const response=await fetch(site,{cache:"no-store",headers:{"User-Agent":"Carter-Mobile-Admin/1.0"}});if(!response.ok)throw new Error(`Storefront returned HTTP ${response.status}`);return NextResponse.json({sections:directory(await response.text()),source:site});}
   catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Unable to inspect the published Shopify theme.",sections:[]},{status:502})}

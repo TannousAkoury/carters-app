@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requirePermission } from "@/lib/shopify-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -107,6 +108,8 @@ function jsonError(error: unknown, status = 500) {
 }
 
 export async function GET(request: Request) {
+  const unauthorized = await requirePermission("Customers");
+  if (unauthorized) return unauthorized;
   const url = new URL(request.url);
   const search = url.searchParams.get("search")?.trim() ?? "";
   const after = url.searchParams.get("after");
@@ -165,6 +168,8 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  const unauthorized = await requirePermission("Customers");
+  if (unauthorized) return unauthorized;
   const body = await request.json().catch(() => null);
   const id = typeof body?.id === "string" ? body.id : "";
   if (!id) return NextResponse.json({ error: "Customer id is required." }, { status: 400 });
@@ -208,6 +213,8 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const unauthorized = await requirePermission("Customers");
+  if (unauthorized) return unauthorized;
   const url = new URL(request.url);
   const id = url.searchParams.get("id") || "";
   if (!id) return NextResponse.json({ error: "Customer id is required." }, { status: 400 });

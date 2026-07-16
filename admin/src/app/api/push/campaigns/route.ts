@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { readJson } from "@/lib/json-store";
-import { requireAdmin } from "@/lib/shopify-admin";
+import { requirePermission } from "@/lib/shopify-admin";
 
 type Campaign = { id:string;title:string;message:string;url:string;createdAt:string;recipientCount:number;status:string };
 type Event = { name:string;sessionId:string;properties?:{campaignId?:string;title?:string} };
 export const dynamic = "force-dynamic";
 export async function GET() {
-  const unauthorized = await requireAdmin();
+  const unauthorized = await requirePermission("Marketing");
   if (unauthorized) return unauthorized;
   const campaigns = await readJson<Campaign[]>("push-messages.json", []);
   const events = await readJson<Event[]>("analytics-events.json", []);

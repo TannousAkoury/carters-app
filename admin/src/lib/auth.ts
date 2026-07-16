@@ -23,12 +23,17 @@ export async function authenticateAdminUser(username: string, password: string) 
 }
 
 export async function validateAdminSession(session?: string) {
-  if (!session) return false;
+  return Boolean(await getAdminSessionUser(session));
+}
+
+export async function getAdminSessionUser(session?: string) {
+  if (!session) return null;
   const credentials = getAdminCredentials();
-  if (session === credentials.sessionToken) return true;
+  if (session === credentials.sessionToken) return { id: "owner", email: credentials.username, role: "Owner" };
   const userId = verifyStaffSessionToken(session);
-  if (!userId) return false;
-  return !!await findAdminUserById(userId);
+  if (!userId) return null;
+  const user = await findAdminUserById(userId);
+  return user ? { id: user.id, email: user.email, role: user.role } : null;
 }
 
 function createStaffSessionToken(userId: string) {

@@ -16,18 +16,22 @@ import { WhatsAppButton } from "@/components/whatsapp-button";
 import { NotificationProvider } from "@/components/notification-context";
 import { GlobalNotificationButton } from "@/components/global-notification-button";
 import { AnalyticsTracker } from "@/components/analytics-tracker";
+import { WishlistProvider } from "@/components/wishlist-context";
+import { AppGate, AppSettingsProvider, useAppSettings } from "@/components/app-settings-context";
 
 export const unstable_settings = {
   anchor: "(tabs)",
 };
 
-export default function RootLayout() {
+function AppContent() {
   const colorScheme = useColorScheme();
+  const { settings } = useAppSettings();
 
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+    <AppGate><ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <CurrencyProvider>
-        <CartProvider>
+        <WishlistProvider>
+         <CartProvider>
           <NotificationProvider>
           <AnalyticsTracker />
           <Stack>
@@ -42,12 +46,17 @@ export default function RootLayout() {
           />
           </Stack>
           <GlobalCartButton />
-          <GlobalNotificationButton />
-          <WhatsAppButton />
+          {settings.pushNotifications ? <GlobalNotificationButton /> : null}
+          {settings.customerChat ? <WhatsAppButton /> : null}
           </NotificationProvider>
-        </CartProvider>
+         </CartProvider>
+        </WishlistProvider>
       </CurrencyProvider>
       <StatusBar style="auto" />
-    </ThemeProvider>
+    </ThemeProvider></AppGate>
   );
+}
+
+export default function RootLayout() {
+  return <AppSettingsProvider><AppContent /></AppSettingsProvider>;
 }

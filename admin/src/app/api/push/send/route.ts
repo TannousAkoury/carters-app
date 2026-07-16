@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { sendClientPush } from "@/lib/push";
-import { requireAdmin } from "@/lib/shopify-admin";
+import { requirePermission } from "@/lib/shopify-admin";
 
 export async function POST(request: Request) {
-  const unauthorized = await requireAdmin();
+  const unauthorized = await requirePermission("Marketing");
   if (unauthorized) return unauthorized;
   const body = await request.json().catch(() => null);
   const title = typeof body?.title === "string" ? body.title.trim() : "";

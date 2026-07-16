@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin, shopifyAdminGraphql, shopifyError } from "@/lib/shopify-admin";
+import { requireAnyPermission, requirePermission, shopifyAdminGraphql, shopifyError } from "@/lib/shopify-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +18,7 @@ type Discount = {
 };
 
 export async function GET(request: Request) {
-  const unauthorized = await requireAdmin();
+  const unauthorized = await requireAnyPermission(["Dashboard", "Promotions"]);
   if (unauthorized) return unauthorized;
   const url = new URL(request.url);
   const after = url.searchParams.get("after");
@@ -84,7 +84,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const unauthorized = await requireAdmin();
+  const unauthorized = await requirePermission("Promotions");
   if (unauthorized) return unauthorized;
   const body = await request.json().catch(() => null);
   const title = typeof body?.title === "string" ? body.title.trim() : "";
@@ -121,7 +121,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const unauthorized = await requireAdmin();
+  const unauthorized = await requirePermission("Promotions");
   if (unauthorized) return unauthorized;
   const body = await request.json().catch(() => null);
   const id = typeof body?.id === "string" ? body.id : "";
@@ -206,7 +206,7 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const unauthorized = await requireAdmin();
+  const unauthorized = await requirePermission("Promotions");
   if (unauthorized) return unauthorized;
   const url = new URL(request.url);
   const id = url.searchParams.get("id") || "";

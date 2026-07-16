@@ -1,7 +1,18 @@
 {
-  "version": 1784198039788,
-  "publishedAt": "2026-07-16T10:33:59.788Z",
+  "version": 1784204867390,
+  "publishedAt": "2026-07-16T12:27:47.390Z",
   "sections": [
+    {
+      "id": "hero-1",
+      "type": "hero",
+      "title": "Made for little adventures",
+      "subtitle": "Discover soft, playful styles for every day.",
+      "image": "https://images.unsplash.com/photo-1522771930-78848d9293e8?auto=format&fit=crop&w=900&q=80",
+      "buttonLabel": "Shop new arrivals",
+      "background": "#f9e7df",
+      "enabled": false,
+      "customCss": ""
+    },
     {
       "id": "notice-1",
       "type": "announcement",
@@ -28,7 +39,8 @@
   "shopifyVisibility": {
     "theme:top-bar": false,
     "theme:horizontal-menu": false,
-    "top-picks": false
+    "top-picks": false,
+    "theme:custom-colors": false
   },
   "shopifyStyles": {
     "hero": ".section {\n  margin: 0;\n  padding: 0;\n}\n.image {\n  object-fit: cover;\n  border-radius: 0;\n}"

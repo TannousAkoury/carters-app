@@ -6,5 +6,13 @@
     "text": "You were invited to Carter's App Studio.\n\nOpen this secure link to set your password:\nhttp://localhost:3001/set-password?token=bc09241caabb6fa5778ef6a2afb8075a2f39d9a6997feb88b49ef8fdb5b41abc\n\nThis link expires in 7 days.",
     "createdAt": "2026-07-09T13:38:38.510Z",
     "mode": "local-outbox"
+  },
+  {
+    "id": "2e0f7ff0-2a50-42df-aab6-c5dca415176b",
+    "to": "tannous.akoury@zavco.net",
+    "subject": "Reset your Carter's admin password",
+    "text": "An admin reset your Carter's admin password.\n\nOpen this secure link to set your password:\nhttp://localhost:3001/set-password?token=e5d523a484ed047845d40e79a514453fa8d01ee35e7d4041fc12902b4f533408\n\nThis link expires in 7 days.",
+    "createdAt": "2026-07-16T11:44:21.126Z",
+    "mode": "local-outbox"
   }
 ]

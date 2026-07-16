@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { requireAdmin, shopifyAdminGraphql, shopifyError } from "@/lib/shopify-admin";
+import { requireAnyPermission, requirePermission, shopifyAdminGraphql, shopifyError } from "@/lib/shopify-admin";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const unauthorized = await requireAdmin();
+  const unauthorized = await requireAnyPermission(["Dashboard", "Inventory"]);
   if (unauthorized) return unauthorized;
   const url = new URL(request.url);
   const after = url.searchParams.get("after");
@@ -74,7 +74,7 @@ export async function GET(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  const unauthorized = await requireAdmin();
+  const unauthorized = await requirePermission("Inventory");
   if (unauthorized) return unauthorized;
   const body = await request.json().catch(() => null);
   const productId = typeof body?.productId === "string" ? body.productId : "";
@@ -133,7 +133,7 @@ export async function PUT(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const unauthorized = await requireAdmin();
+  const unauthorized = await requirePermission("Inventory");
   if (unauthorized) return unauthorized;
   const form = await request.formData().catch(() => null);
   const productId = typeof form?.get("productId") === "string" ? String(form.get("productId")) : "";
@@ -177,7 +177,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const unauthorized = await requireAdmin();
+  const unauthorized = await requirePermission("Inventory");
   if (unauthorized) return unauthorized;
   const productId = new URL(request.url).searchParams.get("productId")?.trim() || "";
   if (!productId.startsWith("gid://shopify/Product/")) {
@@ -204,7 +204,7 @@ export async function DELETE(request: Request) {
 type InventoryChange = { inventoryItemId: string; locationId: string; delta?: number; activateQuantity?: number };
 
 export async function PATCH(request: Request) {
-  const unauthorized = await requireAdmin();
+  const unauthorized = await requirePermission("Inventory");
   if (unauthorized) return unauthorized;
   const body = await request.json().catch(() => null);
   const changes = Array.isArray(body?.changes) ? (body.changes as InventoryChange[]).slice(0, 250) : [];

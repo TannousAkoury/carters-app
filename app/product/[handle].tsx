@@ -7,6 +7,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useCart } from "@/components/cart-context";
 import { useCurrency } from "@/components/currency-context";
 import { salePercentage } from "@/utils/pricing";
+import { useWishlist } from "@/components/wishlist-context";
+import { useAppSettings } from "@/components/app-settings-context";
 import { ActivityIndicator, Image, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 const SIZE_CHART = [
@@ -25,6 +27,8 @@ const LOYALTY_REWARD_CODE_KEY = "loyalty_reward_code";
 export default function ProductScreen() {
   const { setCount } = useCart();
   const { currency, toggleCurrency, formatMoney } = useCurrency();
+  const { has: isWished, toggle: toggleWishlist } = useWishlist();
+  const { settings: appSettings } = useAppSettings();
   const router = useRouter();
   const params = useLocalSearchParams<{ handle: string; size?: string }>();
   const handle = Array.isArray(params.handle) ? params.handle[0] : params.handle;
@@ -102,7 +106,7 @@ export default function ProductScreen() {
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.icon}><Ionicons name="arrow-back" size={24} color="#002041" /></TouchableOpacity>
         <Text style={styles.headerTitle}>Product details</Text>
-        <TouchableOpacity onPress={toggleCurrency} style={styles.currencySwitch}><Text style={styles.currencyText}>{currency} ⇄</Text></TouchableOpacity>
+        <View style={styles.headerActions}><TouchableOpacity onPress={toggleCurrency} style={styles.currencySwitch}><Text style={styles.currencyText}>{currency} ⇄</Text></TouchableOpacity>{appSettings.wishlist ? <TouchableOpacity onPress={() => toggleWishlist({ id: product.id, title: product.title, price: product.variants[0]?.money.amount ?? "0", oldPrice: product.variants[0]?.compareAtMoney?.amount, image: product.image, handle: product.handle })} style={styles.icon} accessibilityLabel={isWished(product.id) ? "Remove from wishlist" : "Add to wishlist"}><Ionicons name={isWished(product.id) ? "heart" : "heart-outline"} size={24} color={isWished(product.id) ? "#e0938e" : "#002041"} /></TouchableOpacity> : null}</View>
       </View>
       <ScrollView contentContainerStyle={styles.content}>
         <View>
@@ -164,7 +168,7 @@ export default function ProductScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#fff" }, center: { flex: 1, alignItems: "center", justifyContent: "center" },
   header: { height: 58, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: "#eee", paddingHorizontal: 12 },
-  icon: { width: 40, height: 40, alignItems: "center", justifyContent: "center" }, headerTitle: { color: "#002041", fontWeight: "800", fontSize: 17 }, currencySwitch: { minWidth: 48, height: 34, marginRight: 51, paddingHorizontal: 8, borderRadius: 17, backgroundColor: "#eef5f8", alignItems: "center", justifyContent: "center" }, currencyText: { color: "#002041", fontSize: 12, fontWeight: "900" },
+  icon: { width: 40, height: 40, alignItems: "center", justifyContent: "center" }, headerTitle: { color: "#002041", fontWeight: "800", fontSize: 17 }, headerActions: { flexDirection: "row", alignItems: "center" }, currencySwitch: { minWidth: 48, height: 34, paddingHorizontal: 8, borderRadius: 17, backgroundColor: "#eef5f8", alignItems: "center", justifyContent: "center" }, currencyText: { color: "#002041", fontSize: 12, fontWeight: "900" },
   content: { paddingBottom: 28 }, image: { width: "100%", aspectRatio: 0.88, backgroundColor: "#f4f4f4" },
   saleBadge: { position: "absolute", left: 14, top: 14, color: "#fff", backgroundColor: "#d64545", paddingHorizontal: 10, paddingVertical: 6, fontSize: 12, fontWeight: "900" },
   title: { fontSize: 22, lineHeight: 29, fontWeight: "800", color: "#18243b", margin: 18, marginBottom: 7 }, productPriceRow: { flexDirection: "row", alignItems: "center", gap: 9, marginHorizontal: 18 }, price: { color: "#002041", fontSize: 19, fontWeight: "800" }, salePrice: { color: "#d64545" }, oldPrice: { color: "#9a8f8b", fontSize: 14, textDecorationLine: "line-through" }, sku: { color: "#657083", fontSize: 13, fontWeight: "700", marginHorizontal: 18, marginTop: 7 },

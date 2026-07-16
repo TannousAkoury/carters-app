@@ -4,6 +4,8 @@ import { AdminSections } from "@/components/admin-sections";
 import { useCart } from "@/components/cart-context";
 import { useCurrency, type DisplayCurrency } from "@/components/currency-context";
 import { salePercentage } from "@/utils/pricing";
+import { useWishlist } from "@/components/wishlist-context";
+import { useAppSettings } from "@/components/app-settings-context";
 import type { AgeCategory, ExploreStyle, HeroBannerItem, HomeProduct as Product, OurBrand, PromoFeature, ShopCategory, TinyEssential } from "@/features/home/types";
 import { Ionicons } from "@expo/vector-icons";
 import { Image as ExpoImage } from "expo-image";
@@ -131,7 +133,7 @@ function Header({
           <Ionicons name="search-outline" size={21} color={COLORS.blue} />
         </TouchableOpacity>
 
-        <TouchableOpacity
+        {onWishlist ? <TouchableOpacity
           style={[
             styles.headerCircleBtn,
             !isScrolled && styles.headerCircleTransparent,
@@ -142,7 +144,7 @@ function Header({
           activeOpacity={0.75}
         >
           <Ionicons name="heart-outline" size={22} color={COLORS.blue} />
-        </TouchableOpacity>
+        </TouchableOpacity> : null}
 
         <TouchableOpacity
           style={[
@@ -339,15 +341,15 @@ function ShopifyThemeSections({sections,placement,visibility,customStyles,onOpen
 
 function ProductCard({
   item,
-  onWishlistToggle,
   onPress,
 }: {
   item: Product;
-  onWishlistToggle?: (id: string, value: boolean) => void;
   onPress?: (product: Product) => void;
 }) {
   const { formatMoney } = useCurrency();
-  const [wished, setWished] = useState(item.wishlist);
+  const { settings: appSettings } = useAppSettings();
+  const { has, toggle } = useWishlist();
+  const wished = has(item.id);
   const fallbackAmount = Number(item.price.replace(/[^0-9.]/g, ""));
   const displayedPrice = formatMoney({ amount: String(item.minPrice ?? fallbackAmount), currencyCode: "USD" });
   const oldAmount = item.oldPrice ? Number(item.oldPrice.replace(/[^0-9.]/g, "")) : 0;
@@ -355,9 +357,8 @@ function ProductCard({
   const discount = salePercentage(item.minPrice ?? fallbackAmount, oldAmount);
 
   const toggleWishlist = () => {
-    const nextValue = !wished;
-    setWished(nextValue);
-    onWishlistToggle?.(item.id, nextValue);
+    if (!item.handle) return;
+    toggle({ id: item.id, title: item.title, price: item.price, oldPrice: item.oldPrice, image: item.image, handle: item.handle });
   };
 
   return (
@@ -384,7 +385,7 @@ function ProductCard({
           </View>
         )}
 
-        <TouchableOpacity
+        {appSettings.wishlist ? <TouchableOpacity
           style={styles.wishBtn}
           onPress={toggleWishlist}
           activeOpacity={0.75}
@@ -395,7 +396,7 @@ function ProductCard({
             size={18}
             color={wished ? COLORS.pinkAccent : COLORS.textLight}
           />
-        </TouchableOpacity>
+        </TouchableOpacity> : null}
       </View>
 
       <View style={styles.productInfo}>
@@ -432,12 +433,10 @@ function TopPicksSection({
   products,
   onSeeAll,
   onProductPress,
-  onWishlist,
 }: {
   products: Product[];
   onSeeAll?: () => void;
   onProductPress?: (product: Product) => void;
-  onWishlist?: (id: string, value: boolean) => void;
 }) {
   return (
     <View style={styles.sectionBlock}>
@@ -462,7 +461,6 @@ function TopPicksSection({
             key={item.id}
             item={item}
             onPress={onProductPress}
-            onWishlistToggle={onWishlist}
           />
         ))}
       </ScrollView>
@@ -714,12 +712,10 @@ function LatestCollectionSection({
   products,
   onSeeAll,
   onProductPress,
-  onWishlist,
 }: {
   products: Product[];
   onSeeAll?: () => void;
   onProductPress?: (product: Product) => void;
-  onWishlist?: (id: string, value: boolean) => void;
 }) {
   return (
     <View style={styles.latestSection}>
@@ -744,7 +740,6 @@ function LatestCollectionSection({
             key={item.id}
             item={item}
             onPress={onProductPress}
-            onWishlistToggle={onWishlist}
           />
         ))}
       </ScrollView>
@@ -891,6 +886,7 @@ function NavigationMenu({
 export default function HomeScreen() {
   const { count: cartCount } = useCart();
   const { currency, toggleCurrency } = useCurrency();
+  const { settings: appSettings } = useAppSettings();
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
   const [activeTab, setActiveTab] = useState<TabId>("home");
@@ -1056,7 +1052,7 @@ export default function HomeScreen() {
         onCurrency={toggleCurrency}
         onSearch={() => router.push("/search")}
         onCart={openCart}
-        onWishlist={() => showCollection("new-collection-ss26", "Wishlist")}
+        onWishlist={appSettings.wishlist ? () => router.push("/wishlist") : undefined}
         onMenu={() => setMenuVisible(true)}
       />
 
@@ -1111,7 +1107,6 @@ export default function HomeScreen() {
             products={topPicksProducts}
             onSeeAll={() => showCollection("new-collection-ss26", "Top picks")}
             onProductPress={showProduct}
-            onWishlist={(id, value) => console.log("Wishlist", id, value)}
           />
         )}
 
@@ -1163,9 +1158,6 @@ export default function HomeScreen() {
             products={latestCollectionProducts}
             onSeeAll={() => showCollection("new-collection-ss26", "Latest collection")}
             onProductPress={showProduct}
-            onWishlist={(id, value) =>
-              console.log("Latest collection wishlist", id, value)
-            }
           />
         )}
 

@@ -22,7 +22,8 @@
     "guestCheckout": true,
     "minimumVersion": "1.0.0",
     "forceUpdate": false,
-    "updateMessage": "A newer version is available with important improvements."
+    "updateMessage": "A newer version is available with important improvements.",
+    "updateUrl": ""
   },
   "notifications": {
     "newOrderAlerts": true,

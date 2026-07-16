@@ -9,6 +9,7 @@ type Props = {
   value: AnalyticsDateRange;
   loading: boolean;
   onApply: (range: AnalyticsDateRange) => void;
+  align?: "left" | "right";
 };
 
 const DAY_MS = 86400000;
@@ -29,7 +30,7 @@ const sameRange = (left: AnalyticsDateRange, right: AnalyticsDateRange) => left.
 const shortDate = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 const monthName = new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric", timeZone: "UTC" });
 
-export default function AnalyticsDateRangePicker({ value, loading, onApply }: Props) {
+export default function AnalyticsDateRangePicker({ value, loading, onApply, align="right" }: Props) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<AnalyticsDateRange>(value);
   const [selectingEnd, setSelectingEnd] = useState(false);
@@ -93,7 +94,7 @@ export default function AnalyticsDateRangePicker({ value, loading, onApply }: Pr
       <svg className={styles.chevron} viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>
     </button>
 
-    {open && <div className={styles.popover} role="dialog" aria-label="Choose analytics date range">
+    {open && <div className={`${styles.popover} ${align==="left"?styles.popoverLeft:""}`} role="dialog" aria-label="Choose analytics date range">
       <aside className={styles.presets}>
         <strong>Quick select</strong>
         {presets.map((preset) => {

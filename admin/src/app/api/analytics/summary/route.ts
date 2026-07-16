@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { readJson } from "@/lib/json-store";
-import { requireAdmin, shopifyAdminGraphql } from "@/lib/shopify-admin";
+import { requireAnyPermission, shopifyAdminGraphql } from "@/lib/shopify-admin";
 
 type Event = { name: string; sessionId: string; deviceId?: string; createdAt: string; properties?: { path?: string; platform?: string } };
 type Device = { token: string };
@@ -30,7 +30,7 @@ const screenLabel = (path: string) => {
 };
 
 export async function GET(request: Request) {
-  const unauthorized = await requireAdmin();
+  const unauthorized = await requireAnyPermission(["Dashboard", "Analytics"]);
   if (unauthorized) return unauthorized;
   const url = new URL(request.url);
   const requestedStart = url.searchParams.get("start");
@@ -135,7 +135,7 @@ export async function GET(request: Request) {
     cartViews: currentStats.cartViews,
     notificationDevices: pushDevices.length,
     purchases: null,
-    days: daily.slice(-7).map((day) => ({ label: day.label, value: day.devices })),
+    days: daily.filter((_, index) => index % Math.max(1, Math.ceil(daily.length / 30)) === 0 || index === daily.length - 1).map((day) => ({ label: day.label, value: day.devices })),
     range: { days, start: new Date(start).toISOString(), end: new Date(end - 1).toISOString() },
     metrics: { uniqueDevices: currentStats.devices, sessions: currentStats.sessions, screenViews: currentStats.views.length, productViews: currentStats.productViews, cartViews: currentStats.cartViews, viewsPerSession: Math.round(viewsPerSession * 10) / 10, bounceRate: Math.round(bounceRate * 10) / 10, activeDevices24h: new Set(events.filter((event) => { const time = new Date(event.createdAt).getTime(); return time >= end - DAY_MS && time < end; }).map(deviceOf)).size, notificationOpens: recent.filter((event) => event.name === "notification_open").length, pushDevices: pushDevices.length },
     changes: { uniqueDevices: percentChange(currentStats.devices, previousStats.devices), sessions: percentChange(currentStats.sessions, previousStats.sessions), screenViews: percentChange(currentStats.views.length, previousStats.views.length), productViews: percentChange(currentStats.productViews, previousStats.productViews), cartViews: percentChange(currentStats.cartViews, previousStats.cartViews) },

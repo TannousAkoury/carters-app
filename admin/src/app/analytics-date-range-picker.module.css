@@ -5,3 +5,5 @@
 @keyframes open{from{opacity:0;transform:translateY(-5px) scale(.99)}to{opacity:1;transform:translateY(0) scale(1)}}
 @media(max-width:760px){.root{width:100%}.trigger{width:100%;min-width:0}.popover{right:auto;left:0;width:min(620px,calc(100vw - 72px))}}
 @media(max-width:560px){.popover{width:min(390px,calc(100vw - 42px));grid-template-columns:1fr}.presets{display:flex;border-right:0;border-bottom:1px solid #e2e8ed;padding:10px}.presets>strong{display:none}.presets button{flex:1;justify-content:center;padding:8px 5px;font-size:8px}.presets button span{display:none}.calendar{padding:14px 12px 12px}.days button{min-height:35px}.calendar>footer{grid-template-columns:1fr 1fr}.calendar>footer>div{grid-column:1/-1}.calendar>footer button{width:100%}}
+.root{z-index:50;min-width:0}.trigger{width:100%;min-width:0}.popover{z-index:60}
+.popoverLeft{right:auto;left:0}@media(min-width:901px){.popoverLeft{width:min(620px,calc(100vw - 280px))}}

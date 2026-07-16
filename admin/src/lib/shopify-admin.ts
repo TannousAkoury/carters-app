@@ -1,10 +1,30 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { ADMIN_AUTH_COOKIE, validateAdminSession } from "@/lib/auth";
+import { ADMIN_AUTH_COOKIE, getAdminSessionUser, validateAdminSession } from "@/lib/auth";
+import { permissionsForRole } from "@/lib/admin-roles";
 
 export async function requireAdmin() {
   const session = (await cookies()).get(ADMIN_AUTH_COOKIE)?.value;
   return await validateAdminSession(session) ? null : NextResponse.json({ error: "Admin authentication required." }, { status: 401 });
+}
+
+export async function currentAdminLabel() {
+  const session = (await cookies()).get(ADMIN_AUTH_COOKIE)?.value;
+  return (await getAdminSessionUser(session))?.email ?? "Administrator";
+}
+
+export async function requirePermission(permission: string) {
+  return requireAnyPermission([permission]);
+}
+
+export async function requireAnyPermission(required: string[]) {
+  const session = (await cookies()).get(ADMIN_AUTH_COOKIE)?.value;
+  const user = await getAdminSessionUser(session);
+  if (!user) return NextResponse.json({ error: "Admin authentication required." }, { status: 401 });
+  const permissions = await permissionsForRole(user.role);
+  return permissions.includes("All permissions") || required.some((permission) => permissions.includes(permission))
+    ? null
+    : NextResponse.json({ error: `Access denied. Required permission: ${required.join(" or ")}.` }, { status: 403 });
 }
 
 function shopifyDomain() {

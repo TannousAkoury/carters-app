@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { readJson, writeBundledAppContent, writeJson } from "@/lib/json-store";
+import { requirePermission } from "@/lib/shopify-admin";
 
 export const dynamic = "force-dynamic";
 const fallback = { version: 1, publishedAt: null, sections: [], shopifyVisibility: {} as Record<string, boolean>, shopifyStyles: {} as Record<string,string> };
@@ -10,13 +11,16 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  const unauthorized = await requirePermission("App editor");
+  if (unauthorized) return unauthorized;
   const body = await request.json();
   if (!Array.isArray(body?.sections)) return NextResponse.json({ error: "sections must be an array" }, { status: 400, headers: cors });
   const sections = body.sections.map((section: unknown) => {
     if (!section || typeof section !== "object") return section;
     const item = section as Record<string, unknown>;
     const customCss = typeof item.customCss === "string" ? item.customCss.slice(0, 4000).replace(/@import|expression\s*\(|url\s*\(/gi, "") : "";
-    return { ...item, customCss };
+    const items = Array.isArray(item.items) ? item.items.filter(value => typeof value === "string").slice(0, 8).map(value => (value as string).trim().slice(0, 160)).filter(Boolean) : [];
+    return { ...item, customCss, items };
   });
   const rawVisibility = body?.shopifyVisibility && typeof body.shopifyVisibility === "object" ? body.shopifyVisibility as Record<string, unknown> : {};
   const shopifyVisibility = Object.fromEntries(Object.entries(rawVisibility).filter(([key, value]) => key.length <= 180 && typeof value === "boolean").slice(0, 100));
