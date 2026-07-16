@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { readJson, writeBundledAppContent, writeJson } from "@/lib/json-store";
 
 export const dynamic = "force-dynamic";
-const fallback = { version: 1, publishedAt: null, sections: [] };
+const fallback = { version: 1, publishedAt: null, sections: [], shopifyVisibility: {} as Record<string, boolean>, shopifyStyles: {} as Record<string,string> };
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type" };
 
 export async function GET() {
@@ -18,7 +18,11 @@ export async function PUT(request: Request) {
     const customCss = typeof item.customCss === "string" ? item.customCss.slice(0, 4000).replace(/@import|expression\s*\(|url\s*\(/gi, "") : "";
     return { ...item, customCss };
   });
-  const content = { version: Date.now(), publishedAt: new Date().toISOString(), sections };
+  const rawVisibility = body?.shopifyVisibility && typeof body.shopifyVisibility === "object" ? body.shopifyVisibility as Record<string, unknown> : {};
+  const shopifyVisibility = Object.fromEntries(Object.entries(rawVisibility).filter(([key, value]) => key.length <= 180 && typeof value === "boolean").slice(0, 100));
+  const rawStyles=body?.shopifyStyles&&typeof body.shopifyStyles==="object"?body.shopifyStyles as Record<string,unknown>:{};
+  const shopifyStyles=Object.fromEntries(Object.entries(rawStyles).filter(([key,value])=>key.length<=180&&typeof value==="string").slice(0,100).map(([key,value])=>[key,(value as string).slice(0,4000).replace(/@import|expression\s*\(|url\s*\(/gi,"")]));
+  const content = { version: Date.now(), publishedAt: new Date().toISOString(), sections, shopifyVisibility,shopifyStyles };
   await writeJson("app-content.json", content);
   await writeBundledAppContent(content);
   return NextResponse.json(content, { headers: cors });

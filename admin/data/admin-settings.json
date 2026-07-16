@@ -1,0 +1,41 @@
+{
+  "workspace": {
+    "applicationName": "Carter's App Studio",
+    "storeName": "Carter's & OshKosh Lebanon",
+    "supportEmail": "",
+    "supportPhone": "",
+    "timezone": "Asia/Beirut",
+    "locale": "en-LB"
+  },
+  "commerce": {
+    "currency": "USD",
+    "lowStockThreshold": 5,
+    "freeShippingThreshold": 50,
+    "orderPrefix": "CAR",
+    "defaultInventoryLocation": ""
+  },
+  "app": {
+    "maintenanceMode": false,
+    "customerChat": true,
+    "wishlist": true,
+    "pushNotifications": true,
+    "guestCheckout": true,
+    "minimumVersion": "1.0.0",
+    "forceUpdate": false,
+    "updateMessage": "A newer version is available with important improvements."
+  },
+  "notifications": {
+    "newOrderAlerts": true,
+    "lowStockAlerts": true,
+    "newCustomerAlerts": false,
+    "failedPaymentAlerts": true,
+    "dailyDigest": true,
+    "digestEmail": ""
+  },
+  "security": {
+    "sessionTimeoutMinutes": 480,
+    "auditRetentionDays": 90,
+    "requireTwoFactor": false,
+    "allowStaffInvites": true
+  }
+}

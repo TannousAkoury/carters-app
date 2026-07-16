@@ -74,10 +74,19 @@ type CommerceAnalytics = {
   generatedAt:string;
 };
 type CustomerDraft = { firstName:string; lastName:string; email:string; phone:string };
+type AdminSettingsState = {
+  workspace:{applicationName:string;storeName:string;supportEmail:string;supportPhone:string;timezone:string;locale:string};
+  commerce:{currency:string;lowStockThreshold:number;freeShippingThreshold:number;orderPrefix:string;defaultInventoryLocation:string};
+  app:{maintenanceMode:boolean;customerChat:boolean;wishlist:boolean;pushNotifications:boolean;guestCheckout:boolean;minimumVersion:string;forceUpdate:boolean;updateMessage:string};
+  notifications:{newOrderAlerts:boolean;lowStockAlerts:boolean;newCustomerAlerts:boolean;failedPaymentAlerts:boolean;dailyDigest:boolean;digestEmail:string};
+  security:{sessionTimeoutMinutes:number;auditRetentionDays:number;requireTwoFactor:boolean;allowStaffInvites:boolean};
+};
+type IntegrationStatus = {shopifyStorefront:boolean;shopifyAdmin:boolean;push:boolean;email:boolean;realtime:boolean};
+type ShopifyThemeDirectoryItem={key:string;shopifyId:string;title:string;kind:string;position:number;automatic:boolean};
 const placements: { value: Placement; label: string }[] = [
   { value:"before-hero",label:"Before Shopify hero" },{ value:"after-hero",label:"After Shopify hero" },{ value:"after-promos",label:"After promo strip" },{ value:"after-ages",label:"After age groups" },{ value:"after-top-picks",label:"After top picks" },{ value:"after-categories",label:"After shop categories" },{ value:"after-explore",label:"After explore styles" },{ value:"after-essentials",label:"After tiny essentials" },{ value:"after-brands",label:"After brands" },{ value:"after-latest",label:"After latest collection" },
 ];
-const shopifySections: { name:string; after:Placement }[] = [{name:"Hero banners",after:"after-hero"},{name:"Promo strip",after:"after-promos"},{name:"Age groups",after:"after-ages"},{name:"Top picks",after:"after-top-picks"},{name:"Shop categories",after:"after-categories"},{name:"Explore styles",after:"after-explore"},{name:"Tiny essentials",after:"after-essentials"},{name:"Our brands",after:"after-brands"},{name:"Latest collection",after:"after-latest"}];
+const shopifySections: { key:string; name:string; after:Placement }[] = [{key:"hero",name:"Hero banners",after:"after-hero"},{key:"promos",name:"Promo strip",after:"after-promos"},{key:"age-groups",name:"Age groups",after:"after-ages"},{key:"top-picks",name:"Top picks",after:"after-top-picks"},{key:"shop-categories",name:"Shop categories",after:"after-categories"},{key:"explore-styles",name:"Explore styles",after:"after-explore"},{key:"tiny-essentials",name:"Tiny essentials",after:"after-essentials"},{key:"our-brands",name:"Our brands",after:"after-brands"},{key:"latest-collection",name:"Latest collection",after:"after-latest"}];
 
 const defaults: Section[] = [
   { id: "hero-1", type: "hero", title: "Made for little adventures", subtitle: "Discover soft, playful styles for every day.", image: "https://images.unsplash.com/photo-1522771930-78848d9293e8?auto=format&fit=crop&w=900&q=80", buttonLabel: "Shop new arrivals", background: "#f9e7df", enabled: true },
@@ -129,15 +138,22 @@ export default function Home() {
   const [saved, setSaved] = useState(true);
   const [publishedAt, setPublishedAt] = useState("Not published yet");
   const [publishMessage, setPublishMessage] = useState("");
+  const [shopifyVisibility,setShopifyVisibility]=useState<Record<string,boolean>>({});
+  const [shopifyStyles,setShopifyStyles]=useState<Record<string,string>>({});
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const draft = localStorage.getItem("carters-admin-draft");
     const published = localStorage.getItem("carters-admin-published-at");
+    const visibilityDraft=localStorage.getItem("carters-admin-shopify-visibility");
+    const stylesDraft=localStorage.getItem("carters-admin-shopify-styles");
     // Hydrate the browser-only draft after the initial server render.
     /* eslint-disable react-hooks/set-state-in-effect */
     if (draft) { try { setSections(JSON.parse(draft)); } catch { /* keep defaults */ } }
     if (published) setPublishedAt(published);
+    if(visibilityDraft){try{setShopifyVisibility(JSON.parse(visibilityDraft))}catch{/* keep defaults */}}
+    if(stylesDraft){try{setShopifyStyles(JSON.parse(stylesDraft))}catch{/* keep defaults */}}
+    if(!visibilityDraft||!stylesDraft)fetch("/api/content",{cache:"no-store"}).then(response=>response.json()).then(data=>{if(!visibilityDraft&&data?.shopifyVisibility)setShopifyVisibility(data.shopifyVisibility);if(!stylesDraft&&data?.shopifyStyles)setShopifyStyles(data.shopifyStyles)}).catch(()=>undefined);
     setReady(true);
     /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
@@ -161,16 +177,18 @@ export default function Home() {
     setSections((items) => items.map((item) => item.id === selectedId ? { ...item, ...patch } : item));
     setSaved(false);
   };
-  const saveDraft = () => { localStorage.setItem("carters-admin-draft", JSON.stringify(sections)); setSaved(true); };
+  const saveDraft = () => { localStorage.setItem("carters-admin-draft", JSON.stringify(sections));localStorage.setItem("carters-admin-shopify-visibility",JSON.stringify(shopifyVisibility));localStorage.setItem("carters-admin-shopify-styles",JSON.stringify(shopifyStyles)); setSaved(true); };
   const logout = async () => { await fetch("/api/logout", { method: "POST" }); window.location.href = "/login"; };
   const publish = async () => {
     setPublishMessage("Publishing…");
     try {
-      const response = await fetch("/api/content", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sections }) });
+      const response = await fetch("/api/content", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sections,shopifyVisibility,shopifyStyles }) });
       if (!response.ok) throw new Error("Publish failed");
       const result = await response.json();
       const stamp = new Date(result.publishedAt).toLocaleString();
       localStorage.setItem("carters-admin-published", JSON.stringify(sections));
+      localStorage.setItem("carters-admin-shopify-visibility",JSON.stringify(shopifyVisibility));
+      localStorage.setItem("carters-admin-shopify-styles",JSON.stringify(shopifyStyles));
       localStorage.setItem("carters-admin-published-at", stamp);
       setPublishedAt(stamp); setSaved(true); setPublishMessage("Published to app ✓");
     } catch { setPublishMessage("Unable to publish"); }
@@ -222,7 +240,7 @@ export default function Home() {
       <main className={styles.main}>
         <header className={styles.topbar}><div className={styles.topbarTitle}><p className={styles.eyebrow}>CARTER&apos;S MOBILE APP</p><h1>{pageTitles[view].title}</h1><small>{pageTitles[view].copy}</small></div><div className={styles.topActions}><span className={styles.statusDot}>{publishMessage || "● App live"}</span>{view === "editor" && <><button className={styles.secondary} onClick={saveDraft}>{saved ? "Draft saved" : "Save draft"}</button><button className={styles.primary} onClick={publish}>Publish changes</button></>}<button className={styles.secondary} onClick={logout}>Log out</button></div></header>
         {view === "dashboard" && <Dashboard setView={setView} openOrders={openOrders} publishedAt={publishedAt} />}
-        {view === "editor" && <Editor sections={sections} selected={selected} selectedId={selectedId} setSelectedId={setSelectedId} update={update} move={move} remove={remove} duplicate={duplicate} setSectionVisibility={setSectionVisibility} add={add} />}
+        {view === "editor" && <Editor sections={sections} selected={selected} selectedId={selectedId} setSelectedId={setSelectedId} update={update} move={move} remove={remove} duplicate={duplicate} setSectionVisibility={setSectionVisibility} add={add} shopifyVisibility={shopifyVisibility} setShopifyVisibility={setShopifyVisibility} shopifyStyles={shopifyStyles} setShopifyStyles={setShopifyStyles} markUnsaved={()=>setSaved(false)} />}
         {view === "inventory" && <Inventory />}
         {view === "promotions" && <Promotions />}
         {view === "analytics" && <Analytics />}
@@ -312,11 +330,15 @@ function Dashboard({ setView, openOrders, publishedAt }: { setView: (v: View) =>
   </div>;
 }
 
-function Editor({ sections, selected, selectedId, setSelectedId, update, move, remove, duplicate, setSectionVisibility, add }: { sections: Section[]; selected?: Section; selectedId: string; setSelectedId: (id:string)=>void; update:(p:Partial<Section>)=>void; move:(i:number,d:-1|1)=>void; remove:(id:string)=>void; duplicate:(id:string)=>void; setSectionVisibility:(id:string,enabled:boolean)=>void; add:(t:SectionType,p?:Placement)=>void }) {
+function Editor({ sections, selected, selectedId, setSelectedId, update, move, remove, duplicate, setSectionVisibility, add,shopifyVisibility,setShopifyVisibility,shopifyStyles,setShopifyStyles,markUnsaved }: { sections: Section[]; selected?: Section; selectedId: string; setSelectedId: (id:string)=>void; update:(p:Partial<Section>)=>void; move:(i:number,d:-1|1)=>void; remove:(id:string)=>void; duplicate:(id:string)=>void; setSectionVisibility:(id:string,enabled:boolean)=>void; add:(t:SectionType,p?:Placement)=>void;shopifyVisibility:Record<string,boolean>;setShopifyVisibility:(value:Record<string,boolean>)=>void;shopifyStyles:Record<string,string>;setShopifyStyles:(value:Record<string,string>)=>void;markUnsaved:()=>void }) {
   const [showAdd,setShowAdd]=useState(false);
   const [search,setSearch]=useState("");
   const [device,setDevice]=useState<"mobile"|"tablet">("mobile");
   const [inspectorTab,setInspectorTab]=useState<"content"|"design">("content");
+  const [themeDirectory,setThemeDirectory]=useState<ShopifyThemeDirectoryItem[]>([]);const [themeLoading,setThemeLoading]=useState(true);const [themeMessage,setThemeMessage]=useState("");
+  const [editingShopifyCss,setEditingShopifyCss]=useState("");
+  const loadThemeSections=useCallback(async()=>{setThemeLoading(true);setThemeMessage("");try{const response=await fetch("/api/shopify/theme-sections",{cache:"no-store"});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to inspect Shopify theme.");setThemeDirectory(data.sections||[])}catch(error){setThemeMessage(error instanceof Error?error.message:"Unable to inspect Shopify theme.")}finally{setThemeLoading(false)}},[]);
+  useEffect(()=>{/* eslint-disable react-hooks/set-state-in-effect */void loadThemeSections();/* eslint-enable react-hooks/set-state-in-effect */},[loadThemeSections]);
   const sectionDescriptions:Record<SectionType,string>={hero:"Large campaign image and call to action",text:"Flexible editorial copy and button",products:"Curated product collection",announcement:"Compact store-wide message"};
   const sectionIcons:Record<SectionType,string>={hero:"▣",text:"¶",products:"▦",announcement:"◇"};
   const visibleSections=sections.filter(section=>`${section.title} ${sectionNames[section.type]}`.toLowerCase().includes(search.trim().toLowerCase()));
@@ -328,7 +350,7 @@ function Editor({ sections, selected, selectedId, setSelectedId, update, move, r
       {showAdd&&<div className={styles.editorAddMenu}><div><strong>Add section</strong><small>Choose a block for your homepage</small></div>{(Object.keys(sectionNames) as SectionType[]).map(type=><button key={type} type="button" onClick={()=>{add(type);setShowAdd(false)}}><span>{sectionIcons[type]}</span><div><strong>{sectionNames[type]}</strong><small>{sectionDescriptions[type]}</small></div><b>＋</b></button>)}</div>}
       <div className={styles.editorSearch}><span>⌕</span><input value={search} onChange={event=>setSearch(event.target.value)} placeholder="Search sections"/>{search&&<button type="button" onClick={()=>setSearch("")}>×</button>}</div>
       <div className={styles.sectionList}>{visibleSections.length?visibleSections.map(section=><div key={section.id} className={`${styles.sectionRow} ${selectedId===section.id?styles.sectionSelected:""} ${!section.enabled?styles.sectionHidden:""}`} onClick={()=>{setSelectedId(section.id);setInspectorTab("content")}}><span className={styles.sectionTypeIcon}>{sectionIcons[section.type]}</span><div><strong>{section.title||sectionNames[section.type]}</strong><small>{sectionNames[section.type]} · {section.enabled?"Visible":"Hidden"}</small></div><span className={styles.sectionChevron}>›</span></div>):<div className={styles.editorEmptyState}><span>⌕</span><strong>No sections found</strong><small>Try a different search.</small></div>}</div>
-      <details className={styles.shopifyMap}><summary>Shopify sections <span>{shopifySections.length} locked</span></summary><button className={styles.insertSlot} onClick={()=>add("text","before-hero")}>＋ Insert before Shopify hero</button>{shopifySections.map((item,index)=><section key={item.name}><div className={styles.shopifyRow}><span>{index+1}</span><div><strong>{item.name}</strong><small>Managed by Shopify</small></div><b>Locked</b></div><button className={styles.insertSlot} onClick={()=>add("text",item.after)}>＋ Insert after {item.name}</button></section>)}</details>
+      <details className={styles.shopifyMap} open><summary>Shopify sections <span>{themeLoading?"syncing":`${themeDirectory.length||shopifySections.length} detected`}</span></summary><div className={styles.shopifySyncHead}><small>{themeMessage||"Published Shopify sections appear automatically. Turn off App visibility to keep a section website-only."}</small><button type="button" onClick={()=>void loadThemeSections()}>↻</button></div><button className={styles.insertSlot} onClick={()=>add("text","before-hero")}>＋ Insert before Shopify hero</button>{(themeDirectory.length?themeDirectory:shopifySections.map((item,index)=>({key:item.key,shopifyId:"",title:item.name,kind:"Known Shopify section",position:index,automatic:false}))).map((item,index)=>{const known=shopifySections.find(section=>section.key===item.key);const visible=shopifyVisibility[item.key]!==false;const editing=editingShopifyCss===item.key;return <section key={item.key}><div className={`${styles.shopifyRow} ${!visible?styles.shopifyRowHidden:""}`}><span>{index+1}</span><div><strong>{item.title}</strong><small>{item.kind} · {visible?"Visible in app":"Shopify website only"}</small></div><button className={styles.shopifyCssToggle} type="button" onClick={()=>setEditingShopifyCss(editing?"":item.key)}>{editing?"Close":"{ } CSS"}</button><label className={styles.switch} title="App visibility"><input type="checkbox" checked={visible} onChange={event=>{setShopifyVisibility({...shopifyVisibility,[item.key]:event.target.checked});markUnsaved()}}/><span/></label></div>{editing&&<div className={styles.shopifyCssEditor}><label>App-only CSS<textarea rows={8} maxLength={4000} spellCheck={false} value={shopifyStyles[item.key]??""} onChange={event=>{setShopifyStyles({...shopifyStyles,[item.key]:event.target.value});markUnsaved()}} placeholder={".section {\n  margin: 0;\n  padding: 0;\n}\n.image {\n  object-fit: cover;\n  border-radius: 0;\n}"}/></label><small>Supported: margin, padding, height, aspect-ratio, object-fit, border-radius, background color, text color, and text-align. Publish changes to update the app.</small><button type="button" onClick={()=>{setShopifyStyles({...shopifyStyles,[item.key]:".section {\n  margin: 0;\n  padding: 0;\n}\n.image {\n  object-fit: cover;\n  border-radius: 0;\n}"});markUnsaved()}}>Use full-width preset</button></div>}{known&&<button className={styles.insertSlot} onClick={()=>add("text",known.after)}>＋ Insert after {item.title}</button>}</section>})}</details>
     </section>
     <section className={`${styles.previewPanel} ${styles.previewWorkspace}`}>
       <div className={`${styles.previewToolbar} ${styles.previewToolbarPro}`}><div className={styles.previewTitle}><span>Preview</span><small>Homepage · live draft</small></div><div className={styles.deviceSwitcher}><button type="button" className={device==="mobile"?styles.deviceActive:""} onClick={()=>setDevice("mobile")}>▯ <span>Mobile</span></button><button type="button" className={device==="tablet"?styles.deviceActive:""} onClick={()=>setDevice("tablet")}>▭ <span>Tablet</span></button></div><div className={styles.previewCount}><b>{sections.filter(item=>item.enabled).length}</b> active</div></div>
@@ -1228,4 +1250,71 @@ function Team(){
 
 function initials(email:string){return email.slice(0,2).toUpperCase()}
 
-function Settings(){const [maintenance,setMaintenance]=useState(false);return <div className={styles.content}><section className={styles.settingsHero}><div><p>ADMIN SETTINGS</p><h2>Production configuration</h2><span>Manage the app identity, service endpoints, and customer-facing controls.</span></div><i className={`${styles.tag} ${styles.tagBlue}`}>Local workspace</i></section><div className={styles.settingsGridPro}><section className={`${styles.card} ${styles.proSettingsCard}`}><div className={styles.cardHead}><div><h2>Workspace identity</h2><p>Used across the admin panel and app preview.</p></div><i className={`${styles.tag} ${styles.tagGreen}`}>Secured</i></div><div className={styles.settingsFormGrid}><label>Application name<input defaultValue="Carter's App Studio"/></label><label>Admin username<input className={styles.disabledInput} defaultValue="Set with ADMIN_USERNAME" disabled /></label><label>Public app preview URL<input placeholder="https://app.carters.com.lb"/></label><label>Supabase project URL<input placeholder="https://project.supabase.co"/></label></div><div className={styles.settingsFooter}><small>Secrets should be stored in environment variables before deployment.</small><button className={styles.primary}>Save configuration</button></div></section><section className={`${styles.card} ${styles.proSettingsCard}`}><div className={styles.cardHead}><div><h2>App controls</h2><p>Feature switches take effect after publishing.</p></div></div><div className={styles.controlStack}><div className={styles.controlRowPro}><div><strong>Maintenance mode</strong><small>Show a temporary maintenance screen</small></div><label className={styles.switch}><input type="checkbox" checked={maintenance} onChange={e=>setMaintenance(e.target.checked)}/><span/></label></div><div className={styles.controlRowPro}><div><strong>Customer chat</strong><small>Allow visitors to start conversations</small></div><label className={styles.switch}><input type="checkbox" defaultChecked/><span/></label></div><div className={styles.controlRowPro}><div><strong>Wishlist</strong><small>Let customers save products</small></div><label className={styles.switch}><input type="checkbox" defaultChecked/><span/></label></div></div><div className={styles.settingsFormGrid}><label>Minimum app version<input defaultValue="1.0.0"/></label><label>Update message<input defaultValue="A newer version is available with important improvements."/></label></div><div className={styles.settingsFooter}><small>Controls are saved locally until production persistence is connected.</small><button className={styles.primary}>Publish app controls</button></div></section><aside className={styles.settingsRail}><div><strong>Connected</strong><small>Admin login and content publishing</small></div><div><strong>Needs setup</strong><small>Supabase realtime, Shopify Admin API, push credentials</small></div><div><strong>Recommended</strong><small>Add audit storage before adding more staff users</small></div></aside></div></div>}
+const defaultAdminSettings:AdminSettingsState={
+  workspace:{applicationName:"Carter's App Studio",storeName:"Carter's & OshKosh Lebanon",supportEmail:"",supportPhone:"",timezone:"Asia/Beirut",locale:"en-LB"},
+  commerce:{currency:"USD",lowStockThreshold:5,freeShippingThreshold:50,orderPrefix:"CAR",defaultInventoryLocation:""},
+  app:{maintenanceMode:false,customerChat:true,wishlist:true,pushNotifications:true,guestCheckout:true,minimumVersion:"1.0.0",forceUpdate:false,updateMessage:"A newer version is available with important improvements."},
+  notifications:{newOrderAlerts:true,lowStockAlerts:true,newCustomerAlerts:false,failedPaymentAlerts:true,dailyDigest:true,digestEmail:""},
+  security:{sessionTimeoutMinutes:480,auditRetentionDays:90,requireTwoFactor:false,allowStaffInvites:true},
+};
+
+function Settings(){
+  const [settings,setSettings]=useState<AdminSettingsState>(defaultAdminSettings);
+  const [integrations,setIntegrations]=useState<IntegrationStatus>({shopifyStorefront:false,shopifyAdmin:false,push:false,email:false,realtime:false});
+  const [loading,setLoading]=useState(true);const [saving,setSaving]=useState(false);const [message,setMessage]=useState("");const [savedAt,setSavedAt]=useState("");
+  const load=useCallback(async()=>{setLoading(true);setMessage("");try{const response=await fetch("/api/settings",{cache:"no-store"});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to load settings.");setSettings(data.settings);setIntegrations(data.integrations)}catch(error){setMessage(error instanceof Error?error.message:"Unable to load settings.")}finally{setLoading(false)}},[]);
+  useEffect(()=>{/* eslint-disable react-hooks/set-state-in-effect */void load();/* eslint-enable react-hooks/set-state-in-effect */},[load]);
+  function updateGroup<K extends keyof AdminSettingsState>(group:K,patch:Partial<AdminSettingsState[K]>){setSettings(current=>({...current,[group]:{...current[group],...patch}}))}
+  const save=async()=>{setSaving(true);setMessage("Saving settings...");try{const response=await fetch("/api/settings",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({settings})});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to save settings.");setSettings(data.settings);setIntegrations(data.integrations);setSavedAt(new Date(data.savedAt).toLocaleString());setMessage("All settings saved.")}catch(error){setMessage(error instanceof Error?error.message:"Unable to save settings.")}finally{setSaving(false)}};
+  const reset=()=>{setSettings(defaultAdminSettings);setMessage("Defaults restored in the form. Save to apply them.")};
+  if(loading)return <div className={styles.content}><section className={styles.settingsHero}><div><p>ADMIN SETTINGS</p><h2>Loading configuration...</h2><span>Reading saved workspace preferences and integration status.</span></div></section></div>;
+  return <div className={styles.content}>
+    <section className={styles.settingsHero}><div><p>ADMIN SETTINGS</p><h2>Operations & app configuration</h2><span>Manage store defaults, app features, alerts, access policies, and production readiness.</span></div><div className={styles.settingsHeroActions}><button className={styles.secondary} onClick={reset}>Restore defaults</button><button className={styles.primary} disabled={saving} onClick={()=>void save()}>{saving?"Saving...":"Save all settings"}</button></div></section>
+    {message&&<div className={`${styles.settingsNotice} ${message.includes("Unable")?styles.settingsNoticeError:""}`}><strong>{message}</strong>{savedAt&&<small>Last saved {savedAt}</small>}</div>}
+    <div className={styles.settingsPageGrid}><div className={styles.settingsCards}>
+      <section className={`${styles.card} ${styles.proSettingsCard}`}><div className={styles.cardHead}><div><h2>Workspace identity</h2><p>Names, support contacts, language, and regional defaults.</p></div><span className={styles.settingsCardIcon}>◎</span></div><div className={styles.settingsFormGrid}>
+        <label>Admin application name<input value={settings.workspace.applicationName} onChange={e=>updateGroup("workspace",{applicationName:e.target.value})}/></label>
+        <label>Store display name<input value={settings.workspace.storeName} onChange={e=>updateGroup("workspace",{storeName:e.target.value})}/></label>
+        <label>Support email<input type="email" placeholder="support@company.com" value={settings.workspace.supportEmail} onChange={e=>updateGroup("workspace",{supportEmail:e.target.value})}/></label>
+        <label>Support phone<input type="tel" placeholder="+961 ..." value={settings.workspace.supportPhone} onChange={e=>updateGroup("workspace",{supportPhone:e.target.value})}/></label>
+        <label>Timezone<select value={settings.workspace.timezone} onChange={e=>updateGroup("workspace",{timezone:e.target.value})}><option value="Asia/Beirut">Asia/Beirut</option><option value="UTC">UTC</option><option value="Asia/Dubai">Asia/Dubai</option><option value="Europe/London">Europe/London</option></select></label>
+        <label>Locale<select value={settings.workspace.locale} onChange={e=>updateGroup("workspace",{locale:e.target.value})}><option value="en-LB">English (Lebanon)</option><option value="ar-LB">Arabic (Lebanon)</option><option value="fr-LB">French (Lebanon)</option><option value="en-US">English (United States)</option></select></label>
+      </div></section>
+      <section className={`${styles.card} ${styles.proSettingsCard}`}><div className={styles.cardHead}><div><h2>Commerce defaults</h2><p>Operational values used for inventory and order workflows.</p></div><span className={styles.settingsCardIcon}>$</span></div><div className={styles.settingsFormGrid}>
+        <label>Store currency<select value={settings.commerce.currency} onChange={e=>updateGroup("commerce",{currency:e.target.value})}><option value="USD">USD — US Dollar</option><option value="LBP">LBP — Lebanese Pound</option><option value="EUR">EUR — Euro</option><option value="GBP">GBP — Pound Sterling</option></select></label>
+        <label>Low-stock threshold<input type="number" min="0" value={settings.commerce.lowStockThreshold} onChange={e=>updateGroup("commerce",{lowStockThreshold:Number(e.target.value)})}/></label>
+        <label>Free-shipping threshold<input type="number" min="0" step="0.01" value={settings.commerce.freeShippingThreshold} onChange={e=>updateGroup("commerce",{freeShippingThreshold:Number(e.target.value)})}/></label>
+        <label>Order reference prefix<input maxLength={12} value={settings.commerce.orderPrefix} onChange={e=>updateGroup("commerce",{orderPrefix:e.target.value.toUpperCase()})}/></label>
+        <label className={styles.settingsWide}>Default inventory location<input placeholder="Shopify location name or ID" value={settings.commerce.defaultInventoryLocation} onChange={e=>updateGroup("commerce",{defaultInventoryLocation:e.target.value})}/></label>
+      </div></section>
+      <section className={`${styles.card} ${styles.proSettingsCard}`}><div className={styles.cardHead}><div><h2>Mobile app controls</h2><p>Customer-facing availability and feature preferences.</p></div><span className={styles.settingsCardIcon}>▣</span></div><div className={styles.controlStack}>
+        <SettingToggle label="Maintenance mode" copy="Prepare a temporary maintenance state for the mobile app" checked={settings.app.maintenanceMode} onChange={value=>updateGroup("app",{maintenanceMode:value})}/>
+        <SettingToggle label="Customer chat" copy="Allow customers to start support conversations" checked={settings.app.customerChat} onChange={value=>updateGroup("app",{customerChat:value})}/>
+        <SettingToggle label="Wishlist" copy="Allow customers to save products for later" checked={settings.app.wishlist} onChange={value=>updateGroup("app",{wishlist:value})}/>
+        <SettingToggle label="Push notifications" copy="Enable notification registration and campaigns" checked={settings.app.pushNotifications} onChange={value=>updateGroup("app",{pushNotifications:value})}/>
+        <SettingToggle label="Guest checkout" copy="Allow checkout without a customer account" checked={settings.app.guestCheckout} onChange={value=>updateGroup("app",{guestCheckout:value})}/>
+        <SettingToggle label="Force app update" copy="Require customers below the minimum version to update" checked={settings.app.forceUpdate} onChange={value=>updateGroup("app",{forceUpdate:value})}/>
+      </div><div className={styles.settingsFormGrid}><label>Minimum app version<input value={settings.app.minimumVersion} onChange={e=>updateGroup("app",{minimumVersion:e.target.value})}/></label><label className={styles.settingsWide}>Update message<textarea rows={3} maxLength={240} value={settings.app.updateMessage} onChange={e=>updateGroup("app",{updateMessage:e.target.value})}/></label></div></section>
+      <section className={`${styles.card} ${styles.proSettingsCard}`}><div className={styles.cardHead}><div><h2>Admin notifications</h2><p>Choose the operational events your team should receive.</p></div><span className={styles.settingsCardIcon}>◈</span></div><div className={styles.controlStack}>
+        <SettingToggle label="New order alerts" copy="Notify the team when Shopify receives an order" checked={settings.notifications.newOrderAlerts} onChange={value=>updateGroup("notifications",{newOrderAlerts:value})}/>
+        <SettingToggle label="Low-stock alerts" copy={`Alert when inventory reaches ${settings.commerce.lowStockThreshold} units`} checked={settings.notifications.lowStockAlerts} onChange={value=>updateGroup("notifications",{lowStockAlerts:value})}/>
+        <SettingToggle label="New customer alerts" copy="Notify when a new customer account is created" checked={settings.notifications.newCustomerAlerts} onChange={value=>updateGroup("notifications",{newCustomerAlerts:value})}/>
+        <SettingToggle label="Failed-payment alerts" copy="Escalate orders that need payment attention" checked={settings.notifications.failedPaymentAlerts} onChange={value=>updateGroup("notifications",{failedPaymentAlerts:value})}/>
+        <SettingToggle label="Daily summary" copy="Send a daily commerce and engagement digest" checked={settings.notifications.dailyDigest} onChange={value=>updateGroup("notifications",{dailyDigest:value})}/>
+      </div><div className={styles.settingsFormGrid}><label className={styles.settingsWide}>Alert recipient<input type="email" placeholder="operations@company.com" value={settings.notifications.digestEmail} onChange={e=>updateGroup("notifications",{digestEmail:e.target.value})}/></label></div></section>
+      <section className={`${styles.card} ${styles.proSettingsCard}`}><div className={styles.cardHead}><div><h2>Security & governance</h2><p>Workspace access and data-retention policy preferences.</p></div><span className={styles.settingsCardIcon}>◇</span></div><div className={styles.settingsFormGrid}>
+        <label>Session timeout (minutes)<input type="number" min="15" max="10080" value={settings.security.sessionTimeoutMinutes} onChange={e=>updateGroup("security",{sessionTimeoutMinutes:Number(e.target.value)})}/></label>
+        <label>Audit retention (days)<input type="number" min="7" max="2555" value={settings.security.auditRetentionDays} onChange={e=>updateGroup("security",{auditRetentionDays:Number(e.target.value)})}/></label>
+      </div><div className={styles.controlStack}><SettingToggle label="Require two-factor authentication" copy="Policy preference for a future identity-provider connection" checked={settings.security.requireTwoFactor} onChange={value=>updateGroup("security",{requireTwoFactor:value})}/><SettingToggle label="Allow staff invitations" copy="Permit owners to invite employees from Team & activity" checked={settings.security.allowStaffInvites} onChange={value=>updateGroup("security",{allowStaffInvites:value})}/></div><div className={styles.settingsPolicyNote}>Authentication secrets remain in environment variables. This page never displays or stores tokens.</div></section>
+    </div><aside className={styles.settingsRail}>
+      <div className={styles.integrationCard}><header><strong>Integration health</strong><small>Configuration detected from secure environment variables.</small></header><IntegrationRow label="Shopify Storefront" ready={integrations.shopifyStorefront}/><IntegrationRow label="Shopify Admin" ready={integrations.shopifyAdmin}/><IntegrationRow label="Expo push" ready={integrations.push}/><IntegrationRow label="Transactional email" ready={integrations.email}/><IntegrationRow label="Supabase realtime" ready={integrations.realtime}/></div>
+      <div><strong>Admin authentication</strong><small>Credentials and session signing remain protected in server environment variables.</small><i className={`${styles.tag} ${styles.tagGreen}`}>Connected</i></div>
+      <div><strong>Storage</strong><small>Settings persist in <code>admin/data/admin-settings.json</code>. Use managed storage before multi-instance deployment.</small></div>
+      <div><strong>Important</strong><small>App controls are now persisted. Customer-facing enforcement still needs to read these values in the mobile app.</small></div>
+    </aside></div>
+    <div className={styles.settingsBottomBar}><span>{savedAt?`Last saved ${savedAt}`:"Review your configuration, then save all settings."}</span><button className={styles.primary} disabled={saving} onClick={()=>void save()}>{saving?"Saving...":"Save all settings"}</button></div>
+  </div>
+}
+
+function SettingToggle({label,copy,checked,onChange}:{label:string;copy:string;checked:boolean;onChange:(value:boolean)=>void}){return <div className={styles.controlRowPro}><div><strong>{label}</strong><small>{copy}</small></div><label className={styles.switch}><input type="checkbox" checked={checked} onChange={event=>onChange(event.target.checked)}/><span/></label></div>}
+function IntegrationRow({label,ready}:{label:string;ready:boolean}){return <div className={styles.integrationRow}><span className={ready?styles.integrationReady:styles.integrationMissing}/><strong>{label}</strong><small>{ready?"Configured":"Needs setup"}</small></div>}

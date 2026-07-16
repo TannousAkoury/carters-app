@@ -1944,5 +1944,335 @@
       "platform": "ios"
     },
     "createdAt": "2026-07-15T14:04:14.932Z"
+  },
+  {
+    "id": "392587ba-0d16-431a-b815-446929e0c543",
+    "name": "screen_view",
+    "sessionId": "1784193911579-1xwc2lpxnkw",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-16T09:26:36.944Z"
+  },
+  {
+    "id": "85898c9a-2332-41bc-8e8e-69b97249a386",
+    "name": "screen_view",
+    "sessionId": "1784193911579-1xwc2lpxnkw",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/collection/30-discount-summer-sale",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-16T09:27:13.962Z"
+  },
+  {
+    "id": "fbdde159-0975-49b5-a251-e80393741a64",
+    "name": "screen_view",
+    "sessionId": "1784193911579-1xwc2lpxnkw",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-16T09:27:18.608Z"
+  },
+  {
+    "id": "6e7b9eac-920a-4597-a1c3-e26ac1031879",
+    "name": "screen_view",
+    "sessionId": "1784193911579-1xwc2lpxnkw",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-16T09:28:08.053Z"
+  },
+  {
+    "id": "4e34bbdd-f80e-4b04-b4cb-4abe1af5fe35",
+    "name": "screen_view",
+    "sessionId": "1784193911579-1xwc2lpxnkw",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-16T09:32:48.522Z"
+  },
+  {
+    "id": "2426ed36-8d23-4ce3-be1a-85396b57eec5",
+    "name": "screen_view",
+    "sessionId": "1784193911579-1xwc2lpxnkw",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-16T09:41:52.071Z"
+  },
+  {
+    "id": "20361882-8a29-421a-b639-a4b016a5bf9f",
+    "name": "screen_view",
+    "sessionId": "1784193911579-1xwc2lpxnkw",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-16T09:42:32.095Z"
+  },
+  {
+    "id": "24d97a0b-fa4f-45ed-b51d-1c2b9865ba0b",
+    "name": "screen_view",
+    "sessionId": "1784193911579-1xwc2lpxnkw",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/account",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-16T09:45:52.948Z"
+  },
+  {
+    "id": "157fb14d-c658-4bb9-a179-9a8a385956a0",
+    "name": "screen_view",
+    "sessionId": "1784193911579-1xwc2lpxnkw",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-16T09:46:02.677Z"
+  },
+  {
+    "id": "ec618782-aeca-4252-9ce5-8bdaaebab3ee",
+    "name": "screen_view",
+    "sessionId": "1784193911579-1xwc2lpxnkw",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/account",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-16T09:46:05.478Z"
+  },
+  {
+    "id": "0bf118ff-9b69-4f4b-b3e2-21fc52d4881b",
+    "name": "screen_view",
+    "sessionId": "1784193911579-1xwc2lpxnkw",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-16T09:46:15.956Z"
+  },
+  {
+    "id": "d7a70f5c-9328-4d16-81d3-11884dbb2814",
+    "name": "screen_view",
+    "sessionId": "1784193911579-1xwc2lpxnkw",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-16T09:47:54.191Z"
+  },
+  {
+    "id": "b7c0dcbe-b445-4641-a84c-c7b2c660bc46",
+    "name": "screen_view",
+    "sessionId": "1784193911579-1xwc2lpxnkw",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-16T09:51:20.417Z"
+  },
+  {
+    "id": "cbf87ad3-b385-4f09-83a9-55dca494319b",
+    "name": "screen_view",
+    "sessionId": "1784193911579-1xwc2lpxnkw",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/cart",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-16T09:52:09.694Z"
+  },
+  {
+    "id": "5cc2b5cc-76a3-43d8-8585-657ba3dacab8",
+    "name": "screen_view",
+    "sessionId": "1784193911579-1xwc2lpxnkw",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-16T09:52:16.534Z"
+  },
+  {
+    "id": "ba69d398-b65c-4a18-b609-58803bf37151",
+    "name": "screen_view",
+    "sessionId": "1784193911579-1xwc2lpxnkw",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-16T09:53:55.340Z"
+  },
+  {
+    "id": "3c5d0e78-432a-433c-9ec2-1c9b61b083b5",
+    "name": "screen_view",
+    "sessionId": "1784193911579-1xwc2lpxnkw",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-16T09:55:23.672Z"
+  },
+  {
+    "id": "38411cb2-0d2a-47ae-8f86-084c0e42c009",
+    "name": "screen_view",
+    "sessionId": "1784193911579-1xwc2lpxnkw",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-16T09:55:52.309Z"
+  },
+  {
+    "id": "9f6f4839-d54e-43c0-8f7a-f7a3a260e35b",
+    "name": "screen_view",
+    "sessionId": "1784193911579-1xwc2lpxnkw",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-16T09:56:39.717Z"
+  },
+  {
+    "id": "92d1f66b-d3b8-4b89-85e7-3a842c349e07",
+    "name": "screen_view",
+    "sessionId": "1784193911579-1xwc2lpxnkw",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/cart",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-16T10:00:37.968Z"
+  },
+  {
+    "id": "6b3df617-5db4-4a32-885f-c474dd7ec0af",
+    "name": "screen_view",
+    "sessionId": "1784193911579-1xwc2lpxnkw",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-16T10:00:39.171Z"
+  },
+  {
+    "id": "1b700f1b-58c6-4bc8-a4cd-047b0a2fec86",
+    "name": "screen_view",
+    "sessionId": "1784193911579-1xwc2lpxnkw",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-16T10:00:46.476Z"
+  },
+  {
+    "id": "54fd2c6b-f9ae-45c3-8946-6d18d4b66f37",
+    "name": "screen_view",
+    "sessionId": "1784193911579-1xwc2lpxnkw",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-16T10:08:01.617Z"
+  },
+  {
+    "id": "82d08256-8757-47c0-86b8-3f24cd548d9f",
+    "name": "screen_view",
+    "sessionId": "1784193911579-1xwc2lpxnkw",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-16T10:09:07.942Z"
+  },
+  {
+    "id": "2cc31d5f-25e4-4439-a49e-b5211b14aa43",
+    "name": "screen_view",
+    "sessionId": "1784193911579-1xwc2lpxnkw",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-16T10:10:34.458Z"
+  },
+  {
+    "id": "76c7cbe6-7dff-46dd-b744-e93af9f624ae",
+    "name": "screen_view",
+    "sessionId": "1784193911579-1xwc2lpxnkw",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-16T10:10:39.530Z"
+  },
+  {
+    "id": "f586f4f4-0fa3-4d82-94f7-82c288102cde",
+    "name": "screen_view",
+    "sessionId": "1784193911579-1xwc2lpxnkw",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-16T10:12:19.790Z"
+  },
+  {
+    "id": "7668e359-f6ab-48b7-8ca5-e173dce22075",
+    "name": "screen_view",
+    "sessionId": "1784193911579-1xwc2lpxnkw",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-16T10:17:08.425Z"
+  },
+  {
+    "id": "e076f507-1648-4dd3-85f2-9be3001d51ac",
+    "name": "screen_view",
+    "sessionId": "1784193911579-1xwc2lpxnkw",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-16T10:20:32.469Z"
+  },
+  {
+    "id": "d3cc9e69-a00c-4a0d-b0c6-f8f322a64a9d",
+    "name": "screen_view",
+    "sessionId": "1784193911579-1xwc2lpxnkw",
+    "deviceId": "1784036934816-3elhjypr51t",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-16T10:32:18.568Z"
   }
 ]

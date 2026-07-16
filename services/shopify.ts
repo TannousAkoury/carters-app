@@ -59,6 +59,18 @@ export type ShopifyProductSummary = {
   } | null;
 };
 
+export type HomepageMobileStyle = {
+  imageFit?: "cover" | "contain";
+  aspectRatio?: number;
+  height?: number;
+  imageBorderRadius?: number;
+  marginHorizontal?: number;
+  paddingVertical?: number;
+  backgroundColor?: string;
+  textColor?: string;
+  textAlign?: "left" | "center" | "right";
+};
+
 export type HomepageHeroBanner = {
   id: string;
   title: string;
@@ -74,6 +86,7 @@ export type HomepageHeroBanner = {
   fullWidth?: boolean;
   handle?: string;
   url?: string;
+  mobileStyle?: HomepageMobileStyle;
 };
 
 export type HomepageAgeCategory = {
@@ -391,6 +404,19 @@ export type HomepagePromoItem = {
   text: string;
 };
 
+export type HomepageThemeSection = {
+  id: string;
+  shopifyId: string;
+  title: string;
+  subtitle: string;
+  buttonLabel: string;
+  url: string;
+  images: { url: string; alt: string; link: string }[];
+  layout: "banner" | "grid" | "text";
+  placement: "before-hero" | "after-hero" | "after-promos" | "after-ages" | "after-top-picks" | "after-categories" | "after-explore" | "after-essentials" | "after-brands" | "after-latest";
+  mobileStyle?: HomepageMobileStyle;
+};
+
 export type HomepageContent = {
   source: "shopify-admin" | "website-sync" | "storefront-api";
   heroBanners: HomepageHeroBanner[];
@@ -402,6 +428,7 @@ export type HomepageContent = {
   ourBrands: HomepageBrand[];
   topPicksProducts: HomepageProduct[];
   latestCollectionProducts: HomepageProduct[];
+  themeSections: HomepageThemeSection[];
 };
 
 export type StorefrontMenuItem = {
@@ -900,6 +927,106 @@ function extractImage(source: string) {
   return matchFirst(source, /<img[^>]+src=["']([^"']+)["'][^>]*>/i);
 }
 
+function sectionContainingMarker(html:string,marker:string){const markerIndex=html.indexOf(marker);if(markerIndex<0)return "";const idIndex=html.lastIndexOf('id="shopify-section-',markerIndex);const start=idIndex>=0?html.lastIndexOf("<",idIndex):markerIndex;const next=html.indexOf('id="shopify-section-',markerIndex+marker.length);return html.slice(Math.max(0,start),next>markerIndex?html.lastIndexOf("<",next):undefined)}
+
+function parseShopifyMobileStyle(source:string,allowLayout=false):HomepageMobileStyle{
+  const styleBlocks=[...source.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map(match=>match[1]);
+  const inlineBlocks=[...source.matchAll(/<img\b[^>]*style=["']([^"']+)["'][^>]*>/gi)].map(match=>`img{${match[1]}}`);
+  const css=[...styleBlocks,...inlineBlocks].join("\n").replace(/\/\*[\s\S]*?\*\//g,"");
+  const result:HomepageMobileStyle={};
+  const number=(value:string)=>{const parsed=Number.parseFloat(value);return Number.isFinite(parsed)?parsed:undefined};
+  const color=(value:string)=>/^(#[0-9a-f]{3,8}|rgba?\([^)]+\)|transparent|white|black)$/i.test(value.trim())?value.trim():undefined;
+  for(const rule of css.matchAll(/([^{}]+)\{([^{}]+)\}/g)){
+    const selector=rule[1].trim().toLowerCase();const imageRule=/(^|[\s.#:_-])(img|image|media|picture|banner)([\s.#:_-]|$)/.test(selector);const textRule=/(title|heading|caption|content|text)/.test(selector);const sectionRule=/shopify-section|(^|[\s.#:_-])section([\s.#:_-]|$)/.test(selector);
+    for(const declaration of rule[2].split(";")){const separator=declaration.indexOf(":");if(separator<0)continue;const property=declaration.slice(0,separator).trim().toLowerCase();const value=declaration.slice(separator+1).replace(/!important/gi,"").trim().toLowerCase();
+      if(property==="object-fit"&&(value==="cover"||value==="contain"))result.imageFit=value;
+      else if(property==="aspect-ratio"&&imageRule){const parts=value.split("/").map(part=>Number.parseFloat(part));const ratio=parts.length===2?parts[0]/parts[1]:Number.parseFloat(value);if(Number.isFinite(ratio)&&ratio>=1&&ratio<=4)result.aspectRatio=ratio}
+      else if(allowLayout&&(property==="height"||property==="min-height")&&imageRule&&/px$/.test(value)){const parsed=number(value);if(parsed!==undefined)result.height=Math.min(800,Math.max(80,parsed))}
+      else if(property==="border-radius"&&imageRule){const parsed=number(value);if(parsed!==undefined)result.imageBorderRadius=Math.min(80,Math.max(0,parsed))}
+      else if(allowLayout&&(property==="margin-left"||property==="margin-right"||property==="margin-inline")&&sectionRule){const parsed=number(value);if(parsed!==undefined)result.marginHorizontal=Math.min(80,Math.max(0,parsed))}
+      else if(allowLayout&&property==="margin"&&sectionRule){const values=value.split(/\s+/);const parsed=number(values[1]??values[0]);if(parsed!==undefined)result.marginHorizontal=Math.min(80,Math.max(0,parsed))}
+      else if(allowLayout&&(property==="padding-top"||property==="padding-bottom"||property==="padding-block")&&sectionRule){const parsed=number(value);if(parsed!==undefined)result.paddingVertical=Math.min(100,Math.max(0,parsed))}
+      else if(allowLayout&&property==="padding"&&sectionRule){const parsed=number(value);if(parsed!==undefined)result.paddingVertical=Math.min(100,Math.max(0,parsed))}
+      else if((property==="background"||property==="background-color")&&sectionRule){const parsed=color(value);if(parsed)result.backgroundColor=parsed}
+      else if(property==="color"&&textRule){const parsed=color(value);if(parsed)result.textColor=parsed}
+      else if(property==="text-align"&&textRule&&(value==="left"||value==="center"||value==="right"))result.textAlign=value;
+    }
+  }
+  if(!result.aspectRatio){const imageAttributes=matchFirst(source,/<img\b([^>]*)>/i);const width=Number.parseFloat(matchFirst(imageAttributes,/\bwidth=["']?([0-9.]+)/i));const height=Number.parseFloat(matchFirst(imageAttributes,/\bheight=["']?([0-9.]+)/i));const ratio=width/height;if(Number.isFinite(ratio)&&ratio>=1&&ratio<=4)result.aspectRatio=ratio}
+  return result;
+}
+
+export function parseMobileCustomCss(css=""):HomepageMobileStyle{return parseShopifyMobileStyle(`<style>${css.slice(0,4000).replace(/@import|expression\s*\(|url\s*\(/gi,"")}</style>`,true)}
+
+const THEME_SECTION_MARKERS: { marker: string; key: string; after: HomepageThemeSection["placement"] }[] = [
+  { marker: "carters-hero-split", key: "hero", after: "after-hero" },
+  { marker: "__banner_image_", key: "hero", after: "after-hero" },
+  { marker: "mc-feature-row", key: "promos", after: "after-promos" },
+  { marker: "category-circle-grid", key: "age-groups", after: "after-ages" },
+  { marker: "carters-products-carousel", key: "latest-collection", after: "after-latest" },
+  { marker: "shop-by-category-cards", key: "shop-categories", after: "after-categories" },
+  { marker: "deals-for-you-section", key: "explore-styles", after: "after-explore" },
+  { marker: "new-trending-three-images", key: "tiny-essentials", after: "after-essentials" },
+  { marker: "brands-showcase-section", key: "our-brands", after: "after-brands" },
+];
+
+function parseThemeSections(html: string): HomepageThemeSection[] {
+  const starts = [...html.matchAll(/<[^>]+id=["']shopify-section-([^"']+)["'][^>]*>/gi)];
+  const sections: HomepageThemeSection[] = [];
+  const seenKnown = new Set<string>();
+  let placement: HomepageThemeSection["placement"] = "before-hero";
+
+  starts.forEach((start, index) => {
+    const source = html.slice(start.index ?? 0, starts[index + 1]?.index ?? html.length);
+    const known = THEME_SECTION_MARKERS.find((item) => source.includes(item.marker));
+    if (known && !seenKnown.has(known.key)) {
+      seenKnown.add(known.key);
+      placement = known.after;
+      return;
+    }
+
+    const shopifyId = start[1];
+    if (!shopifyId || /header|footer|announcement-bar|apps/i.test(shopifyId)) return;
+    const firstLink = normalizeUrl(matchFirst(source, /<a\b[^>]*href=["']([^"']+)["']/i));
+    const images: HomepageThemeSection["images"] = [];
+    for (const imageMatch of source.matchAll(/<img\b([^>]*)>/gi)) {
+      const attributes = imageMatch[1];
+      const rawUrl = matchFirst(attributes, /(?:data-src|src)=["']([^"']+)["']/i);
+      if (!rawUrl || rawUrl.startsWith("data:") || /icon|logo/i.test(rawUrl)) continue;
+      const url = optimizeShopifyImage(rawUrl, 1200);
+      if (images.some((image) => image.url === url)) continue;
+      images.push({
+        url,
+        alt: stripTags(matchFirst(attributes, /alt=["']([^"']*)["']/i)),
+        link: firstLink,
+      });
+      if (images.length >= 8) break;
+    }
+
+    const title = stripTags(matchFirst(source, /<h[1-3]\b[^>]*>([\s\S]*?)<\/h[1-3]>/i)) || images[0]?.alt || "";
+    const subtitle = stripTags(matchFirst(source, /<p\b[^>]*>([\s\S]*?)<\/p>/i));
+    const buttonLabel = stripTags(matchFirst(source, /<a\b[^>]*>([\s\S]*?)<\/a>/i));
+    if (!title && !subtitle && images.length === 0) return;
+
+    sections.push({
+      id: `theme:${shopifyId}`,
+      shopifyId,
+      title,
+      subtitle,
+      buttonLabel: buttonLabel.length <= 50 ? buttonLabel : "",
+      url: firstLink,
+      images,
+      layout: images.length > 1 ? "grid" : images.length === 1 ? "banner" : "text",
+      placement,
+      mobileStyle:parseShopifyMobileStyle(source),
+    });
+
+    if (known) placement = known.after;
+  });
+
+  return sections.slice(0, 20);
+}
+
 function splitList(value?: string) {
   if (!value) return [];
 
@@ -928,6 +1055,7 @@ function parseHero(html: string): HomepageHeroBanner[] {
   const section = sectionByMarker(html, "carters-hero-split");
   if (!section) {
     const bannerSection = sectionByMarker(html, "__banner_image_");
+    const bannerSectionFull=sectionContainingMarker(html,"__banner_image_");
     const image = extractImage(bannerSection);
 
     if (!image) return [];
@@ -947,6 +1075,7 @@ function parseHero(html: string): HomepageHeroBanner[] {
         fullWidth: true,
         handle: handleFromUrl(url),
         url,
+        mobileStyle:parseShopifyMobileStyle(bannerSectionFull||bannerSection),
       },
     ];
   }
@@ -954,6 +1083,7 @@ function parseHero(html: string): HomepageHeroBanner[] {
   const url = normalizeUrl(
     matchFirst(section, /carters-hero-split__btn["'][^>]*href=["']([^"']+)["']/i),
   );
+  const mobileStyle=parseShopifyMobileStyle(sectionContainingMarker(html,"carters-hero-split")||section);
   const title = stripTags(
     matchFirst(section, /class=["']title-bottom["'][^>]*>([\s\S]*?)<\/span>/i),
   );
@@ -993,6 +1123,7 @@ function parseHero(html: string): HomepageHeroBanner[] {
       image: optimizeShopifyImage(extractImage(section), 900),
       handle: handleFromUrl(url),
       url,
+      mobileStyle,
     },
   ];
 }
@@ -1462,6 +1593,7 @@ function parseAdminPayload(data: any): HomepageContent | null {
       ourBrands: payload.ourBrands ?? payload.brands ?? [],
       topPicksProducts: payload.topPicksProducts ?? [],
       latestCollectionProducts: payload.latestCollectionProducts ?? [],
+      themeSections: payload.themeSections ?? [],
     };
   } catch (error) {
     console.warn("Invalid mobile homepage JSON in Shopify admin:", error);
@@ -1698,6 +1830,7 @@ async function getHomepageContentFromStorefront(): Promise<HomepageContent> {
     ourBrands,
     topPicksProducts: latestCollectionProducts.slice(0, 6),
     latestCollectionProducts,
+    themeSections: [],
   };
 }
 
@@ -1707,6 +1840,7 @@ export async function getHomepageContent(): Promise<HomepageContent> {
   try {
     const html = await fetchWebsiteHomepageHtml();
     const heroBanners = parseHero(html);
+    const themeSections = parseThemeSections(html);
 
     // The storefront theme is the source of truth for the visual hero. The
     // mobile.homepage metafield can still manage the remaining app sections,
@@ -1716,6 +1850,7 @@ export async function getHomepageContent(): Promise<HomepageContent> {
       return {
         ...adminContent,
         heroBanners: heroBanners.length > 0 ? heroBanners : adminContent.heroBanners,
+        themeSections,
       };
     }
 
@@ -1736,6 +1871,7 @@ export async function getHomepageContent(): Promise<HomepageContent> {
       ourBrands: parseBrands(html),
       topPicksProducts: parsedProducts.slice(0, 6),
       latestCollectionProducts: parsedProducts,
+      themeSections,
     };
   } catch (error) {
     if (adminContent) return adminContent;

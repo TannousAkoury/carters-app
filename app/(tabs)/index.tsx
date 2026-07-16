@@ -1,5 +1,5 @@
-import { getHomepageContent, getStorefrontNavigation, type StorefrontMenuItem } from "@/services/shopify";
-import { getAdminSections, getBundledAdminSections, type AdminSection } from "@/services/admin-content";
+import { getHomepageContent, getStorefrontNavigation, parseMobileCustomCss, type HomepageThemeSection, type StorefrontMenuItem } from "@/services/shopify";
+import { getAdminHomepageConfig, getBundledAdminHomepageConfig, type AdminSection } from "@/services/admin-content";
 import { AdminSections } from "@/components/admin-sections";
 import { useCart } from "@/components/cart-context";
 import { useCurrency, type DisplayCurrency } from "@/components/currency-context";
@@ -173,9 +173,11 @@ function Header({
 function HeroBanner({
   items,
   onShopNow,
+  customCss,
 }: {
   items: HeroBannerItem[];
   onShopNow?: (banner: HeroBannerItem) => void;
+  customCss?:string;
 }) {
   const banner = items[0];
 
@@ -186,26 +188,10 @@ function HeroBanner({
       </View>
     );
   }
-
-  if (banner.fullWidth) {
-    return (
-      <TouchableOpacity
-        style={styles.shopifyHeroContainer}
-        activeOpacity={0.9}
-        onPress={() => onShopNow?.(banner)}
-      >
-        <Image
-          source={{ uri: banner.image }}
-          style={styles.shopifyHeroImage}
-          resizeMode="contain"
-        />
-      </TouchableOpacity>
-    );
-  }
-
+  const automatic=banner.mobileStyle??{};const override=parseMobileCustomCss(customCss);const mobile={...automatic,...override};const margin=Math.max(0,mobile.marginHorizontal??0);const candidateRatio=mobile.aspectRatio??1920/863;const ratio=candidateRatio>=1&&candidateRatio<=4?candidateRatio:1920/863;const height=mobile.height??Math.min(SCREEN_W*.85,Math.max(80,(SCREEN_W-margin*2)/ratio));
   return (
-    <TouchableOpacity style={styles.shopifyHeroContainer} activeOpacity={0.9} onPress={() => onShopNow?.(banner)}>
-      <Image source={{ uri: banner.image }} style={styles.shopifyHeroImage} resizeMode="contain" />
+    <TouchableOpacity style={[styles.shopifyHeroContainer,{width:SCREEN_W-margin*2,height,marginHorizontal:margin,paddingVertical:mobile.paddingVertical,backgroundColor:mobile.backgroundColor??COLORS.offWhite}]} activeOpacity={0.9} onPress={() => onShopNow?.(banner)}>
+      <Image source={{ uri: banner.image }} style={[styles.shopifyHeroImage,{borderRadius:mobile.imageBorderRadius??0}]} resizeMode={mobile.imageFit??"contain"} />
     </TouchableOpacity>
   );
 }
@@ -339,6 +325,16 @@ function AgeRow({
       </ScrollView>
     </View>
   );
+}
+
+function ShopifyThemeSections({sections,placement,visibility,customStyles,onOpen}:{sections:HomepageThemeSection[];placement:HomepageThemeSection["placement"];visibility:Record<string,boolean>;customStyles:Record<string,string>;onOpen:(url:string)=>void}){
+  const visible=sections.filter(section=>section.placement===placement&&visibility[section.id]!==false);
+  if(!visible.length)return null;
+  return <>{visible.map(section=>{const automatic=section.mobileStyle??{};const override=parseMobileCustomCss(customStyles[section.id]);const mobile={...automatic,...override};const margin=Math.max(0,mobile.marginHorizontal??0);const candidateRatio=mobile.aspectRatio??1.55;const ratio=candidateRatio>=1&&candidateRatio<=4?candidateRatio:1.55;const imageSize={height:mobile.height??Math.min(SCREEN_W*.85,(SCREEN_W-margin*2)/ratio)};const bannerPadding=mobile.paddingVertical??(section.layout==="banner"?0:22);return <View key={section.id} style={[styles.themeSection,{marginHorizontal:margin,paddingVertical:bannerPadding,backgroundColor:mobile.backgroundColor}]}>
+    {section.title?<View style={styles.themeCustomHeader}><Text style={[styles.themeCustomTitle,{color:mobile.textColor,textAlign:mobile.textAlign}]}>{section.title}</Text>{section.subtitle?<Text style={[styles.themeSubtitle,{color:mobile.textColor,textAlign:mobile.textAlign}]}>{section.subtitle}</Text>:null}</View>:section.subtitle?<Text style={[styles.themeSubtitle,{color:mobile.textColor,textAlign:mobile.textAlign}]}>{section.subtitle}</Text>:null}
+    {section.layout==="grid"?<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.themeGrid}>{section.images.map((image,index)=><TouchableOpacity key={`${image.url}-${index}`} style={styles.themeCard} activeOpacity={.82} onPress={()=>onOpen(image.link||section.url)}><Image source={{uri:image.url}} style={[styles.themeCardImage,{borderRadius:mobile.imageBorderRadius}]} resizeMode={mobile.imageFit??"cover"}/>{image.alt&&image.alt!==section.title?<Text style={[styles.themeCardLabel,{color:mobile.textColor,textAlign:mobile.textAlign}]} numberOfLines={2}>{image.alt}</Text>:null}</TouchableOpacity>)}</ScrollView>:section.images[0]?<TouchableOpacity activeOpacity={.86} disabled={!section.url} onPress={()=>onOpen(section.url)}><Image source={{uri:section.images[0].url}} style={[styles.themeBannerImage,imageSize,{borderRadius:mobile.imageBorderRadius??0}]} resizeMode={mobile.imageFit??"cover"}/></TouchableOpacity>:null}
+    {section.buttonLabel&&section.url?<TouchableOpacity style={styles.themeButton} onPress={()=>onOpen(section.url)}><Text style={styles.themeButtonText}>{section.buttonLabel} →</Text></TouchableOpacity>:null}
+  </View>})}</>;
 }
 
 function ProductCard({
@@ -918,7 +914,11 @@ export default function HomeScreen() {
   const [tinyEssentialsState, setTinyEssentialsState] =
     useState<TinyEssential[]>([]);
   const [ourBrandsState, setOurBrandsState] = useState<OurBrand[]>([]);
-  const [adminSections, setAdminSections] = useState<AdminSection[]>(getBundledAdminSections);
+  const bundledAdminConfig=getBundledAdminHomepageConfig();
+  const [adminSections, setAdminSections] = useState<AdminSection[]>(bundledAdminConfig.sections);
+  const [shopifyVisibility,setShopifyVisibility]=useState<Record<string,boolean>>(bundledAdminConfig.shopifyVisibility);
+  const [shopifyStyles,setShopifyStyles]=useState<Record<string,string>>(bundledAdminConfig.shopifyStyles);
+  const [themeSections,setThemeSections]=useState<HomepageThemeSection[]>([]);
   const [adminContentError, setAdminContentError] = useState("");
 
   useFocusEffect(
@@ -948,6 +948,7 @@ export default function HomeScreen() {
         setTinyEssentialsState(content.tinyEssentials);
         setOurBrandsState(content.ourBrands);
         setLatestCollectionProducts(content.latestCollectionProducts);
+        setThemeSections(content.themeSections);
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Unable to load homepage";
@@ -979,10 +980,10 @@ export default function HomeScreen() {
     useCallback(() => {
       let mounted = true;
       setAdminContentError("");
-      getAdminSections()
-        .then((items) => {
-          console.info(`Loaded ${items.length} admin section(s).`);
-          if (mounted) setAdminSections(items);
+      getAdminHomepageConfig()
+        .then((config) => {
+          console.info(`Loaded ${config.sections.length} admin section(s).`);
+          if (mounted) {setAdminSections(config.sections);setShopifyVisibility(config.shopifyVisibility);setShopifyStyles(config.shopifyStyles)}
         })
         .catch((error) => {
           console.info("Admin sections unavailable:", error);
@@ -1030,6 +1031,7 @@ export default function HomeScreen() {
       });
     }
   };
+  const openThemeUrl=(url:string)=>{if(!url)return;WebBrowser.openBrowserAsync(url.startsWith("http")?url:`https://carters.com.lb${url}`,{presentationStyle:WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,controlsColor:"#002041",toolbarColor:"#ffffff"})};
 
   const handleTab = (tab: TabId) => {
     setActiveTab(tab);
@@ -1069,28 +1071,32 @@ export default function HomeScreen() {
         {adminSections.length > 0 && (
           <AdminSections sections={adminSections} placement="before-hero" onOpen={() => showCollection("all-products", "Shop all")} />
         )}
+        <ShopifyThemeSections sections={themeSections} placement="before-hero" visibility={shopifyVisibility} customStyles={shopifyStyles} onOpen={openThemeUrl}/>
         {__DEV__ && adminContentError ? (
           <View style={{ backgroundColor: "#fff0f0", padding: 10 }}>
             <Text style={{ color: "#a33", fontSize: 10, textAlign: "center" }}>Admin connection: {adminContentError}</Text>
           </View>
         ) : null}
 
-        <HeroBanner
+        {shopifyVisibility.hero!==false&&<HeroBanner
           items={heroBanners}
+          customCss={shopifyStyles.hero}
           onShopNow={(banner) =>
             showCollection(banner.handle, banner.title)
           }
-        />
+        />}
 
         <HomepageStatus loading={homepageLoading} error={homepageError} />
 
         <AdminSections sections={adminSections} placement="after-hero" onOpen={() => showCollection("all-products", "Shop all")} />
+        <ShopifyThemeSections sections={themeSections} placement="after-hero" visibility={shopifyVisibility} customStyles={shopifyStyles} onOpen={openThemeUrl}/>
 
-        <PromoStrip items={promoItems} />
+        {shopifyVisibility.promos!==false&&<PromoStrip items={promoItems} />}
 
         <AdminSections sections={adminSections} placement="after-promos" onOpen={() => showCollection("all-products", "Shop all")} />
+        <ShopifyThemeSections sections={themeSections} placement="after-promos" visibility={shopifyVisibility} customStyles={shopifyStyles} onOpen={openThemeUrl}/>
 
-        {ageGroups.length > 0 && (
+        {shopifyVisibility["age-groups"]!==false&&ageGroups.length > 0 && (
           <AgeRow
             categories={ageGroups}
             onPress={(category) => showCollection(category.handle, category.label)}
@@ -1098,8 +1104,9 @@ export default function HomeScreen() {
         )}
 
         <AdminSections sections={adminSections} placement="after-ages" onOpen={() => showCollection("all-products", "Shop all")} />
+        <ShopifyThemeSections sections={themeSections} placement="after-ages" visibility={shopifyVisibility} customStyles={shopifyStyles} onOpen={openThemeUrl}/>
 
-        {topPicksProducts.length > 0 && (
+        {shopifyVisibility["top-picks"]!==false&&topPicksProducts.length > 0 && (
           <TopPicksSection
             products={topPicksProducts}
             onSeeAll={() => showCollection("new-collection-ss26", "Top picks")}
@@ -1109,8 +1116,9 @@ export default function HomeScreen() {
         )}
 
         <AdminSections sections={adminSections} placement="after-top-picks" onOpen={() => showCollection("all-products", "Shop all")} />
+        <ShopifyThemeSections sections={themeSections} placement="after-top-picks" visibility={shopifyVisibility} customStyles={shopifyStyles} onOpen={openThemeUrl}/>
 
-        {shopCategories.length > 0 && (
+        {shopifyVisibility["shop-categories"]!==false&&shopCategories.length > 0 && (
           <ShopCategorySection
             categories={shopCategories}
             onPress={(category) => showCollection(category.handle, category.label)}
@@ -1118,8 +1126,9 @@ export default function HomeScreen() {
         )}
 
         <AdminSections sections={adminSections} placement="after-categories" onOpen={() => showCollection("all-products", "Shop all")} />
+        <ShopifyThemeSections sections={themeSections} placement="after-categories" visibility={shopifyVisibility} customStyles={shopifyStyles} onOpen={openThemeUrl}/>
 
-        {exploreStylesState.length > 0 && (
+        {shopifyVisibility["explore-styles"]!==false&&exploreStylesState.length > 0 && (
           <ExploreStylesSection
             items={exploreStylesState}
             onPress={(style) => showCollection(style.handle, style.label)}
@@ -1127,8 +1136,9 @@ export default function HomeScreen() {
         )}
 
         <AdminSections sections={adminSections} placement="after-explore" onOpen={() => showCollection("all-products", "Shop all")} />
+        <ShopifyThemeSections sections={themeSections} placement="after-explore" visibility={shopifyVisibility} customStyles={shopifyStyles} onOpen={openThemeUrl}/>
 
-        {tinyEssentialsState.length > 0 && (
+        {shopifyVisibility["tiny-essentials"]!==false&&tinyEssentialsState.length > 0 && (
           <TinyEssentialsSection
             items={tinyEssentialsState}
             onPress={(item) => showCollection(item.handle, item.title)}
@@ -1136,8 +1146,9 @@ export default function HomeScreen() {
         )}
 
         <AdminSections sections={adminSections} placement="after-essentials" onOpen={() => showCollection("all-products", "Shop all")} />
+        <ShopifyThemeSections sections={themeSections} placement="after-essentials" visibility={shopifyVisibility} customStyles={shopifyStyles} onOpen={openThemeUrl}/>
 
-        {ourBrandsState.length > 0 && (
+        {shopifyVisibility["our-brands"]!==false&&ourBrandsState.length > 0 && (
           <OurBrandsSection
             brands={ourBrandsState}
             onPress={(brand) => showCollection(brand.handle, brand.label)}
@@ -1145,8 +1156,9 @@ export default function HomeScreen() {
         )}
 
         <AdminSections sections={adminSections} placement="after-brands" onOpen={() => showCollection("all-products", "Shop all")} />
+        <ShopifyThemeSections sections={themeSections} placement="after-brands" visibility={shopifyVisibility} customStyles={shopifyStyles} onOpen={openThemeUrl}/>
 
-        {latestCollectionProducts.length > 0 && (
+        {shopifyVisibility["latest-collection"]!==false&&latestCollectionProducts.length > 0 && (
           <LatestCollectionSection
             products={latestCollectionProducts}
             onSeeAll={() => showCollection("new-collection-ss26", "Latest collection")}
@@ -1158,6 +1170,7 @@ export default function HomeScreen() {
         )}
 
         <AdminSections sections={adminSections} placement="after-latest" onOpen={() => showCollection("all-products", "Shop all")} />
+        <ShopifyThemeSections sections={themeSections} placement="after-latest" visibility={shopifyVisibility} customStyles={shopifyStyles} onOpen={openThemeUrl}/>
 
       </ScrollView>
 
@@ -2329,6 +2342,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     gap: 13,
   },
+  themeSection:{paddingVertical:22,backgroundColor:COLORS.white},
+  themeCustomHeader:{paddingHorizontal:18,marginBottom:14},
+  themeCustomTitle:{color:COLORS.textDark,fontSize:22,fontWeight:"900",fontFamily:FONT,textAlign:"center"},
+  themeSubtitle:{paddingHorizontal:18,color:COLORS.textMid,fontSize:13,lineHeight:20,textAlign:"center",fontFamily:FONT},
+  themeGrid:{paddingHorizontal:14,gap:12},
+  themeCard:{width:SCREEN_W*.68,maxWidth:310,borderRadius:12,overflow:"hidden",backgroundColor:COLORS.offWhite},
+  themeCardImage:{width:"100%",aspectRatio:1.25},
+  themeCardLabel:{paddingHorizontal:12,paddingVertical:10,color:COLORS.textDark,fontSize:13,fontWeight:"800",fontFamily:FONT},
+  themeBannerImage:{width:"100%",alignSelf:"center",backgroundColor:COLORS.offWhite},
+  themeButton:{alignSelf:"center",marginTop:13,paddingHorizontal:17,paddingVertical:10,borderRadius:7,backgroundColor:COLORS.blueLight},
+  themeButtonText:{color:COLORS.blue,fontSize:12,fontWeight:"900",fontFamily:FONT},
 
   menuBackdrop: { flex: 1, backgroundColor: "rgba(11, 30, 66, 0.38)" },
   bottomNavigation: { position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 90, flexDirection: "row", backgroundColor: COLORS.white, borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: 8, paddingBottom: Platform.OS === "ios" ? 22 : 10, shadowColor: "#000", shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 18 },
