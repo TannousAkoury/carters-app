@@ -10,7 +10,10 @@
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts",
-    "app/(tabs)/index.tsx"
+    "expo-env.d.ts"
+  ],
+  "exclude": [
+    "admin",
+    "node_modules"
   ]
 }

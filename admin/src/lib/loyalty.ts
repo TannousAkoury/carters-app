@@ -8,6 +8,9 @@ export type LoyaltySettings = {
   pointsPerCurrencyUnit: number;
   minimumRedemptionPoints: number;
   rewardExpiryDays: number;
+  silverTierPoints: number;
+  goldTierPoints: number;
+  vipTierPoints: number;
 };
 
 export type LoyaltyAccount = {
@@ -57,6 +60,9 @@ const defaultSettings: LoyaltySettings = {
   pointsPerCurrencyUnit: 10,
   minimumRedemptionPoints: 50,
   rewardExpiryDays: 30,
+  silverTierPoints: 50,
+  goldTierPoints: 250,
+  vipTierPoints: 500,
 };
 
 let queue = Promise.resolve();
@@ -87,6 +93,9 @@ export async function saveLoyaltySettings(input: Partial<LoyaltySettings>) {
   const current = (await loyaltySnapshot()).settings;
   const pointsPerCurrencyUnit = Math.max(1, Math.floor(Number(input.pointsPerCurrencyUnit ?? current.pointsPerCurrencyUnit) || 1));
   const requestedMinimum = Math.max(pointsPerCurrencyUnit, Math.floor(Number(input.minimumRedemptionPoints ?? current.minimumRedemptionPoints) || pointsPerCurrencyUnit));
+  const silverTierPoints = Math.max(1, Math.floor(Number(input.silverTierPoints ?? current.silverTierPoints) || defaultSettings.silverTierPoints));
+  const goldTierPoints = Math.max(silverTierPoints + 1, Math.floor(Number(input.goldTierPoints ?? current.goldTierPoints) || defaultSettings.goldTierPoints));
+  const vipTierPoints = Math.max(goldTierPoints + 1, Math.floor(Number(input.vipTierPoints ?? current.vipTierPoints) || defaultSettings.vipTierPoints));
   const settings: LoyaltySettings = {
     enabled: typeof input.enabled === "boolean" ? input.enabled : current.enabled,
     programName: String(input.programName || current.programName).trim().slice(0, 80) || defaultSettings.programName,
@@ -94,6 +103,9 @@ export async function saveLoyaltySettings(input: Partial<LoyaltySettings>) {
     pointsPerCurrencyUnit,
     minimumRedemptionPoints: Math.ceil(requestedMinimum / pointsPerCurrencyUnit) * pointsPerCurrencyUnit,
     rewardExpiryDays: Math.min(365, Math.max(1, Math.floor(Number(input.rewardExpiryDays ?? current.rewardExpiryDays) || 30))),
+    silverTierPoints,
+    goldTierPoints,
+    vipTierPoints,
   };
   await writeJson("loyalty-settings.json", settings);
   return settings;

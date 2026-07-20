@@ -48,5 +48,15 @@
     "points": 50,
     "note": "aa",
     "createdAt": "2026-07-15T13:19:07.857Z"
+  },
+  {
+    "id": "334ac28d-93e9-4d1b-b709-5c57d0eda264",
+    "accountId": "0bad267c-4836-40db-b511-e677aec243b6",
+    "customerId": "",
+    "email": "tannousakoury@hotmail.com",
+    "type": "adjustment",
+    "points": 1000,
+    "note": "loyal",
+    "createdAt": "2026-07-20T13:26:24.125Z"
   }
 ]

@@ -13,8 +13,12 @@ export async function GET() {
 export async function PUT(request: Request) {
   const unauthorized = await requirePermission("App editor");
   if (unauthorized) return unauthorized;
-  const body = await request.json();
+  const raw = await request.text();
+  if (raw.length > 2_000_000) return NextResponse.json({ error: "Published content is too large" }, { status: 413, headers: cors });
+  let body: Record<string, unknown> | null = null;
+  try { body = JSON.parse(raw) as Record<string, unknown>; } catch { /* handled below */ }
   if (!Array.isArray(body?.sections)) return NextResponse.json({ error: "sections must be an array" }, { status: 400, headers: cors });
+  if (body.sections.length > 100 || body.sections.some((section) => !section || typeof section !== "object" || Array.isArray(section))) return NextResponse.json({ error: "sections contains invalid content" }, { status: 400, headers: cors });
   const sections = body.sections.map((section: unknown) => {
     if (!section || typeof section !== "object") return section;
     const item = section as Record<string, unknown>;

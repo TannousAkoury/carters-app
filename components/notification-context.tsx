@@ -4,7 +4,7 @@ import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { createContext, PropsWithChildren, useCallback, useContext, useEffect, useState } from "react";
-import { Platform } from "react-native";
+import { Linking, Platform } from "react-native";
 import { adminApiUrls, fetchAdmin } from "@/services/admin-api";
 import { trackEvent } from "@/services/analytics";
 
@@ -13,6 +13,7 @@ const TEST_PUSH_CURSOR_KEY = "test_push_cursor";
 const EXPO_PUSH_TOKEN_KEY = "expo_push_token";
 const CUSTOMER_EMAIL_KEY = "shopify_customer_email";
 const CUSTOMER_PHONE_KEY = "shopify_customer_phone";
+const LAST_NOTIFICATION_RESPONSE_KEY = "last_notification_response";
 
 export type InboxNotification = {
   id: string;
@@ -72,29 +73,38 @@ export function NotificationProvider({ children }: PropsWithChildren) {
         campaignId: typeof content.data?.campaignId === "string" ? content.data.campaignId : typeof content.data?.testMessageId === "string" ? content.data.testMessageId : undefined,
       };
       setItems((current) => {
-        const updated = [next, ...current.filter((item) => item.id !== next.id)].slice(0, 100);
+        const updated = [next, ...current.filter((item) => item.id !== next.id && (!next.campaignId || item.campaignId !== next.campaignId))].slice(0, 100);
         SecureStore.setItemAsync(INBOX_KEY, JSON.stringify(updated));
         return updated;
       });
     });
-    const responded = Notifications.addNotificationResponseReceivedListener((response) => {
+
+    const handleResponse = async (response: Notifications.NotificationResponse) => {
+      const responseId = response.notification.request.identifier;
+      const lastResponseId = await SecureStore.getItemAsync(LAST_NOTIFICATION_RESPONSE_KEY);
+      if (lastResponseId === responseId) return;
+      await SecureStore.setItemAsync(LAST_NOTIFICATION_RESPONSE_KEY, responseId);
+      const content = response.notification.request.content;
       const data = response.notification.request.content.data;
       const url = data?.url;
       const campaignId = data?.campaignId ?? data?.testMessageId;
-      trackEvent("notification_open", { campaignId: typeof campaignId === "string" ? campaignId : undefined, title: response.notification.request.content.title ?? "" });
-      if (typeof campaignId === "string") {
-        setItems((current) => {
-          const updated = current.map((item) => item.campaignId === campaignId ? { ...item, read: true } : item);
-          SecureStore.setItemAsync(INBOX_KEY, JSON.stringify(updated));
-          return updated;
-        });
-      }
+      const opened: InboxNotification = { id: responseId, title: content.title ?? "Carter's", body: content.body ?? "", url: typeof url === "string" ? url : undefined, receivedAt: new Date().toISOString(), read: true, campaignId: typeof campaignId === "string" ? campaignId : undefined };
+      setItems((current) => {
+        const updated = [opened, ...current.filter((item) => item.id !== responseId && (!opened.campaignId || item.campaignId !== opened.campaignId))].slice(0, 100);
+        void SecureStore.setItemAsync(INBOX_KEY, JSON.stringify(updated));
+        return updated;
+      });
+      void trackEvent("notification_open", { campaignId: opened.campaignId, title: content.title ?? "" });
       if (typeof url === "string" && url.startsWith("/")) router.push(url as never);
-    });
+      else if (typeof url === "string" && /^https:\/\//i.test(url)) void Linking.openURL(url).catch(() => undefined);
+    };
+    const responded = Notifications.addNotificationResponseReceivedListener((response) => { void handleResponse(response); });
+    void Notifications.getLastNotificationResponseAsync().then((response) => { if (response) void handleResponse(response); });
     return () => { received.remove(); responded.remove(); };
   }, [router]);
 
   useEffect(() => {
+    if (!__DEV__) return;
     let active = true;
     const poll = async () => {
       try {
@@ -102,6 +112,7 @@ export function NotificationProvider({ children }: PropsWithChildren) {
         if (permission.status !== "granted") return;
         const cursor = await SecureStore.getItemAsync(TEST_PUSH_CURSOR_KEY) ?? "";
         const token = await SecureStore.getItemAsync(EXPO_PUSH_TOKEN_KEY) ?? "";
+        if (token) return;
         const response = await fetchAdmin(`/api/push/inbox?after=${encodeURIComponent(cursor)}&token=${encodeURIComponent(token)}`);
         if (!response.ok) return;
         const payload = await response.json();
@@ -132,7 +143,10 @@ export function NotificationProvider({ children }: PropsWithChildren) {
       // Expo Go cannot receive remote push notifications on current Android SDKs.
       // Permission is still useful: the development inbox poller turns admin
       // campaigns into local notifications while the app is running.
-      if (!projectId) return null;
+      if (!projectId) {
+        if (__DEV__) return null;
+        throw new Error("Push notifications are not configured for this production build.");
+      }
       const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
       await SecureStore.setItemAsync(EXPO_PUSH_TOKEN_KEY, token);
       if (adminApiUrls().length) {

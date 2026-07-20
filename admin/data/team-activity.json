@@ -1,5 +1,45 @@
 [
   {
+    "id": "ad61d573-8b57-4d68-b89a-c87c51566604",
+    "createdAt": "2026-07-20T11:41:22.581Z",
+    "action": "Password setup sent",
+    "category": "security",
+    "severity": "info",
+    "actor": "admin",
+    "target": "tannous.akoury@zavco.net",
+    "detail": "A new secure password setup link was issued."
+  },
+  {
+    "id": "26531cc9-5d9d-4fa0-8f24-b2c34bfe8e2b",
+    "createdAt": "2026-07-20T10:10:34.954Z",
+    "action": "Admin signed in",
+    "category": "access",
+    "severity": "success",
+    "actor": "admin",
+    "target": "admin",
+    "detail": "Owner session started."
+  },
+  {
+    "id": "fc52a7b9-5ce2-4c80-a90c-b9e03b749231",
+    "createdAt": "2026-07-18T15:20:04.105Z",
+    "action": "Admin signed in",
+    "category": "access",
+    "severity": "success",
+    "actor": "admin",
+    "target": "admin",
+    "detail": "Owner session started."
+  },
+  {
+    "id": "d9723143-f902-491e-9e0c-7da5fe4e58af",
+    "createdAt": "2026-07-17T15:34:54.273Z",
+    "action": "Admin signed in",
+    "category": "access",
+    "severity": "success",
+    "actor": "admin",
+    "target": "admin",
+    "detail": "Owner session started."
+  },
+  {
     "id": "fe5cbd51-b66e-4338-a228-455aae4616fb",
     "createdAt": "2026-07-16T12:12:13.565Z",
     "action": "Admin signed in",

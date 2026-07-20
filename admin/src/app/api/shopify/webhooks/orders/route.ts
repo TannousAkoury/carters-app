@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
-import { readJson, writeJson } from "@/lib/json-store";
+import { readJson, updateJson } from "@/lib/json-store";
 import { sendClientPush, type PushDevice } from "@/lib/push";
 import { awardPaidOrder, reverseOrderPoints } from "@/lib/loyalty";
 
@@ -32,13 +32,18 @@ type OrderNotificationLog = {
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  if (!process.env.SHOPIFY_WEBHOOK_SECRET) {
+    return NextResponse.json({ error: "Shopify webhook verification is not configured" }, { status: 503 });
+  }
   const rawBody = await request.text();
   if (!verifyShopifyWebhook(rawBody, request.headers)) {
     return NextResponse.json({ error: "Invalid Shopify webhook signature" }, { status: 401 });
   }
 
   const topic = request.headers.get("x-shopify-topic") ?? "";
-  const order = JSON.parse(rawBody) as ShopifyOrderWebhook;
+  let order: ShopifyOrderWebhook;
+  try { order = JSON.parse(rawBody) as ShopifyOrderWebhook; }
+  catch { return NextResponse.json({ error: "Invalid webhook payload" }, { status: 400 }); }
   const status = order.cancelled_at || topic.includes("cancel") ? "cancelled" : "confirmed";
   const orderName = order.name || `#${order.id ?? "order"}`;
   const customerEmail = (order.contact_email || order.email || order.customer?.email || "").trim().toLowerCase();
@@ -73,8 +78,7 @@ export async function POST(request: Request) {
     storeInInbox: matchingDevices.length > 0,
   });
 
-  const logs = await readJson<OrderNotificationLog[]>("order-notifications.json", []);
-  await writeJson("order-notifications.json", [...logs.slice(-499), {
+  const log: OrderNotificationLog = {
     id: crypto.randomUUID(),
     orderId,
     orderName,
@@ -82,7 +86,8 @@ export async function POST(request: Request) {
     customerEmail: customerEmail || undefined,
     recipientCount: matchingDevices.length,
     createdAt: new Date().toISOString(),
-  }]);
+  };
+  await updateJson<OrderNotificationLog[]>("order-notifications.json", [], (logs) => [...logs.slice(-499), log]);
 
   if ("error" in result) return NextResponse.json(result.error, { status: result.status });
   return NextResponse.json({ ok: true, status, recipients: matchingDevices.length, campaignId: result.campaignId, loyalty });
@@ -90,7 +95,7 @@ export async function POST(request: Request) {
 
 function verifyShopifyWebhook(rawBody: string, headers: Headers) {
   const secret = process.env.SHOPIFY_WEBHOOK_SECRET;
-  if (!secret) return true;
+  if (!secret) return false;
   const signature = headers.get("x-shopify-hmac-sha256");
   if (!signature) return false;
   const digest = crypto.createHmac("sha256", secret).update(rawBody, "utf8").digest("base64");

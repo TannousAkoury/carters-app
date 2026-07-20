@@ -6,6 +6,7 @@ import { useCurrency, type DisplayCurrency } from "@/components/currency-context
 import { salePercentage } from "@/utils/pricing";
 import { useWishlist } from "@/components/wishlist-context";
 import { useAppSettings } from "@/components/app-settings-context";
+import { useNotifications } from "@/components/notification-context";
 import type { AgeCategory, ExploreStyle, HeroBannerItem, HomeProduct as Product, OurBrand, PromoFeature, ShopCategory, TinyEssential } from "@/features/home/types";
 import { Ionicons } from "@expo/vector-icons";
 import { Image as ExpoImage } from "expo-image";
@@ -332,7 +333,10 @@ function AgeRow({
 function ShopifyThemeSections({sections,placement,visibility,customStyles,onOpen}:{sections:HomepageThemeSection[];placement:HomepageThemeSection["placement"];visibility:Record<string,boolean>;customStyles:Record<string,string>;onOpen:(url:string)=>void}){
   const visible=sections.filter(section=>section.placement===placement&&visibility[section.id]!==false);
   if(!visible.length)return null;
-  return <>{visible.map(section=>{const automatic=section.mobileStyle??{};const override=parseMobileCustomCss(customStyles[section.id]);const mobile={...automatic,...override};const margin=Math.max(0,mobile.marginHorizontal??0);const candidateRatio=mobile.aspectRatio??1.55;const ratio=candidateRatio>=1&&candidateRatio<=4?candidateRatio:1.55;const imageSize={height:mobile.height??Math.min(SCREEN_W*.85,(SCREEN_W-margin*2)/ratio)};const bannerPadding=mobile.paddingVertical??(section.layout==="banner"?0:22);return <View key={section.id} style={[styles.themeSection,{marginHorizontal:margin,paddingVertical:bannerPadding,backgroundColor:mobile.backgroundColor}]}>
+  return <>{visible.map(section=>{const automatic=section.mobileStyle??{};const override=parseMobileCustomCss(customStyles[section.id]);const mobile={...automatic,...override};const margin=Math.max(0,mobile.marginHorizontal??0);const candidateRatio=mobile.aspectRatio??1.55;const ratio=candidateRatio>=1&&candidateRatio<=4?candidateRatio:1.55;const imageSize={height:mobile.height??Math.min(SCREEN_W*.85,(SCREEN_W-margin*2)/ratio)};if(section.layout==="media-text"){return <View key={section.id} style={[styles.themeSection,styles.themeMediaTextSection,{marginHorizontal:margin,paddingVertical:mobile.paddingVertical??0,backgroundColor:mobile.backgroundColor}]}>
+    {section.images[0]?<TouchableOpacity activeOpacity={.86} disabled={!section.url} onPress={()=>onOpen(section.url)}><Image source={{uri:section.images[0].url}} style={[styles.themeBannerImage,imageSize,{borderRadius:mobile.imageBorderRadius??0}]} resizeMode={mobile.imageFit??"cover"}/></TouchableOpacity>:null}
+    <View style={styles.themeMediaTextContent}>{section.title?<Text style={[styles.themeMediaTextTitle,{color:mobile.textColor,textAlign:mobile.textAlign??"center"}]}>{section.title}</Text>:null}{section.subtitle?<Text style={[styles.themeMediaTextSubtitle,{color:mobile.textColor,textAlign:mobile.textAlign??"center"}]}>{section.subtitle}</Text>:null}{section.buttonLabel&&section.url?<TouchableOpacity style={styles.themeMediaTextButton} onPress={()=>onOpen(section.url)}><Text style={styles.themeMediaTextButtonText}>{section.buttonLabel}</Text></TouchableOpacity>:null}</View>
+  </View>}const bannerPadding=mobile.paddingVertical??(section.layout==="banner"?0:22);return <View key={section.id} style={[styles.themeSection,{marginHorizontal:margin,paddingVertical:bannerPadding,backgroundColor:mobile.backgroundColor}]}>
     {section.title?<View style={styles.themeCustomHeader}><Text style={[styles.themeCustomTitle,{color:mobile.textColor,textAlign:mobile.textAlign}]}>{section.title}</Text>{section.subtitle?<Text style={[styles.themeSubtitle,{color:mobile.textColor,textAlign:mobile.textAlign}]}>{section.subtitle}</Text>:null}</View>:section.subtitle?<Text style={[styles.themeSubtitle,{color:mobile.textColor,textAlign:mobile.textAlign}]}>{section.subtitle}</Text>:null}
     {section.layout==="grid"?<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.themeGrid}>{section.images.map((image,index)=><TouchableOpacity key={`${image.url}-${index}`} style={styles.themeCard} activeOpacity={.82} onPress={()=>onOpen(image.link||section.url)}><Image source={{uri:image.url}} style={[styles.themeCardImage,{borderRadius:mobile.imageBorderRadius}]} resizeMode={mobile.imageFit??"cover"}/>{image.alt&&image.alt!==section.title?<Text style={[styles.themeCardLabel,{color:mobile.textColor,textAlign:mobile.textAlign}]} numberOfLines={2}>{image.alt}</Text>:null}</TouchableOpacity>)}</ScrollView>:section.images[0]?<TouchableOpacity activeOpacity={.86} disabled={!section.url} onPress={()=>onOpen(section.url)}><Image source={{uri:section.images[0].url}} style={[styles.themeBannerImage,imageSize,{borderRadius:mobile.imageBorderRadius??0}]} resizeMode={mobile.imageFit??"cover"}/></TouchableOpacity>:null}
     {section.buttonLabel&&section.url?<TouchableOpacity style={styles.themeButton} onPress={()=>onOpen(section.url)}><Text style={styles.themeButtonText}>{section.buttonLabel} →</Text></TouchableOpacity>:null}
@@ -751,22 +755,27 @@ function BottomNavigation({
   active,
   onHome,
   onShop,
+  onNotifications,
   onAccount,
   onCart,
   cartCount,
+  notificationCount,
 }: {
   active: TabId;
   onHome: () => void;
   onShop: () => void;
+  onNotifications: () => void;
   onAccount: () => void;
   onCart: () => void;
   cartCount: number;
+  notificationCount: number;
 }) {
   const items: { id: string; label: string; icon: IconName; activeIcon: IconName; onPress: () => void }[] = [
     { id: "home", label: "Home", icon: "home-outline", activeIcon: "home", onPress: onHome },
     { id: "shop", label: "Shop", icon: "bag-handle-outline", activeIcon: "bag-handle", onPress: onShop },
-    { id: "account", label: "Account", icon: "person-outline", activeIcon: "person", onPress: onAccount },
     { id: "cart", label: "Cart", icon: "cart-outline", activeIcon: "cart", onPress: onCart },
+    { id: "notifications", label: "Notifications", icon: "notifications-outline", activeIcon: "notifications", onPress: onNotifications },
+    { id: "account", label: "Account", icon: "person-outline", activeIcon: "person", onPress: onAccount },
   ];
   return (
     <View style={styles.bottomNavigation}>
@@ -774,7 +783,7 @@ function BottomNavigation({
         const selected = active === item.id;
         return (
           <TouchableOpacity key={item.id} style={styles.bottomNavItem} onPress={item.onPress} accessibilityRole="button" accessibilityLabel={item.label}>
-            <View><Ionicons name={selected ? item.activeIcon : item.icon} size={22} color={selected ? COLORS.blue : COLORS.textLight} />{item.id === "cart" && cartCount > 0 ? <View style={styles.bottomCartBadge}><Text style={styles.bottomCartBadgeText}>{cartCount > 99 ? "99+" : cartCount}</Text></View> : null}</View>
+            <View><Ionicons name={selected ? item.activeIcon : item.icon} size={22} color={selected ? COLORS.blue : COLORS.textLight} />{item.id === "cart" && cartCount > 0 ? <View style={styles.bottomCartBadge}><Text style={styles.bottomCartBadgeText}>{cartCount > 99 ? "99+" : cartCount}</Text></View> : null}{item.id === "notifications" && notificationCount > 0 ? <View style={styles.bottomNotificationBadge}><Text style={styles.bottomCartBadgeText}>{notificationCount > 9 ? "9+" : notificationCount}</Text></View> : null}</View>
             <Text style={[styles.bottomNavLabel, selected && styles.bottomNavLabelActive]}>{item.label}</Text>
           </TouchableOpacity>
         );
@@ -887,6 +896,7 @@ export default function HomeScreen() {
   const { count: cartCount } = useCart();
   const { currency, toggleCurrency } = useCurrency();
   const { settings: appSettings } = useAppSettings();
+  const { unread: notificationCount } = useNotifications();
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
   const [activeTab, setActiveTab] = useState<TabId>("home");
@@ -1178,9 +1188,11 @@ export default function HomeScreen() {
         active={activeTab}
         onHome={() => handleTab("home")}
         onShop={() => handleTab("shop")}
+        onNotifications={() => router.push("/notifications")}
         onAccount={() => handleTab("account")}
         onCart={openCart}
         cartCount={cartCount}
+        notificationCount={notificationCount}
       />
     </View>
   );
@@ -2345,6 +2357,12 @@ const styles = StyleSheet.create({
   themeBannerImage:{width:"100%",alignSelf:"center",backgroundColor:COLORS.offWhite},
   themeButton:{alignSelf:"center",marginTop:13,paddingHorizontal:17,paddingVertical:10,borderRadius:7,backgroundColor:COLORS.blueLight},
   themeButtonText:{color:COLORS.blue,fontSize:12,fontWeight:"900",fontFamily:FONT},
+  themeMediaTextSection:{backgroundColor:COLORS.white},
+  themeMediaTextContent:{alignItems:"center",paddingHorizontal:15,paddingTop:28,paddingBottom:15},
+  themeMediaTextTitle:{color:COLORS.textDark,fontSize:30,lineHeight:37,fontWeight:"500",fontFamily:FONT,textAlign:"center",marginBottom:10},
+  themeMediaTextSubtitle:{color:COLORS.textMid,fontSize:16,lineHeight:24,fontWeight:"400",fontFamily:FONT,textAlign:"center",marginBottom:25},
+  themeMediaTextButton:{alignSelf:"center",minHeight:44,justifyContent:"center",paddingHorizontal:22,paddingVertical:11,borderRadius:5,backgroundColor:"#06a2e4"},
+  themeMediaTextButtonText:{color:COLORS.white,fontSize:14,fontWeight:"800",fontFamily:FONT},
 
   menuBackdrop: { flex: 1, backgroundColor: "rgba(11, 30, 66, 0.38)" },
   bottomNavigation: { position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 90, flexDirection: "row", backgroundColor: COLORS.white, borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: 8, paddingBottom: Platform.OS === "ios" ? 22 : 10, shadowColor: "#000", shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 18 },
@@ -2352,6 +2370,7 @@ const styles = StyleSheet.create({
   bottomNavLabel: { color: COLORS.textLight, fontSize: 10, fontWeight: "700", fontFamily: FONT },
   bottomNavLabelActive: { color: COLORS.blue, fontWeight: "900" },
   bottomCartBadge: { position: "absolute", right: -10, top: -8, minWidth: 17, height: 17, paddingHorizontal: 3, borderRadius: 9, backgroundColor: COLORS.pinkAccent, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: COLORS.white },
+  bottomNotificationBadge: { position: "absolute", right: -10, top: -8, minWidth: 17, height: 17, paddingHorizontal: 3, borderRadius: 9, backgroundColor: COLORS.pinkAccent, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: COLORS.white },
   bottomCartBadgeText: { color: COLORS.white, fontSize: 8, fontWeight: "900" },
   navigationMenu: { width: "86%", maxWidth: 360, height: "100%", backgroundColor: COLORS.white, paddingTop: Platform.OS === "ios" ? 54 : 34, paddingHorizontal: 18, shadowColor: "#000", shadowOffset: { width: 5, height: 0 }, shadowOpacity: 0.18, shadowRadius: 16, elevation: 20 },
   menuHeader: { height: 60, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: COLORS.border, marginBottom: 12 },

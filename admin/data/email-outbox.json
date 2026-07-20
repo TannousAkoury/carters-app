@@ -14,5 +14,13 @@
     "text": "An admin reset your Carter's admin password.\n\nOpen this secure link to set your password:\nhttp://localhost:3001/set-password?token=e5d523a484ed047845d40e79a514453fa8d01ee35e7d4041fc12902b4f533408\n\nThis link expires in 7 days.",
     "createdAt": "2026-07-16T11:44:21.126Z",
     "mode": "local-outbox"
+  },
+  {
+    "id": "82c62f68-5968-41d7-9fb4-02ab370e1a9e",
+    "to": "tannous.akoury@zavco.net",
+    "subject": "Reset your Carter's admin password",
+    "text": "An admin reset your Carter's admin password.\n\nOpen this secure link to set your password:\nhttp://localhost:3001/set-password?token=f4892f4a13b9c2fd9a8b26244d4faa8a16d8ceb47c4cf0246ba7aaf52c868965\n\nThis link expires in 7 days.",
+    "createdAt": "2026-07-20T11:41:22.556Z",
+    "mode": "local-outbox"
   }
 ]

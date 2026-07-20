@@ -1,7 +1,7 @@
 import { readFile, unlink } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
-import { readJson, writeJson } from "@/lib/json-store";
+import { readJson, updateJson } from "@/lib/json-store";
 import { requirePermission } from "@/lib/shopify-admin";
 
 export const runtime = "nodejs";
@@ -29,7 +29,6 @@ export async function DELETE(_request:Request,context:RouteContext<"/api/uploads
   const published=await readJson<{sections?:{image?:string}[]}>("app-content.json",{});
   if((published.sections??[]).some(section=>section.image===url))return NextResponse.json({error:"This image is used by published app content. Replace and publish that section before deleting it."},{status:409});
   try{await unlink(path.join(process.cwd(),"data","uploads",name))}catch{return NextResponse.json({error:"Asset was not found."},{status:404})}
-  const index=await readJson<AssetRecord[]>("media-assets.json",[]);
-  await writeJson("media-assets.json",index.filter(item=>item.fileName!==name));
+  await updateJson<AssetRecord[]>("media-assets.json",[],(index)=>index.filter(item=>item.fileName!==name));
   return NextResponse.json({deleted:true,fileName:name});
 }

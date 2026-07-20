@@ -412,7 +412,7 @@ export type HomepageThemeSection = {
   buttonLabel: string;
   url: string;
   images: { url: string; alt: string; link: string }[];
-  layout: "banner" | "grid" | "text";
+  layout: "banner" | "grid" | "text" | "media-text";
   placement: "before-hero" | "after-hero" | "after-promos" | "after-ages" | "after-top-picks" | "after-categories" | "after-explore" | "after-essentials" | "after-brands" | "after-latest";
   mobileStyle?: HomepageMobileStyle;
 };
@@ -1005,7 +1005,10 @@ function parseThemeSections(html: string): HomepageThemeSection[] {
 
     const title = stripTags(matchFirst(source, /<h[1-3]\b[^>]*>([\s\S]*?)<\/h[1-3]>/i)) || images[0]?.alt || "";
     const subtitle = stripTags(matchFirst(source, /<p\b[^>]*>([\s\S]*?)<\/p>/i));
-    const buttonLabel = stripTags(matchFirst(source, /<a\b[^>]*>([\s\S]*?)<\/a>/i));
+    const buttonLabel = stripTags(
+      matchFirst(source, /<a\b[^>]*class=["'][^"']*bls__banner-text--button[^"']*["'][^>]*>([\s\S]*?)<\/a>/i) ||
+        matchFirst(source, /<a\b[^>]*>([\s\S]*?)<\/a>/i),
+    );
     if (!title && !subtitle && images.length === 0) return;
 
     sections.push({
@@ -1016,12 +1019,17 @@ function parseThemeSections(html: string): HomepageThemeSection[] {
       buttonLabel: buttonLabel.length <= 50 ? buttonLabel : "",
       url: firstLink,
       images,
-      layout: images.length > 1 ? "grid" : images.length === 1 ? "banner" : "text",
+      layout: /bls__banner-with-text|bls__banner-text--grid/i.test(source)
+        ? "media-text"
+        : images.length > 1
+          ? "grid"
+          : images.length === 1
+            ? "banner"
+            : "text",
       placement,
       mobileStyle:parseShopifyMobileStyle(source),
     });
 
-    if (known) placement = known.after;
   });
 
   return sections.slice(0, 20);

@@ -125,6 +125,25 @@ export async function PATCH(request: Request) {
   if (unauthorized) return unauthorized;
   const body = await request.json().catch(() => null);
   const id = typeof body?.id === "string" ? body.id : "";
+  const action = body?.action === "stop" ? "stop" : "edit";
+  const requestedMethod = body?.method === "automatic" ? "automatic" : body?.method === "code" ? "code" : null;
+
+  if (action === "stop") {
+    if (!id || !requestedMethod) return NextResponse.json({ error: "Promotion id and method are required." }, { status: 400 });
+    try {
+      const automatic = requestedMethod === "automatic";
+      const mutation = automatic
+        ? `mutation stopPromotion($id: ID!) { discountAutomaticDeactivate(id: $id) { automaticDiscountNode { id } userErrors { field message } } }`
+        : `mutation stopPromotion($id: ID!) { discountCodeDeactivate(id: $id) { codeDiscountNode { id } userErrors { field message } } }`;
+      const data = await shopifyAdminGraphql(mutation, { id });
+      const result = automatic ? data?.discountAutomaticDeactivate : data?.discountCodeDeactivate;
+      if (result?.userErrors?.length) throw new Error(result.userErrors.map((error: { message: string }) => error.message).join(" | "));
+      return NextResponse.json({ ok: true, id, status: "EXPIRED" });
+    } catch (error) {
+      return shopifyError(error, {});
+    }
+  }
+
   const type = typeof body?.type === "string" ? body.type : "";
   const title = typeof body?.title === "string" ? body.title.trim() : "";
   const method = body?.method === "automatic" ? "automatic" : "code";

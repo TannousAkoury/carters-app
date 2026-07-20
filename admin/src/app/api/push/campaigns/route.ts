@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { readJson } from "@/lib/json-store";
 import { requirePermission } from "@/lib/shopify-admin";
+import { refreshPushReceipts } from "@/lib/push";
 
 type Campaign = { id:string;title:string;message:string;url:string;createdAt:string;recipientCount:number;status:string };
 type Event = { name:string;sessionId:string;properties?:{campaignId?:string;title?:string} };
@@ -8,6 +9,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const unauthorized = await requirePermission("Marketing");
   if (unauthorized) return unauthorized;
+  await refreshPushReceipts().catch(() => undefined);
   const campaigns = await readJson<Campaign[]>("push-messages.json", []);
   const events = await readJson<Event[]>("analytics-events.json", []);
   const result = campaigns.slice().reverse().map((campaign) => {

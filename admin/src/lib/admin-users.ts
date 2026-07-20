@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { readJson, writeJson } from "@/lib/json-store";
+import { readJson, updateJson } from "@/lib/json-store";
 
 export type AdminUser = {
   id: string;
@@ -37,8 +37,6 @@ export async function findAdminUserById(id: string) {
 export async function inviteAdminUser(input: { email: string; role: string }) {
   const email = normalizeEmail(input.email);
   if (!email || !email.includes("@")) throw new Error("A valid employee email is required.");
-  const users = await readJson<AdminUser[]>(USERS_FILE, []);
-  if (users.some((user) => user.email === email)) throw new Error("This employee already exists.");
   const now = new Date().toISOString();
   const invite = createInviteToken();
   const user: AdminUser = {
@@ -51,59 +49,60 @@ export async function inviteAdminUser(input: { email: string; role: string }) {
     createdAt: now,
     updatedAt: now,
   };
-  await writeJson(USERS_FILE, [user, ...users]);
+  await updateJson<AdminUser[]>(USERS_FILE, [], (users) => {
+    if (users.some((item) => item.email === email)) throw new Error("This employee already exists.");
+    return [user, ...users];
+  });
   return { user: publicUser(user), token: invite.token };
 }
 
 export async function deleteAdminUser(id: string) {
-  const users = await readJson<AdminUser[]>(USERS_FILE, []);
-  await writeJson(USERS_FILE, users.filter((user) => user.id !== id));
+  await updateJson<AdminUser[]>(USERS_FILE, [], (users) => users.filter((user) => user.id !== id));
 }
 
 export async function updateAdminUserRole(id: string, role: string) {
   const cleanRole = role.trim().slice(0, 60);
   if (!cleanRole) throw new Error("A valid role is required.");
-  const users = await readJson<AdminUser[]>(USERS_FILE, []);
   const now = new Date().toISOString();
-  const next = users.map((user) => user.id === id ? { ...user, role: cleanRole, updatedAt: now } : user);
-  const updated = next.find((user) => user.id === id);
-  if (!updated) throw new Error("Employee was not found.");
-  await writeJson(USERS_FILE, next);
-  return publicUser(updated);
+  let updated: AdminUser | undefined;
+  await updateJson<AdminUser[]>(USERS_FILE, [], (users) => {
+    const next = users.map((user) => user.id === id ? { ...user, role: cleanRole, updatedAt: now } : user);
+    updated = next.find((user) => user.id === id);
+    if (!updated) throw new Error("Employee was not found.");
+    return next;
+  });
+  return publicUser(updated!);
 }
 
 export async function createPasswordResetInvite(id: string) {
-  const users = await readJson<AdminUser[]>(USERS_FILE, []);
   const invite = createInviteToken();
   const now = new Date().toISOString();
-  const next = users.map((user) => user.id === id ? { ...user, inviteTokenHash: hashToken(invite.token), inviteExpiresAt: invite.expiresAt, status: "invited" as const, updatedAt: now } : user);
-  const updated = next.find((user) => user.id === id);
-  if (!updated) throw new Error("Employee was not found.");
-  await writeJson(USERS_FILE, next);
-  return { user: publicUser(updated), token: invite.token };
+  let updated: AdminUser | undefined;
+  await updateJson<AdminUser[]>(USERS_FILE, [], (users) => {
+    const next = users.map((user) => user.id === id ? { ...user, inviteTokenHash: hashToken(invite.token), inviteExpiresAt: invite.expiresAt, status: "invited" as const, updatedAt: now } : user);
+    updated = next.find((user) => user.id === id);
+    if (!updated) throw new Error("Employee was not found.");
+    return next;
+  });
+  return { user: publicUser(updated!), token: invite.token };
 }
 
 export async function acceptAdminInvite(token: string, password: string) {
   if (password.length < 8) throw new Error("Password must contain at least 8 characters.");
-  const users = await readJson<AdminUser[]>(USERS_FILE, []);
   const tokenHash = hashToken(token);
   const now = new Date();
-  const user = users.find((item) => item.inviteTokenHash === tokenHash);
-  if (!user || !user.inviteExpiresAt || new Date(user.inviteExpiresAt) < now) {
-    throw new Error("This invite link is invalid or expired.");
-  }
-  const updatedAt = now.toISOString();
-  const next = users.map((item) => item.id === user.id ? {
-    ...item,
-    passwordHash: hashPassword(password),
-    inviteTokenHash: undefined,
-    inviteExpiresAt: undefined,
-    status: "active" as const,
-    updatedAt,
-  } : item);
-  const updated = next.find((item) => item.id === user.id);
-  await writeJson(USERS_FILE, next);
-  return publicUser(updated ?? user);
+  let updated: AdminUser | undefined;
+  await updateJson<AdminUser[]>(USERS_FILE, [], (users) => {
+    const user = users.find((item) => item.inviteTokenHash === tokenHash);
+    if (!user || !user.inviteExpiresAt || new Date(user.inviteExpiresAt) < now) throw new Error("This invite link is invalid or expired.");
+    const next = users.map((item) => item.id === user.id ? {
+      ...item, passwordHash: hashPassword(password), inviteTokenHash: undefined,
+      inviteExpiresAt: undefined, status: "active" as const, updatedAt: now.toISOString(),
+    } : item);
+    updated = next.find((item) => item.id === user.id);
+    return next;
+  });
+  return publicUser(updated!);
 }
 
 export function verifyPassword(password: string, passwordHash?: string) {

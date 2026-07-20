@@ -3,17 +3,20 @@ import { findAdminUserByEmail, findAdminUserById, verifyPassword } from "@/lib/a
 
 export const ADMIN_AUTH_COOKIE = "carters_admin_session";
 
+export class AdminAuthConfigurationError extends Error {}
+
 export function getAdminCredentials() {
+  const development = process.env.NODE_ENV !== "production";
   return {
-    username: process.env.ADMIN_USERNAME ?? "admin",
-    password: process.env.ADMIN_PASSWORD ?? "admin123",
-    sessionToken: process.env.ADMIN_SESSION_TOKEN ?? "local-admin-session",
+    username: process.env.ADMIN_USERNAME ?? (development ? "admin" : ""),
+    password: process.env.ADMIN_PASSWORD ?? (development ? "admin123" : ""),
+    sessionToken: process.env.ADMIN_SESSION_TOKEN ?? (development ? "local-admin-session" : ""),
   };
 }
 
 export async function authenticateAdminUser(username: string, password: string) {
   const credentials = getAdminCredentials();
-  if (username === credentials.username && password === credentials.password) {
+  if (credentials.username && credentials.password && credentials.sessionToken && username === credentials.username && password === credentials.password) {
     return { sessionToken: credentials.sessionToken, user: { id: "owner", email: credentials.username, role: "Owner" } };
   }
 
@@ -37,19 +40,26 @@ export async function getAdminSessionUser(session?: string) {
 }
 
 function createStaffSessionToken(userId: string) {
-  const signature = crypto.createHmac("sha256", sessionSecret()).update(userId).digest("hex");
-  return `staff:${userId}:${signature}`;
+  const secret = sessionSecret();
+  if (!secret) throw new AdminAuthConfigurationError("ADMIN_SESSION_TOKEN must be configured in production.");
+  const issuedAt = Math.floor(Date.now() / 1000).toString();
+  const payload = `${userId}:${issuedAt}`;
+  const signature = crypto.createHmac("sha256", secret).update(payload).digest("hex");
+  return `staff:${payload}:${signature}`;
 }
 
 function verifyStaffSessionToken(token: string) {
-  const [prefix, userId, signature] = token.split(":");
-  if (prefix !== "staff" || !userId || !signature) return null;
-  const expected = crypto.createHmac("sha256", sessionSecret()).update(userId).digest("hex");
+  const [prefix, userId, issuedAt, signature] = token.split(":");
+  const secret = sessionSecret();
+  if (prefix !== "staff" || !userId || !issuedAt || !signature || !secret) return null;
+  const issuedAtNumber = Number(issuedAt);
+  if (!Number.isSafeInteger(issuedAtNumber) || issuedAtNumber > Date.now() / 1000 || Date.now() / 1000 - issuedAtNumber > 60 * 60 * 24 * 7) return null;
+  const expected = crypto.createHmac("sha256", secret).update(`${userId}:${issuedAt}`).digest("hex");
   const actualBuffer = Buffer.from(signature);
   const expectedBuffer = Buffer.from(expected);
   return actualBuffer.length === expectedBuffer.length && crypto.timingSafeEqual(actualBuffer, expectedBuffer) ? userId : null;
 }
 
 function sessionSecret() {
-  return process.env.ADMIN_SESSION_TOKEN ?? "local-admin-session";
+  return process.env.ADMIN_SESSION_TOKEN ?? (process.env.NODE_ENV !== "production" ? "local-admin-session" : "");
 }

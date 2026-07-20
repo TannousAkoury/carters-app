@@ -10,11 +10,10 @@ import "react-native-reanimated";
 
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { CartProvider } from "@/components/cart-context";
-import { GlobalCartButton } from "@/components/global-cart-button";
 import { CurrencyProvider } from "@/components/currency-context";
 import { WhatsAppButton } from "@/components/whatsapp-button";
 import { NotificationProvider } from "@/components/notification-context";
-import { GlobalNotificationButton } from "@/components/global-notification-button";
+import { GlobalBottomNavigation } from "@/components/global-bottom-navigation";
 import { AnalyticsTracker } from "@/components/analytics-tracker";
 import { WishlistProvider } from "@/components/wishlist-context";
 import { AppGate, AppSettingsProvider, useAppSettings } from "@/components/app-settings-context";
@@ -45,8 +44,7 @@ function AppContent() {
             }}
           />
           </Stack>
-          <GlobalCartButton />
-          {settings.pushNotifications ? <GlobalNotificationButton /> : null}
+          <GlobalBottomNavigation />
           {settings.customerChat ? <WhatsAppButton /> : null}
           </NotificationProvider>
          </CartProvider>

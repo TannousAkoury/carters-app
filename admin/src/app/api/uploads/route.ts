@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
-import { readJson, writeJson } from "@/lib/json-store";
+import { readJson, updateJson } from "@/lib/json-store";
 import { requirePermission } from "@/lib/shopify-admin";
 
 export const runtime = "nodejs";
@@ -47,8 +47,8 @@ export async function POST(request:Request){
     await mkdir(directory,{recursive:true});
     await writeFile(path.join(directory,fileName),bytes,{flag:"wx"});
     const url=`/api/uploads/${fileName}`;
-    const index=await readJson<AssetRecord[]>(INDEX_FILE,[]);
-    await writeJson(INDEX_FILE,[{fileName,originalName:upload.name.trim().slice(0,180)||"Uploaded image",createdAt:new Date().toISOString()},...index.filter(item=>item.fileName!==fileName)].slice(0,5000));
+    const record={fileName,originalName:upload.name.trim().slice(0,180)||"Uploaded image",createdAt:new Date().toISOString()};
+    await updateJson<AssetRecord[]>(INDEX_FILE,[],(index)=>[record,...index.filter(item=>item.fileName!==fileName)].slice(0,5000));
     return NextResponse.json({url,fileName,size:upload.size,type:upload.type},{status:201});
   }catch(error){
     console.error("Image upload failed",error);

@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { readJson, writeJson } from "@/lib/json-store";
+import { updateJson } from "@/lib/json-store";
 
 type EmailRecord = {
   id: string;
@@ -36,15 +36,15 @@ export async function sendMemberSetupEmail(input: { to: string; setupUrl: string
     return { mode: "resend" as const };
   }
 
-  const outbox = await readJson<EmailRecord[]>("email-outbox.json", []);
-  await writeJson("email-outbox.json", [...outbox.slice(-99), {
+  const record: EmailRecord = {
     id: crypto.randomUUID(),
     to: input.to,
     subject,
     text,
     createdAt: new Date().toISOString(),
     mode: "local-outbox",
-  }]);
+  };
+  await updateJson<EmailRecord[]>("email-outbox.json", [], (outbox) => [...outbox.slice(-99), record]);
   return { mode: "local-outbox" as const, setupUrl: input.setupUrl };
 }
 

@@ -6,14 +6,17 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import baseStyles from "./page.module.css";
 import extraStyles from "./admin-extra.module.css";
+import customerStyles from "./customer-advanced.module.css";
+import loyaltyStyles from "./loyalty-professional.module.css";
 import AnalyticsDateRangePicker, { type AnalyticsDateRange } from "./analytics-date-range-picker";
+import SalesReplenishment from "./sales-replenishment";
 
 const styles = Object.fromEntries(
-  [...new Set([...Object.keys(baseStyles), ...Object.keys(extraStyles)])].map((className) => [
+  [...new Set([...Object.keys(baseStyles), ...Object.keys(extraStyles), ...Object.keys(customerStyles), ...Object.keys(loyaltyStyles)])].map((className) => [
     className,
-    [baseStyles[className], extraStyles[className]].filter(Boolean).join(" "),
+    [baseStyles[className], extraStyles[className], customerStyles[className], loyaltyStyles[className]].filter(Boolean).join(" "),
   ]),
-) as typeof baseStyles & typeof extraStyles;
+) as typeof baseStyles & typeof extraStyles & typeof customerStyles & typeof loyaltyStyles;
 
 type SectionType = "hero" | "text" | "products" | "announcement" | "image" | "categories" | "features" | "testimonials" | "newsletter" | "divider";
 type Section = {
@@ -29,13 +32,14 @@ type Section = {
   customCss?: string;
   items?: string[];
 };
-type View = "dashboard" | "editor" | "assets" | "inventory" | "promotions" | "analytics" | "marketing" | "loyalty" | "orders" | "customers" | "chat" | "team" | "settings";
+type View = "dashboard" | "editor" | "assets" | "inventory" | "replenishment" | "promotions" | "analytics" | "marketing" | "loyalty" | "orders" | "customers" | "chat" | "team" | "settings";
 type OrderFilter = "all" | "pending" | "unfulfilled" | "unpaid" | "paid" | "cancelled";
 type Placement = "before-hero" | "after-hero" | "after-promos" | "after-ages" | "after-top-picks" | "after-categories" | "after-explore" | "after-essentials" | "after-brands" | "after-latest";
 type AdminRole = { id: string; name: string; scope: string; description: string; permissions: string[]; builtIn: boolean; createdAt: string };
 type StaffUser = { id: string; email: string; role: string; status: "invited" | "active"; inviteExpiresAt?: string; createdAt: string; updatedAt: string };
 type TeamActivity = { id:string; action:string; category:"access"|"member"|"role"|"security"; severity:"info"|"success"|"warning"; actor:string; target:string; detail:string; createdAt:string };
-type AdminCustomer = { id:string; name:string; firstName:string; lastName:string; email:string; phone:string; location:string; orders:number; totalSpent?:{amount:string;currencyCode:string}|null; status:string; lastOrderAt?:string|null; createdAt?:string|null; updatedAt?:string|null };
+type AdminCustomer = { id:string; name:string; firstName:string; lastName:string; email:string; phone:string; location:string; orders:number; totalSpent?:{amount:string;currencyCode:string}|null; status:string; lastOrderAt?:string|null; createdAt?:string|null; updatedAt?:string|null; loyalty:{enrolled:boolean;points:number;lifetimePoints:number;updatedAt?:string|null;transactionCount:number;earnedPoints:number;redeemedPoints:number;lastActivityAt?:string|null;lastEarnedAt?:string|null} };
+type CustomerLoyaltySettings = {enabled:boolean;programName:string;pointsPerItem:number;pointsPerCurrencyUnit:number;minimumRedemptionPoints:number;rewardExpiryDays:number;silverTierPoints:number;goldTierPoints:number;vipTierPoints:number};
 type OrderAddress = { firstName:string; lastName:string; address1:string; address2:string; city:string; province:string; zip:string; country:string; phone:string };
 type OrderLineItem = { name:string; quantity:number; sku?:string|null; variantTitle?:string|null; image?:{url?:string|null;altText?:string|null}|null };
 type AdminOrder = { id:string; name:string; createdAt:string; financialStatus:string; fulfillmentStatus:string; canMarkAsPaid:boolean; cancelledAt?:string|null; note:string; tags:string[]; total?:{amount:string;currencyCode:string}|null; customer:string; email:string; destination:string; shippingAddress:OrderAddress; items:OrderLineItem[] };
@@ -145,12 +149,12 @@ function newSection(type: SectionType): Section {
   return { id: `${type}-${Date.now()}`, type, ...presets[type], enabled: true, placement: "before-hero" };
 }
 
-const viewPermissions:Record<View,string>={dashboard:"Dashboard",editor:"App editor",assets:"App editor",inventory:"Inventory",promotions:"Promotions",analytics:"Analytics",marketing:"Marketing",loyalty:"Loyalty",orders:"Orders",customers:"Customers",chat:"Customer chat",team:"Team & activity",settings:"Settings"};
-const viewLabels:Record<View,string>={dashboard:"Dashboard",editor:"App editor",assets:"Assets",inventory:"Inventory",promotions:"Promotions",analytics:"Analytics",marketing:"Marketing",loyalty:"Loyalty",orders:"Orders",customers:"Customers",chat:"Customer chat",team:"Team & activity",settings:"Settings"};
+const viewPermissions:Record<View,string>={dashboard:"Dashboard",editor:"App editor",assets:"App editor",inventory:"Inventory",replenishment:"Inventory",promotions:"Promotions",analytics:"Analytics",marketing:"Marketing",loyalty:"Loyalty",orders:"Orders",customers:"Customers",chat:"Customer chat",team:"Team & activity",settings:"Settings"};
+const viewLabels:Record<View,string>={dashboard:"Dashboard",editor:"App editor",assets:"Assets",inventory:"Inventory",replenishment:"Sales & replenishment",promotions:"Promotions",analytics:"Analytics",marketing:"Marketing",loyalty:"Loyalty",orders:"Orders",customers:"Customers",chat:"Customer chat",team:"Team & activity",settings:"Settings"};
 const adminNavigation:{label:string;items:{view:View;icon:string;description:string}[]}[]=[
   {label:"Overview",items:[{view:"dashboard",icon:"⌂",description:"Storefront health and performance"}]},
   {label:"Commerce",items:[
-    {view:"orders",icon:"▤",description:"Orders and fulfillment"},{view:"inventory",icon:"▦",description:"Products and stock"},{view:"promotions",icon:"%",description:"Discounts and offers"},{view:"customers",icon:"♙",description:"Customer records"},{view:"loyalty",icon:"★",description:"Rewards and points"},
+    {view:"orders",icon:"▤",description:"Orders and fulfillment"},{view:"inventory",icon:"▦",description:"Products and stock"},{view:"replenishment",icon:"↻",description:"Sold items and stock replenishment"},{view:"promotions",icon:"%",description:"Discounts and offers"},{view:"customers",icon:"♙",description:"Customer records"},{view:"loyalty",icon:"★",description:"Rewards and points"},
   ]},
   {label:"Growth",items:[
     {view:"editor",icon:"✦",description:"Mobile storefront content"},{view:"assets",icon:"▧",description:"Uploaded images and media"},{view:"analytics",icon:"↗",description:"Traffic and conversion"},{view:"marketing",icon:"◈",description:"Push campaigns"},{view:"chat",icon:"◌",description:"Customer support"},
@@ -213,6 +217,7 @@ export default function Home({sessionUser,permissions}:{sessionUser:{id:string;e
     editor: { title: "App editor", copy: "Arrange custom content around live Shopify sections." },
     assets: { title: "Assets", copy: "Upload, organize, and reuse mobile storefront imagery." },
     inventory: { title: "Inventory", copy: "Monitor Shopify product variants and stock levels." },
+    replenishment: { title: "Sales & replenishment", copy: "Analyze sold items and restore Shopify inventory." },
     promotions: { title: "Promotions", copy: "Review Shopify discount codes and automatic offers." },
     analytics: { title: "Analytics", copy: "Understand app traffic and customer engagement." },
     marketing: { title: "Marketing", copy: "Create push campaigns and review notification performance." },
@@ -286,6 +291,7 @@ export default function Home({sessionUser,permissions}:{sessionUser:{id:string;e
         {view === "editor" && <Editor sections={sections} selected={selected} selectedId={selectedId} setSelectedId={setSelectedId} update={update} move={move} remove={remove} duplicate={duplicate} setSectionVisibility={setSectionVisibility} add={add} shopifyVisibility={shopifyVisibility} setShopifyVisibility={setShopifyVisibility} shopifyStyles={shopifyStyles} setShopifyStyles={setShopifyStyles} markUnsaved={()=>setSaved(false)} onOpenAssets={()=>setView("assets")} />}
         {view === "assets" && <Assets onUse={useAssetInEditor} draftImages={new Set(sections.map(section=>section.image).filter(Boolean))} />}
         {view === "inventory" && <Inventory />}
+        {view === "replenishment" && <SalesReplenishment />}
         {view === "promotions" && <Promotions />}
         {view === "analytics" && <Analytics />}
         {view === "marketing" && <Marketing />}
@@ -766,6 +772,7 @@ function Promotions(){
   const openCreatePromotion=()=>{if(showCreate&&!editing){closePromotionForm();return}setEditing(null);setDraft(emptyPromotionDraft());setShowCreate(true)};
   const openEditPromotion=(item:Promotion)=>{if(!item.editable){setMessage("This promotion is controlled by a Shopify app and must be edited in Shopify.");return}setEditing(item);setDraft({method:methodOf(item),title:item.title,code:methodOf(item)==="code"?item.code:"",valueType:item.valueType||"percentage",value:String(item.value||10),minimumSubtotal:item.minimumSubtotal||"",usageLimit:item.usageLimit?String(item.usageLimit):"",startsAt:toDateTimeLocal(item.startsAt),endsAt:toDateTimeLocal(item.endsAt),appliesOncePerCustomer:Boolean(item.appliesOncePerCustomer)});setShowCreate(true);window.scrollTo({top:0,behavior:"smooth"})};
   const savePromotion=async()=>{const updating=Boolean(editing);setLoading(true);setMessage(updating?"Updating promotion in Shopify...":"Creating promotion in Shopify...");try{const payload={...draft,id:editing?.id,type:editing?.type,startsAt:draft.startsAt?new Date(draft.startsAt).toISOString():undefined,endsAt:draft.endsAt?new Date(draft.endsAt).toISOString():undefined};const response=await fetch("/api/shopify/promotions",{method:updating?"PATCH":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});const data=await response.json();if(!response.ok)throw new Error(data.error||(updating?"Unable to update promotion.":"Unable to create promotion."));setMessage(updating?"Promotion updated in Shopify.":"Promotion created in Shopify.");closePromotionForm();await load("",null)}catch(error){setMessage(error instanceof Error?error.message:updating?"Unable to update promotion.":"Unable to create promotion.")}finally{setLoading(false)}};
+  const stopPromotion=async(item:Promotion)=>{if(!window.confirm(`Stop ${item.title}? Customers will no longer be able to use this promotion, but it will remain in Shopify.`))return;setLoading(true);setMessage("Stopping promotion in Shopify...");try{const response=await fetch("/api/shopify/promotions",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"stop",id:item.id,method:methodOf(item)})});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to stop promotion.");const stoppedAt=new Date().toISOString();setItems(current=>current.map(entry=>entry.id===item.id?{...entry,status:"EXPIRED",endsAt:stoppedAt}:entry));setMessage(`${item.title} was stopped. It remains available in Shopify if you want to reactivate it later.`)}catch(error){setMessage(error instanceof Error?error.message:"Unable to stop promotion.")}finally{setLoading(false)}};
   const deletePromotion=async(item:Promotion)=>{if(!window.confirm(`Delete ${item.title}? This permanently removes the promotion from Shopify.`))return;setLoading(true);setMessage("Deleting promotion...");try{const response=await fetch(`/api/shopify/promotions?id=${encodeURIComponent(item.id)}&method=${methodOf(item)}`,{method:"DELETE"});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to delete promotion.");setItems(current=>current.filter(entry=>entry.id!==item.id));setMessage(`${item.title} was deleted.`)}catch(error){setMessage(error instanceof Error?error.message:"Unable to delete promotion.")}finally{setLoading(false)}};
   const active=filtered.filter(item=>item.status==="ACTIVE").length;const scheduled=filtered.filter(item=>item.status==="SCHEDULED").length;const uses=filtered.reduce((sum,item)=>sum+item.usageCount,0);
   return <div className={styles.content}>
@@ -806,7 +813,7 @@ function Promotions(){
           <span>{item.startsAt?new Date(item.startsAt).toLocaleDateString():"Immediately"}</span>
           <span>{item.endsAt?new Date(item.endsAt).toLocaleDateString():"No end date"}</span>
           <strong>{item.usageCount}</strong>
-          <div className={styles.promotionActions}><button className={styles.secondary} disabled={loading||!item.editable} title={item.editable?"Edit promotion":"App-controlled promotions must be edited in Shopify"} onClick={()=>openEditPromotion(item)}>Edit</button><button className={styles.delete} disabled={loading} onClick={()=>void deletePromotion(item)}>Delete</button></div>
+          <div className={styles.promotionActions}><button className={styles.secondary} disabled={loading||!item.editable} title={item.editable?"Edit promotion":"App-controlled promotions must be edited in Shopify"} onClick={()=>openEditPromotion(item)}>Edit</button>{(item.status==="ACTIVE"||item.status==="SCHEDULED")&&<button className={styles.promotionStop} disabled={loading} title="Stop this promotion without deleting it" onClick={()=>void stopPromotion(item)}>Stop</button>}<button className={styles.delete} disabled={loading} onClick={()=>void deletePromotion(item)}>Delete</button></div>
         </div>):<div className={styles.empty}>{loading?"Loading Shopify promotions...":message||"No promotions match these filters."}</div>}
       </div>
       {pageInfo.hasNextPage&&<div className={styles.inlineActions}><button className={styles.secondary} disabled={loading} onClick={()=>void load(search,pageInfo.endCursor)}>Load more</button></div>}
@@ -887,41 +894,107 @@ function Analytics(){
 function Chat(){return <div className={styles.content}><div className={styles.actionHeader}><div><h2>Customer chat</h2><p>Realtime support inbox readiness.</p></div><button className={styles.secondary}>Configure inbox</button></div><div className={styles.supportGrid}><section className={styles.card}><div className={styles.cardHead}><div><h2>Inbox status</h2><p>Supabase Realtime is required before live chat can be enabled.</p></div></div><div className={styles.empty}>No recorded conversations yet.</div></section><section className={styles.card}><div className={styles.cardHead}><div><h2>Setup checklist</h2><p>Required production pieces.</p></div></div><div className={styles.checkList}>{["Create conversations table","Enable realtime channel","Add staff assignment rules","Connect notification alerts"].map((item)=><div key={item}><span>○</span><strong>{item}</strong></div>)}</div></section></div></div>}
 
 function Loyalty(){
-  type Settings={enabled:boolean;programName:string;pointsPerItem:number;pointsPerCurrencyUnit:number;minimumRedemptionPoints:number;rewardExpiryDays:number};type Account={id:string;customerId:string;email:string;name:string;points:number;lifetimePoints:number;updatedAt:string};type Transaction={id:string;accountId:string;email:string;type:string;points:number;orderName?:string;rewardCode?:string;rewardAmount?:number;currencyCode?:string;expiresAt?:string;note:string;createdAt:string};
-  const [settings,setSettings]=useState<Settings>({enabled:true,programName:"Carter's Rewards",pointsPerItem:1,pointsPerCurrencyUnit:10,minimumRedemptionPoints:50,rewardExpiryDays:30});const [accounts,setAccounts]=useState<Account[]>([]);const [transactions,setTransactions]=useState<Transaction[]>([]);const [loading,setLoading]=useState(true);const [saving,setSaving]=useState(false);const [message,setMessage]=useState("");const [email,setEmail]=useState("");const [points,setPoints]=useState("");const [note,setNote]=useState("");const [redeemEmail,setRedeemEmail]=useState("");const [redeemPoints,setRedeemPoints]=useState("50");const [reward,setReward]=useState<{code:string;amount:number;currencyCode:string;expiresAt:string}|null>(null);
+  type Settings={enabled:boolean;programName:string;pointsPerItem:number;pointsPerCurrencyUnit:number;minimumRedemptionPoints:number;rewardExpiryDays:number;silverTierPoints:number;goldTierPoints:number;vipTierPoints:number};
+  type Account={id:string;customerId:string;email:string;name:string;points:number;lifetimePoints:number;updatedAt:string};
+  type Transaction={id:string;accountId:string;email:string;type:string;points:number;orderName?:string;rewardCode?:string;rewardAmount?:number;currencyCode?:string;expiresAt?:string;note:string;createdAt:string};
+  const [settings,setSettings]=useState<Settings>({enabled:true,programName:"Carter's Rewards",pointsPerItem:1,pointsPerCurrencyUnit:10,minimumRedemptionPoints:50,rewardExpiryDays:30,silverTierPoints:50,goldTierPoints:250,vipTierPoints:500});
+  const [accounts,setAccounts]=useState<Account[]>([]);
+  const [transactions,setTransactions]=useState<Transaction[]>([]);
+  const [loading,setLoading]=useState(true);
+  const [saving,setSaving]=useState(false);
+  const [message,setMessage]=useState("");
+  const [email,setEmail]=useState("");
+  const [points,setPoints]=useState("");
+  const [note,setNote]=useState("");
+  const [redeemEmail,setRedeemEmail]=useState("");
+  const [redeemPoints,setRedeemPoints]=useState("50");
+  const [reward,setReward]=useState<{code:string;amount:number;currencyCode:string;expiresAt:string}|null>(null);
+  const [accountQuery,setAccountQuery]=useState("");
+  const [tierFilter,setTierFilter]=useState("all");
+  const [balanceFilter,setBalanceFilter]=useState("all");
+  const [activityFilter,setActivityFilter]=useState("all");
+  const [selectedAccountId,setSelectedAccountId]=useState("");
+  const [loyaltyReferenceTime]=useState(()=>Date.now());
+  const [memberMinPoints,setMemberMinPoints]=useState("");
+  const [memberMaxPoints,setMemberMaxPoints]=useState("");
+  const [memberMinLifetime,setMemberMinLifetime]=useState("");
+  const [memberMaxLifetime,setMemberMaxLifetime]=useState("");
+  const [memberActivity,setMemberActivity]=useState("all");
+  const [memberSort,setMemberSort]=useState("balance-desc");
+
   const load=async()=>{setLoading(true);try{const response=await fetch("/api/loyalty",{cache:"no-store"});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to load loyalty.");setSettings(data.settings);setAccounts(data.accounts||[]);setTransactions(data.transactions||[])}catch(error){setMessage(error instanceof Error?error.message:"Unable to load loyalty.")}finally{setLoading(false)}};
   useEffect(()=>{/* eslint-disable react-hooks/set-state-in-effect */void load();/* eslint-enable react-hooks/set-state-in-effect */},[]);
   const saveSettings=async()=>{setSaving(true);setMessage("Saving loyalty settings...");try{const response=await fetch("/api/loyalty",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"settings",settings})});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to save settings.");setSettings(data.settings);setMessage("Loyalty settings saved.")}catch(error){setMessage(error instanceof Error?error.message:"Unable to save settings.")}finally{setSaving(false)}};
-  const adjust=async()=>{if(!/^\S+@\S+\.\S+$/.test(email.trim())||!Number.isInteger(Number(points))||Number(points)===0){setMessage("Enter a customer email and a positive or negative whole-number adjustment.");return}setSaving(true);setMessage("Updating loyalty balance...");try{const response=await fetch("/api/loyalty",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"adjust",email:email.trim(),points:Number(points),note})});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to adjust points.");setEmail("");setPoints("");setNote("");await load();setMessage(`Updated ${data.account.name}'s loyalty balance.`)}catch(error){setMessage(error instanceof Error?error.message:"Unable to adjust points.")}finally{setSaving(false)}};
+  const adjust=async()=>{if(!/^\S+@\S+\.\S+$/.test(email.trim())||!Number.isInteger(Number(points))||Number(points)===0){setMessage("Enter a customer email and a positive or negative whole-number adjustment.");return}setSaving(true);setMessage("Updating loyalty balance...");try{const response=await fetch("/api/loyalty",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"adjust",email:email.trim(),points:Number(points),note})});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to adjust points.");setEmail("");setPoints("");setNote("");setSelectedAccountId(data.account.id);await load();setMessage(`Updated ${data.account.name}'s loyalty balance.`)}catch(error){setMessage(error instanceof Error?error.message:"Unable to adjust points.")}finally{setSaving(false)}};
   const redeem=async()=>{if(!/^\S+@\S+\.\S+$/.test(redeemEmail.trim())||!Number.isInteger(Number(redeemPoints))){setMessage("Enter a customer email and a whole number of points to redeem.");return}setSaving(true);setReward(null);setMessage("Creating a secure Shopify reward...");try{const response=await fetch("/api/loyalty",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"redeem",email:redeemEmail.trim(),points:Number(redeemPoints)})});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to create reward.");setReward(data.reward);await load();setMessage(`Reward ${data.reward.code} created. ${redeemPoints} points were deducted.`)}catch(error){setMessage(error instanceof Error?error.message:"Unable to create reward.")}finally{setSaving(false)}};
-  const active=accounts.filter(account=>account.points>0).length;const issued=transactions.filter(transaction=>transaction.points>0).reduce((sum,transaction)=>sum+transaction.points,0);const outstanding=accounts.reduce((sum,account)=>sum+account.points,0);
-  return <div className={`${styles.content} ${styles.loyaltyPage}`}>
-    <section className={styles.loyaltyHero}><div><p>CUSTOMER RETENTION</p><h2>{settings.programName}</h2><span>Reward purchases, issue protected Shopify rewards, and manage every balance with a complete audit trail.</span></div><i className={`${styles.tag} ${settings.enabled?styles.tagGreen:styles.tagGray}`}>{settings.enabled?"Program active":"Program paused"}</i></section>
-    {message&&<div className={styles.notificationNotice}>{message}</div>}
-    <div className={styles.metricGrid}><MiniMetric value={accounts.length.toLocaleString()} label="Loyalty customers" note="Customers with a points account"/><MiniMetric value={active.toLocaleString()} label="Active balances" note="Customers with available points"/><MiniMetric value={outstanding.toLocaleString()} label="Outstanding points" note="Current customer balances"/><MiniMetric value={issued.toLocaleString()} label="Lifetime points issued" note="Earned and positive adjustments"/></div>
-    <div className={styles.loyaltyGrid}>
-      <section className={styles.card}><div className={styles.cardHead}><div><h2>Program rules</h2><p>Set earning, reward value, minimum redemption, and expiry.</p></div></div><div className={styles.loyaltyForm}>
-        <label className={styles.loyaltyWide}>Program name<input value={settings.programName} onChange={event=>setSettings(current=>({...current,programName:event.target.value}))}/></label>
+
+  const accountTier=(account:Account)=>account.lifetimePoints>=settings.vipTierPoints?"vip":account.lifetimePoints>=settings.goldTierPoints?"gold":account.lifetimePoints>=settings.silverTierPoints?"silver":"member";
+  const tierLabel=(tier:string)=>tier==="vip"?"VIP":tier==="gold"?"Gold":tier==="silver"?"Silver":"Member";
+  const active=accounts.filter(account=>account.points>0).length;
+  const issued=transactions.filter(transaction=>transaction.points>0).reduce((sum,transaction)=>sum+transaction.points,0);
+  const outstanding=accounts.reduce((sum,account)=>sum+account.points,0);
+  const redeemed=Math.abs(transactions.filter(transaction=>transaction.type==="redemption").reduce((sum,transaction)=>sum+transaction.points,0));
+  const redemptionReady=accounts.filter(account=>account.points>=settings.minimumRedemptionPoints).length;
+  const averageBalance=accounts.length?Math.round(outstanding/accounts.length):0;
+  const liability=outstanding/Math.max(1,settings.pointsPerCurrencyUnit);
+  const accountLastActivity=(account:Account)=>transactions.find(transaction=>transaction.accountId===account.id)?.createdAt||account.updatedAt;
+  const filteredAccounts=accounts.filter(account=>{const query=accountQuery.trim().toLowerCase();const minAvailable=memberMinPoints===""?null:Number(memberMinPoints);const maxAvailable=memberMaxPoints===""?null:Number(memberMaxPoints);const minLifetime=memberMinLifetime===""?null:Number(memberMinLifetime);const maxLifetime=memberMaxLifetime===""?null:Number(memberMaxLifetime);const lastActivity=new Date(accountLastActivity(account)).getTime();const activityAge=loyaltyReferenceTime-lastActivity;return(!query||account.name.toLowerCase().includes(query)||account.email.toLowerCase().includes(query)||account.customerId.toLowerCase().includes(query))&&(tierFilter==="all"||accountTier(account)===tierFilter)&&(balanceFilter==="all"||(balanceFilter==="ready"&&account.points>=settings.minimumRedemptionPoints)||(balanceFilter==="active"&&account.points>0)||(balanceFilter==="zero"&&account.points===0))&&(minAvailable===null||account.points>=minAvailable)&&(maxAvailable===null||account.points<=maxAvailable)&&(minLifetime===null||account.lifetimePoints>=minLifetime)&&(maxLifetime===null||account.lifetimePoints<=maxLifetime)&&(memberActivity==="all"||(memberActivity==="30"&&activityAge<=30*86400000)||(memberActivity==="90"&&activityAge<=90*86400000)||(memberActivity==="inactive-90"&&activityAge>90*86400000))}).sort((a,b)=>memberSort==="balance-asc"?a.points-b.points:memberSort==="lifetime-desc"?b.lifetimePoints-a.lifetimePoints:memberSort==="activity-desc"?accountLastActivity(b).localeCompare(accountLastActivity(a)):memberSort==="name"?a.name.localeCompare(b.name):b.points-a.points);
+  const selectedAccount=accounts.find(account=>account.id===selectedAccountId)||filteredAccounts[0]||null;
+  const selectedTransactions=selectedAccount?transactions.filter(transaction=>transaction.accountId===selectedAccount.id).slice(0,8):[];
+  const visibleTransactions=transactions.filter(transaction=>activityFilter==="all"||transaction.type===activityFilter).slice(0,60);
+  const chooseReward=(account:Account)=>{setSelectedAccountId(account.id);setRedeemEmail(account.email);setRedeemPoints(String(settings.minimumRedemptionPoints));window.scrollTo({top:0,behavior:"smooth"})};
+  const hasMemberFilters=Boolean(accountQuery||tierFilter!=="all"||balanceFilter!=="all"||memberMinPoints||memberMaxPoints||memberMinLifetime||memberMaxLifetime||memberActivity!=="all"||memberSort!=="balance-desc");
+  const resetMemberFilters=()=>{setAccountQuery("");setTierFilter("all");setBalanceFilter("all");setMemberMinPoints("");setMemberMaxPoints("");setMemberMinLifetime("");setMemberMaxLifetime("");setMemberActivity("all");setMemberSort("balance-desc");setSelectedAccountId("")};
+  const exportLoyaltyMembers=()=>{if(!filteredAccounts.length)return;const rows=[["Member","Email","Tier","Available points","Lifetime points","Reward ready","Last activity"],...filteredAccounts.map(account=>[account.name,account.email,tierLabel(accountTier(account)),String(account.points),String(account.lifetimePoints),account.points>=settings.minimumRedemptionPoints?"Yes":"No",accountLastActivity(account)])];const csv=rows.map(row=>row.map(value=>`"${String(value).replaceAll('"','""')}"`).join(",")).join("\r\n");const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});const url=URL.createObjectURL(blob);const link=document.createElement("a");link.href=url;link.download=`loyalty-members-${new Date(loyaltyReferenceTime).toISOString().slice(0,10)}.csv`;link.click();URL.revokeObjectURL(url)};
+
+  return <div className={`${styles.content} ${styles.loyaltyPage} ${styles.loyaltyProPage}`}>
+    <section className={styles.loyaltyProHero}><div><p>CUSTOMER RETENTION</p><h2>{settings.programName}</h2><span>Manage member value, rewards, tiers, balances, and every loyalty event from one workspace.</span></div><div className={styles.loyaltyHeroStatus}><i className={`${styles.tag} ${settings.enabled?styles.tagGreen:styles.tagGray}`}>{settings.enabled?"Program active":"Program paused"}</i><button className={styles.secondary} disabled={loading} onClick={()=>void load()}>{loading?"Refreshing...":"↻ Refresh data"}</button></div></section>
+    {message&&<div className={styles.loyaltyProNotice}>{message}</div>}
+
+    <section className={styles.loyaltyMetricGrid}>
+      {[["Members",accounts.length,"Enrolled loyalty accounts","♙"],["Reward ready",redemptionReady,"Can redeem now","✓"],["Outstanding",outstanding,"Available customer points","★"],["Reward liability",liability.toFixed(2),"Store currency units","$"],["Redeemed",redeemed,"Lifetime redeemed points","↗"]].map(([label,value,copy,icon])=><article key={String(label)}><span>{icon}</span><div><small>{label}</small><strong>{typeof value==="number"?value.toLocaleString():value}</strong><p>{copy}</p></div></article>)}
+    </section>
+
+    <section className={styles.loyaltyHealthGrid}>
+      <article className={styles.loyaltyTierOverview}><header><div><p>PROGRAM HEALTH</p><h3>Member tiers</h3></div><span>{accounts.length} total</span></header><div>{["member","silver","gold","vip"].map(tier=>{const count=accounts.filter(account=>accountTier(account)===tier).length;const share=accounts.length?Math.round(count/accounts.length*100):0;return <div key={tier}><i className={styles[`loyaltyTier${tier[0].toUpperCase()+tier.slice(1)}`]}/><strong>{tierLabel(tier)}</strong><span>{count} members</span><b>{share}%</b><em><i style={{width:`${share}%`}}/></em></div>})}</div></article>
+      <article className={styles.loyaltyProgramSummary}><header><p>VALUE SNAPSHOT</p><h3>Program economics</h3></header><div><span>Average available balance<strong>{averageBalance.toLocaleString()} points</strong></span><span>Lifetime points issued<strong>{issued.toLocaleString()}</strong></span><span>Active balances<strong>{active.toLocaleString()} members</strong></span><span>Current conversion<strong>{settings.pointsPerCurrencyUnit} pts = 1 unit</strong></span></div></article>
+    </section>
+
+    <section className={styles.loyaltyOperationsGrid}>
+      <article className={styles.loyaltyProCard}><header><div><p>PROGRAM CONFIGURATION</p><h3>Rules and earning</h3><span>Control how members earn and redeem value.</span></div><i className={`${styles.tag} ${settings.enabled?styles.tagGreen:styles.tagGray}`}>{settings.enabled?"Enabled":"Paused"}</i></header><div className={styles.loyaltyProForm}>
+        <label className={styles.loyaltyProWide}>Program name<input value={settings.programName} onChange={event=>setSettings(current=>({...current,programName:event.target.value}))}/></label>
         <label>Points per purchased item<input type="number" min="0" step="1" value={settings.pointsPerItem} onChange={event=>setSettings(current=>({...current,pointsPerItem:Math.max(0,Math.floor(Number(event.target.value)||0))}))}/></label>
-        <label>Points for 1 currency unit<input type="number" min="1" step="1" value={settings.pointsPerCurrencyUnit} onChange={event=>setSettings(current=>({...current,pointsPerCurrencyUnit:Math.max(1,Math.floor(Number(event.target.value)||1))}))}/></label>
-        <label>Minimum redemption points<input type="number" min="1" step="1" value={settings.minimumRedemptionPoints} onChange={event=>setSettings(current=>({...current,minimumRedemptionPoints:Math.max(1,Math.floor(Number(event.target.value)||1))}))}/></label>
-        <label>Reward expires after days<input type="number" min="1" max="365" step="1" value={settings.rewardExpiryDays} onChange={event=>setSettings(current=>({...current,rewardExpiryDays:Math.max(1,Math.floor(Number(event.target.value)||1))}))}/></label>
-        <label className={`${styles.loyaltyToggle} ${styles.loyaltyWide}`}><input type="checkbox" checked={settings.enabled} onChange={event=>setSettings(current=>({...current,enabled:event.target.checked}))}/><span><strong>Enable loyalty program</strong><small>Paid orders earn points and customers can redeem rewards.</small></span></label>
-      </div><div className={styles.loyaltyRulePreview}>{settings.pointsPerCurrencyUnit} points = 1 store currency unit · Minimum reward {Math.ceil(settings.minimumRedemptionPoints/settings.pointsPerCurrencyUnit)} units</div><div className={styles.inlineActions}><button className={styles.primary} disabled={saving} onClick={()=>void saveSettings()}>{saving?"Saving...":"Save rules"}</button></div></section>
-      <section className={`${styles.card} ${styles.loyaltyRedeemCard}`}><div className={styles.cardHead}><div><h2>Issue customer reward</h2><p>Create a one-use, customer-specific Shopify discount.</p></div><i className={`${styles.tag} ${styles.tagBlue}`}>Secure</i></div><div className={styles.loyaltyForm}>
-        <label className={styles.loyaltyWide}>Customer email<input type="email" value={redeemEmail} onChange={event=>setRedeemEmail(event.target.value)} placeholder="customer@example.com"/></label>
+        <label>Points per currency unit<input type="number" min="1" step="1" value={settings.pointsPerCurrencyUnit} onChange={event=>setSettings(current=>({...current,pointsPerCurrencyUnit:Math.max(1,Math.floor(Number(event.target.value)||1))}))}/></label>
+        <label>Minimum redemption<input type="number" min="1" step="1" value={settings.minimumRedemptionPoints} onChange={event=>setSettings(current=>({...current,minimumRedemptionPoints:Math.max(1,Math.floor(Number(event.target.value)||1))}))}/></label>
+        <label>Reward validity (days)<input type="number" min="1" max="365" step="1" value={settings.rewardExpiryDays} onChange={event=>setSettings(current=>({...current,rewardExpiryDays:Math.max(1,Math.floor(Number(event.target.value)||1))}))}/></label>
+        <label>Silver tier (lifetime points)<input type="number" min="1" step="1" value={settings.silverTierPoints} onChange={event=>setSettings(current=>({...current,silverTierPoints:Math.max(1,Math.floor(Number(event.target.value)||1))}))}/></label>
+        <label>Gold tier (lifetime points)<input type="number" min={settings.silverTierPoints+1} step="1" value={settings.goldTierPoints} onChange={event=>setSettings(current=>({...current,goldTierPoints:Math.max(current.silverTierPoints+1,Math.floor(Number(event.target.value)||current.silverTierPoints+1))}))}/></label>
+        <label>VIP tier (lifetime points)<input type="number" min={settings.goldTierPoints+1} step="1" value={settings.vipTierPoints} onChange={event=>setSettings(current=>({...current,vipTierPoints:Math.max(current.goldTierPoints+1,Math.floor(Number(event.target.value)||current.goldTierPoints+1))}))}/></label>
+        <label className={`${styles.loyaltyProToggle} ${styles.loyaltyProWide}`}><input type="checkbox" checked={settings.enabled} onChange={event=>setSettings(current=>({...current,enabled:event.target.checked}))}/><span><strong>Enable loyalty program</strong><small>Paid orders earn points and members can redeem rewards.</small></span></label>
+      </div><div className={styles.loyaltyRuleStrip}><span>{settings.pointsPerCurrencyUnit} points = 1 currency unit</span><span>Minimum reward value {Math.ceil(settings.minimumRedemptionPoints/settings.pointsPerCurrencyUnit)} units</span><span>Silver {settings.silverTierPoints.toLocaleString()} pts</span><span>Gold {settings.goldTierPoints.toLocaleString()} pts</span><span>VIP {settings.vipTierPoints.toLocaleString()} pts</span><span>Expires after {settings.rewardExpiryDays} days</span></div><button className={styles.primary} disabled={saving} onClick={()=>void saveSettings()}>{saving?"Saving...":"Save program rules"}</button></article>
+
+      <article className={`${styles.loyaltyProCard} ${styles.loyaltyRewardComposer}`}><header><div><p>MEMBER REWARD</p><h3>Issue secure reward</h3><span>Create a one-use Shopify discount and deduct points.</span></div><i className={`${styles.tag} ${styles.tagBlue}`}>Protected</i></header><div className={styles.loyaltyProForm}>
+        <label className={styles.loyaltyProWide}>Customer email<input type="email" value={redeemEmail} onChange={event=>setRedeemEmail(event.target.value)} placeholder="customer@example.com"/></label>
         <label>Points to redeem<input type="number" min={settings.minimumRedemptionPoints} step={settings.pointsPerCurrencyUnit} value={redeemPoints} onChange={event=>setRedeemPoints(event.target.value)}/></label>
-        <div className={styles.loyaltyRewardValue}><span>Reward value</span><strong>{Number(redeemPoints)>0?(Number(redeemPoints)/settings.pointsPerCurrencyUnit).toFixed(2):"0.00"}</strong><small>Store currency · expires in {settings.rewardExpiryDays} days</small></div>
-      </div>{reward&&<div className={styles.loyaltyRewardResult}><span>Reward code</span><strong>{reward.code}</strong><small>{reward.amount.toFixed(2)} {reward.currencyCode} off · expires {new Date(reward.expiresAt).toLocaleDateString()}</small></div>}<div className={styles.inlineActions}><button className={styles.primary} disabled={saving||!settings.enabled} onClick={()=>void redeem()}>{saving?"Creating...":"Create reward & deduct points"}</button></div></section>
-    </div>
-    <section className={`${styles.card} ${styles.loyaltyTable}`}><div className={styles.cardHead}><div><h2>Customer balances</h2><p>Current points and lifetime earning by customer.</p></div><button className={styles.secondary} disabled={loading} onClick={()=>void load()}>↻ Refresh</button></div><div className={styles.dataTable}><div className={styles.tableHead}><span>Customer</span><span>Available</span><span>Lifetime earned</span><span>Updated</span><span>Action</span></div>{accounts.length?accounts.map(account=><div className={styles.tableRow} key={account.id}><div className={styles.customerCell}><strong>{account.name}</strong><small>{account.email||account.customerId}</small></div><strong>{account.points.toLocaleString()} points</strong><span>{account.lifetimePoints.toLocaleString()}</span><span>{new Date(account.updatedAt).toLocaleString()}</span><button className={styles.secondary} disabled={!account.email||account.points<settings.minimumRedemptionPoints} onClick={()=>{setRedeemEmail(account.email);setRedeemPoints(String(settings.minimumRedemptionPoints));window.scrollTo({top:0,behavior:"smooth"})}}>Redeem</button></div>):<div className={styles.empty}>{loading?"Loading loyalty customers...":"No points have been issued yet."}</div>}</div></section>
-    <div className={styles.loyaltyGrid}><section className={`${styles.card} ${styles.loyaltyActivity}`}><div className={styles.cardHead}><div><h2>Points activity</h2><p>Every earning, reversal, redemption, and adjustment.</p></div></div>{transactions.length?<div>{transactions.slice(0,50).map(transaction=><article key={transaction.id}><span className={transaction.points>=0?styles.loyaltyPositive:styles.loyaltyNegative}>{transaction.points>=0?"+":""}{transaction.points}</span><div><strong>{transaction.email||"Customer"}</strong><small>{transaction.orderName||transaction.note} · {new Date(transaction.createdAt).toLocaleString()}</small>{transaction.rewardCode&&<code>{transaction.rewardCode}</code>}</div><i className={`${styles.tag} ${transaction.type==="earn"?styles.tagGreen:transaction.type==="redemption"?styles.tagBlue:styles.tagGray}`}>{transaction.type}</i></article>)}</div>:<div className={styles.empty}>No loyalty activity yet.</div>}</section>
-      <section className={styles.card}><div className={styles.cardHead}><div><h2>Manual adjustment</h2><p>Use only for corrections or customer service goodwill.</p></div></div><div className={styles.loyaltyForm}><label>Customer email<input type="email" value={email} onChange={event=>setEmail(event.target.value)} placeholder="customer@example.com"/></label><label>Points adjustment<input type="number" step="1" value={points} onChange={event=>setPoints(event.target.value)} placeholder="Example: 50 or -20"/></label><label className={styles.loyaltyWide}>Reason<input value={note} onChange={event=>setNote(event.target.value)} placeholder="Customer service adjustment"/></label></div><div className={styles.inlineActions}><button className={styles.secondary} disabled={saving} onClick={()=>void adjust()}>{saving?"Updating...":"Adjust balance"}</button></div></section>
-    </div>
+        <div className={styles.loyaltyRewardPreview}><span>Customer reward</span><strong>{Number(redeemPoints)>0?(Number(redeemPoints)/settings.pointsPerCurrencyUnit).toFixed(2):"0.00"}</strong><small>currency units · {settings.rewardExpiryDays}-day validity</small></div>
+      </div>{reward&&<div className={styles.loyaltyRewardSuccess}><span>Reward created</span><strong>{reward.code}</strong><small>{reward.amount.toFixed(2)} {reward.currencyCode} off · expires {new Date(reward.expiresAt).toLocaleDateString()}</small></div>}<button className={styles.primary} disabled={saving||!settings.enabled} onClick={()=>void redeem()}>{saving?"Creating...":"Create reward & deduct points"}</button></article>
+    </section>
+
+    <section className={styles.loyaltyMembersWorkspace}>
+      <header><div><p>MEMBER DIRECTORY</p><h3>Customer loyalty cards</h3><span>Search balances, review tier progress, and open a complete member profile.</span></div><div className={styles.loyaltyDirectoryActions}><span><strong>{filteredAccounts.length.toLocaleString()}</strong> of {accounts.length.toLocaleString()} members</span><button className={styles.secondary} disabled={!filteredAccounts.length} onClick={exportLoyaltyMembers}>Export CSV</button>{hasMemberFilters&&<button className={styles.secondary} onClick={resetMemberFilters}>Reset filters</button>}</div></header>
+      <div className={styles.loyaltyAdvancedFilters}><label className={styles.loyaltyAdvancedSearch}><span>Search</span><input value={accountQuery} onChange={event=>setAccountQuery(event.target.value)} placeholder="Name, email, or customer ID"/></label><label><span>Tier</span><select value={tierFilter} onChange={event=>setTierFilter(event.target.value)}><option value="all">All tiers</option><option value="vip">VIP</option><option value="gold">Gold</option><option value="silver">Silver</option><option value="member">Member</option></select></label><label><span>Reward status</span><select value={balanceFilter} onChange={event=>setBalanceFilter(event.target.value)}><option value="all">All balances</option><option value="ready">Reward ready</option><option value="active">Has points</option><option value="zero">Zero balance</option></select></label><div className={styles.loyaltyAdvancedRange}><label><span>Available from</span><input type="number" min="0" value={memberMinPoints} onChange={event=>setMemberMinPoints(event.target.value)} placeholder="0"/></label><label><span>Available to</span><input type="number" min="0" value={memberMaxPoints} onChange={event=>setMemberMaxPoints(event.target.value)} placeholder="Any"/></label></div><div className={styles.loyaltyAdvancedRange}><label><span>Lifetime from</span><input type="number" min="0" value={memberMinLifetime} onChange={event=>setMemberMinLifetime(event.target.value)} placeholder="0"/></label><label><span>Lifetime to</span><input type="number" min="0" value={memberMaxLifetime} onChange={event=>setMemberMaxLifetime(event.target.value)} placeholder="Any"/></label></div><label><span>Member activity</span><select value={memberActivity} onChange={event=>setMemberActivity(event.target.value)}><option value="all">Any activity date</option><option value="30">Active in last 30 days</option><option value="90">Active in last 90 days</option><option value="inactive-90">Inactive over 90 days</option></select></label><label><span>Sort members</span><select value={memberSort} onChange={event=>setMemberSort(event.target.value)}><option value="balance-desc">Highest available points</option><option value="balance-asc">Lowest available points</option><option value="lifetime-desc">Highest lifetime points</option><option value="activity-desc">Most recent activity</option><option value="name">Member name A–Z</option></select></label></div>
+      <div className={styles.loyaltyMemberLayout}><div className={styles.loyaltyMemberTable}><div className={styles.loyaltyMemberHead}><span>Member</span><span>Tier</span><span>Available</span><span>Lifetime</span><span>Reward status</span><span>Action</span></div>{filteredAccounts.length?filteredAccounts.map(account=><div className={`${styles.loyaltyMemberRow} ${selectedAccount?.id===account.id?styles.loyaltyMemberSelected:""}`} key={account.id}><button className={styles.loyaltyMemberIdentity} onClick={()=>setSelectedAccountId(account.id)}><span>{account.name.slice(0,2).toUpperCase()}</span><div><strong>{account.name}</strong><small>{account.email||account.customerId}</small></div></button><i className={`${styles.loyaltyTierBadge} ${styles[`loyaltyTierBadge${accountTier(account)[0].toUpperCase()+accountTier(account).slice(1)}`]}`}>{tierLabel(accountTier(account))}</i><strong>{account.points.toLocaleString()} pts</strong><span>{account.lifetimePoints.toLocaleString()}</span><span>{account.points>=settings.minimumRedemptionPoints?<b className={styles.loyaltyReady}>Reward ready</b>:<small>{(settings.minimumRedemptionPoints-account.points).toLocaleString()} pts needed</small>}</span><button className={styles.secondary} disabled={!account.email||account.points<settings.minimumRedemptionPoints} onClick={()=>chooseReward(account)}>Redeem</button></div>):<div className={styles.loyaltyEmpty}>No members match these filters.</div>}</div>
+        <aside className={styles.loyaltyMemberProfile}>{selectedAccount?<><div className={`${styles.loyaltyProfileCard} ${styles[`loyaltyProfileCard${accountTier(selectedAccount)[0].toUpperCase()+accountTier(selectedAccount).slice(1)}`]}`}><header><span>CARTER&apos;S REWARDS</span><b>{tierLabel(accountTier(selectedAccount))}</b></header><h3>{selectedAccount.name}</h3><p>{selectedAccount.points.toLocaleString()} available points</p><i><span style={{width:`${Math.min(100,selectedAccount.points/settings.minimumRedemptionPoints*100)}%`}}/></i><small>{selectedAccount.points>=settings.minimumRedemptionPoints?"Ready to create a reward":`${settings.minimumRedemptionPoints-selectedAccount.points} points until reward`}</small></div><div className={styles.loyaltyProfileStats}><span>Reward value<strong>{(selectedAccount.points/settings.pointsPerCurrencyUnit).toFixed(2)}</strong></span><span>Lifetime earned<strong>{selectedAccount.lifetimePoints.toLocaleString()}</strong></span><span>Last updated<strong>{new Date(selectedAccount.updatedAt).toLocaleDateString()}</strong></span></div><div className={styles.loyaltyProfileActivity}><h4>Recent activity</h4>{selectedTransactions.length?selectedTransactions.map(transaction=><div key={transaction.id}><span className={transaction.points>=0?styles.loyaltyPositive:styles.loyaltyNegative}>{transaction.points>=0?"+":""}{transaction.points}</span><p><strong>{transaction.orderName||transaction.type}</strong><small>{new Date(transaction.createdAt).toLocaleString()}</small></p></div>):<small>No activity recorded for this member.</small>}</div></>:<div className={styles.loyaltyEmpty}>Select a member to view their loyalty card.</div>}</aside></div>
+    </section>
+
+    <section className={styles.loyaltyLowerGrid}>
+      <article className={styles.loyaltyActivityPanel}><header><div><p>POINTS LEDGER</p><h3>Recent activity</h3></div><select value={activityFilter} onChange={event=>setActivityFilter(event.target.value)}><option value="all">All activity</option><option value="earn">Earned</option><option value="redemption">Redemptions</option><option value="adjustment">Adjustments</option><option value="reversal">Reversals</option></select></header><div>{visibleTransactions.length?visibleTransactions.map(transaction=><article key={transaction.id}><span className={transaction.points>=0?styles.loyaltyPositive:styles.loyaltyNegative}>{transaction.points>=0?"+":""}{transaction.points}</span><div><strong>{transaction.email||"Customer"}</strong><small>{transaction.orderName||transaction.note} · {new Date(transaction.createdAt).toLocaleString()}</small>{transaction.rewardCode&&<code>{transaction.rewardCode}</code>}</div><i className={`${styles.tag} ${transaction.type==="earn"?styles.tagGreen:transaction.type==="redemption"?styles.tagBlue:styles.tagGray}`}>{transaction.type}</i></article>):<div className={styles.loyaltyEmpty}>No loyalty activity for this filter.</div>}</div></article>
+      <article className={styles.loyaltyAdjustmentPanel}><header><p>BALANCE CONTROL</p><h3>Manual adjustment</h3><span>Use for verified corrections or customer-service goodwill.</span></header><div className={styles.loyaltyProForm}><label className={styles.loyaltyProWide}>Customer email<input type="email" value={email} onChange={event=>setEmail(event.target.value)} placeholder="customer@example.com"/></label><label>Points adjustment<input type="number" step="1" value={points} onChange={event=>setPoints(event.target.value)} placeholder="50 or -20"/></label><label>Reason<input value={note} onChange={event=>setNote(event.target.value)} placeholder="Reason for audit trail"/></label></div><button className={styles.secondary} disabled={saving} onClick={()=>void adjust()}>{saving?"Updating...":"Adjust member balance"}</button><div className={styles.loyaltyAdjustmentNote}><span>!</span><p>Every manual adjustment is saved in the points ledger with its reason and timestamp.</p></div></article>
+    </section>
+
     <aside className={styles.loyaltyWebhookNotice}><span>!</span><div><strong>Secure Shopify webhook required</strong><p>Set SHOPIFY_WEBHOOK_SECRET and send orders/paid plus orders/cancelled events to the existing order webhook. Reward creation also requires Shopify Admin API scopes read_customers and write_discounts.</p></div></aside>
   </div>
 }
-
 function Marketing(){
   type Campaign={id:string;title:string;message:string;url:string;createdAt:string;recipientCount:number;status:string;opens:number;openRate:number|null};
   type MarketingTab="overview"|"campaigns"|"tools"|"integrations";
@@ -942,7 +1015,7 @@ function Marketing(){
   const useTrackingLink=()=>{if(!trackingLink)return;setPushUrl(trackingLink);setActiveTab("campaigns");setComposer(true);setStep("compose");setToolNotice("")};
   const copyTrackingLink=async()=>{if(!trackingLink)return;try{await navigator.clipboard.writeText(trackingLink);setToolNotice("Tracking link copied.")}catch{setToolNotice("Copy is unavailable. Select the link and copy it manually.")}};
   const exportCampaigns=()=>{const rows=[["Campaign","Message","Destination","Sent","Status","Recipients","Opens","Open rate"],...filteredCampaigns.map(campaign=>[campaign.title,campaign.message,campaign.url,campaign.createdAt,campaign.status,String(campaign.recipientCount),String(campaign.opens),campaign.openRate===null?"":String(campaign.openRate)])];const csv=rows.map(row=>row.map(value=>`"${String(value).replaceAll('"','""')}"`).join(",")).join("\r\n");const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});const url=URL.createObjectURL(blob);const anchor=document.createElement("a");anchor.href=url;anchor.download=`carters-marketing-${new Date().toISOString().slice(0,10)}.csv`;anchor.click();URL.revokeObjectURL(url)};
-  const sendPush=async()=>{if(!canReview||sending)return;setSending(true);setSendStatus("Sending campaign…");try{const response=await fetch("/api/push/send",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({title:pushTitle,message:pushMessage,url:pushUrl})});const result=await response.json();if(!response.ok)throw new Error(result.error||"Unable to send campaign.");setSendStatus(result.queued&&result.sent===0?"Campaign added to the local test inbox.":`Campaign sent to ${result.sent} device${result.sent===1?"":"s"}.`);setComposer(false);setStep("compose");await refreshCampaigns()}catch(error){setSendStatus(error instanceof Error?error.message:"Unable to send campaign.")}finally{setSending(false)}};
+  const sendPush=async()=>{if(!canReview||sending)return;setSending(true);setSendStatus("Sending campaign…");try{const response=await fetch("/api/push/send",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({title:pushTitle,message:pushMessage,url:pushUrl})});const result=await response.json();if(!response.ok)throw new Error(result.error||"Unable to send campaign.");setSendStatus(result.queued&&result.sent===0?"Campaign added to the local test inbox.":`Campaign sent to ${result.sent} device${result.sent===1?"":"s"}.${result.failed?` ${result.failed} invalid registration${result.failed===1?" was":"s were"} skipped.`:""}`);setComposer(false);setStep("compose");await refreshCampaigns()}catch(error){setSendStatus(error instanceof Error?error.message:"Unable to send campaign.")}finally{setSending(false)}};
   return <div className={`${styles.content} ${styles.notificationPage}`}>
     <section className={`${styles.notificationHero} ${styles.marketingHero}`}><div><p>MARKETING CENTER</p><h2>Turn customer attention into growth</h2><span>Plan campaigns, understand engagement, and prepare your advertising channels from one workspace.</span></div><button className={styles.primary} onClick={()=>openComposer()}>＋ Create push campaign</button></section>
     <nav className={styles.marketingTabs} aria-label="Marketing sections">{([['overview','Overview'],['campaigns','Push campaigns'],['tools','Campaign tools'],['integrations','Integrations']] as [MarketingTab,string][]).map(([id,label])=><button type="button" key={id} className={activeTab===id?styles.marketingTabActive:""} onClick={()=>setActiveTab(id)}>{label}{id==="campaigns"&&campaigns.length?<span>{campaigns.length}</span>:null}</button>)}</nav>
@@ -1175,6 +1248,7 @@ function Orders({initialFilter}:{initialFilter:OrderFilter}){
 }
 
 function Customers(){
+  const [referenceTime]=useState(()=>Date.now());
   const [customers,setCustomers]=useState<AdminCustomer[]>([]);
   const [search,setSearch]=useState("");
   const [statusFilter,setStatusFilter]=useState("all");
@@ -1185,8 +1259,19 @@ function Customers(){
   const [createdFrom,setCreatedFrom]=useState("");
   const [createdTo,setCreatedTo]=useState("");
   const [inactiveOnly,setInactiveOnly]=useState(false);
-  const [inactiveMonths,setInactiveMonths]=useState("5");
+  const [inactiveMonths,setInactiveMonths]=useState("2");
+  const [segmentFilter,setSegmentFilter]=useState("all");
+  const [loyaltyFilter,setLoyaltyFilter]=useState("all");
+  const [loyaltyTierFilter,setLoyaltyTierFilter]=useState("all");
+  const [minPoints,setMinPoints]=useState("");
+  const [maxPoints,setMaxPoints]=useState("");
+  const [lastOrderFrom,setLastOrderFrom]=useState("");
+  const [lastOrderTo,setLastOrderTo]=useState("");
+  const [sortBy,setSortBy]=useState("recent");
   const [loading,setLoading]=useState(true);
+  const [loadedAll,setLoadedAll]=useState(false);
+  const [expandedLoyaltyId,setExpandedLoyaltyId]=useState("");
+  const [customerLoyaltySettings,setCustomerLoyaltySettings]=useState<CustomerLoyaltySettings>({enabled:true,programName:"Carter's Rewards",pointsPerItem:1,pointsPerCurrencyUnit:10,minimumRedemptionPoints:50,rewardExpiryDays:30,silverTierPoints:50,goldTierPoints:250,vipTierPoints:500});
   const [message,setMessage]=useState("");
   const [editingId,setEditingId]=useState("");
   const [savingId,setSavingId]=useState("");
@@ -1203,7 +1288,8 @@ function Customers(){
       const response=await fetch(`/api/shopify/customers?${params.toString()}`,{cache:"no-store"});
       const data=await response.json();
       if(!response.ok)throw new Error(data.error||"Unable to load customers.");
-      setCustomers(current=>after?[...current,...(data.customers??[])]:data.customers??[]);
+       setCustomers(current=>after?[...current,...(data.customers??[])]:data.customers??[]);
+       if(data.loyaltySettings)setCustomerLoyaltySettings(data.loyaltySettings);
       setPageInfo(data.pageInfo??{hasNextPage:false,endCursor:null});
     }catch(error){setMessage(error instanceof Error?error.message:"Unable to load customers."); if(!after)setCustomers([])}
     finally{setLoading(false)}
@@ -1216,7 +1302,7 @@ function Customers(){
       const response=await fetch("/api/shopify/customers",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:editingId,...draft})});
       const data=await response.json();
       if(!response.ok)throw new Error(data.error||"Unable to update customer.");
-      setCustomers(items=>items.map(item=>item.id===editingId?data.customer:item));
+       setCustomers(items=>items.map(item=>item.id===editingId?{...data.customer,loyalty:item.loyalty}:item));
       setEditingId("");setMessage("Customer updated.");
     }catch(error){setMessage(error instanceof Error?error.message:"Unable to update customer.")}
     finally{setSavingId("")}
@@ -1248,9 +1334,33 @@ function Customers(){
   const maxOrderValue=maxOrders===""?null:Number(maxOrders);
   const minSpentValue=minSpent===""?null:Number(minSpent);
   const maxSpentValue=maxSpent===""?null:Number(maxSpent);
-  const inactiveMonthValue=Math.max(1,Number(inactiveMonths)||5);
+  const minPointsValue=minPoints===""?null:Number(minPoints);
+  const maxPointsValue=maxPoints===""?null:Number(maxPoints);
+  const inactiveMonthValue=Math.max(1,Number(inactiveMonths)||2);
   const inactiveSince=new Date();
   inactiveSince.setMonth(inactiveSince.getMonth()-inactiveMonthValue);
+  const sixtyDaysAgo=new Date(referenceTime-60*86400000);
+  const oneYearAgo=new Date(referenceTime);oneYearAgo.setFullYear(oneYearAgo.getFullYear()-1);
+  const loyaltyTier=(customer:AdminCustomer)=>{if(!customer.loyalty.enrolled)return "none";if(customer.loyalty.lifetimePoints>=customerLoyaltySettings.vipTierPoints)return "vip";if(customer.loyalty.lifetimePoints>=customerLoyaltySettings.goldTierPoints)return "gold";if(customer.loyalty.lifetimePoints>=customerLoyaltySettings.silverTierPoints)return "silver";return "member"};
+  const customerSegment=(customer:AdminCustomer)=>{
+    const lastOrder=customer.lastOrderAt?new Date(customer.lastOrderAt):null;
+    const dormant=customer.orders>0&&(!lastOrder||lastOrder<sixtyDaysAgo);
+    if(customer.orders===1&&lastOrder&&lastOrder>=oneYearAgo)return "one-time-year";
+    if(dormant&&!customer.loyalty.enrolled)return "dormant-non-loyal";
+    if(dormant)return "at-risk";
+    if(customer.loyalty.enrolled&&customer.loyalty.lifetimePoints>0)return "loyal";
+    if(customer.orders===0)return "prospect";
+    return "active";
+  };
+  const loadAllCustomers=async()=>{
+    setLoading(true);setMessage("Loading the complete customer audience...");
+    try{
+      const all:AdminCustomer[]=[];let after:string|null=null;let hasNext=true;let pages=0;
+      while(hasNext&&pages<100){const params=new URLSearchParams();if(search.trim())params.set("search",search.trim());if(createdFrom)params.set("createdFrom",createdFrom);if(createdTo)params.set("createdTo",createdTo);if(after)params.set("after",after);const response=await fetch(`/api/shopify/customers?${params}`,{cache:"no-store"});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to load the complete customer audience.");all.push(...(Array.isArray(data.customers)?data.customers:[]));if(data.loyaltySettings)setCustomerLoyaltySettings(data.loyaltySettings);hasNext=Boolean(data.pageInfo?.hasNextPage&&data.pageInfo?.endCursor);after=hasNext?data.pageInfo.endCursor:null;pages+=1;if(hasNext)setMessage(`Preparing retention analysis... ${all.length} customers loaded.`)}
+      if(hasNext)throw new Error("Customer analysis reached the 5,000-profile safety limit. Narrow the creation dates and try again.");
+      setCustomers(all);setPageInfo({hasNextPage:false,endCursor:null});setLoadedAll(true);setMessage(`Retention analysis ready for ${all.length} customer${all.length===1?"":"s"}.`);
+    }catch(error){setMessage(error instanceof Error?error.message:"Unable to prepare retention analysis.")}finally{setLoading(false)}
+  };
   const matchesCustomer=(customer:AdminCustomer)=>{
     const spent=amountValue(customer);
     const lastOrderDate=customer.lastOrderAt?new Date(customer.lastOrderAt):null;
@@ -1261,18 +1371,31 @@ function Customers(){
       && (maxSpentValue===null||spent<=maxSpentValue)
       && (!createdFrom||Boolean(customer.createdAt&&customer.createdAt.slice(0,10)>=createdFrom))
       && (!createdTo||Boolean(customer.createdAt&&customer.createdAt.slice(0,10)<=createdTo))
-      && (!inactiveOnly||!lastOrderDate||lastOrderDate<inactiveSince);
+      && (!lastOrderFrom||Boolean(customer.lastOrderAt&&customer.lastOrderAt.slice(0,10)>=lastOrderFrom))
+      && (!lastOrderTo||Boolean(customer.lastOrderAt&&customer.lastOrderAt.slice(0,10)<=lastOrderTo))
+      && (!inactiveOnly||(customer.orders>0&&(!lastOrderDate||lastOrderDate<inactiveSince)))
+      && (segmentFilter==="all"||customerSegment(customer)===segmentFilter)
+      && (loyaltyFilter==="all"||(loyaltyFilter==="enrolled"&&customer.loyalty.enrolled)||(loyaltyFilter==="not-enrolled"&&!customer.loyalty.enrolled)||(loyaltyFilter==="balance"&&customer.loyalty.points>0)||(loyaltyFilter==="zero"&&customer.loyalty.enrolled&&customer.loyalty.points===0))
+      && (loyaltyTierFilter==="all"||loyaltyTier(customer)===loyaltyTierFilter)
+      && (minPointsValue===null||customer.loyalty.points>=minPointsValue)
+      && (maxPointsValue===null||customer.loyalty.points<=maxPointsValue);
   };
-  const filteredCustomers=customers.filter(matchesCustomer);
+  const filteredCustomers=customers.filter(matchesCustomer).sort((a,b)=>sortBy==="points"?b.loyalty.points-a.loyalty.points:sortBy==="lifetime-points"?b.loyalty.lifetimePoints-a.loyalty.lifetimePoints:sortBy==="orders"?b.orders-a.orders:sortBy==="spent"?amountValue(b)-amountValue(a):sortBy==="oldest-order"?String(a.lastOrderAt||"").localeCompare(String(b.lastOrderAt||"")):String(b.lastOrderAt||"").localeCompare(String(a.lastOrderAt||"")));
   const totalOrders=filteredCustomers.reduce((sum,customer)=>sum+customer.orders,0);
   const activeCount=filteredCustomers.filter(customer=>customer.status==="ENABLED").length;
+  const oneTimeCount=customers.filter(customer=>customerSegment(customer)==="one-time-year").length;
+  const dormantNonLoyalCount=customers.filter(customer=>customerSegment(customer)==="dormant-non-loyal").length;
+  const loyaltyCount=customers.filter(customer=>customer.loyalty.enrolled).length;
+  const outstandingPoints=filteredCustomers.reduce((sum,customer)=>sum+customer.loyalty.points,0);
+  const segmentLabel=(segment:string)=>segment==="one-time-year"?"One-time buyer":segment==="dormant-non-loyal"?"Dormant non-loyal":segment==="at-risk"?"At risk":segment==="loyal"?"Loyalty member":segment==="prospect"?"No purchases":"Active customer";
+  const segmentTone=(segment:string)=>segment==="loyal"?styles.tagGreen:segment==="dormant-non-loyal"||segment==="at-risk"?styles.tagGray:styles.tagBlue;
   const formatSpent=(value:AdminCustomer["totalSpent"])=>{if(!value)return "—";try{return new Intl.NumberFormat(undefined,{style:"currency",currency:value.currencyCode}).format(Number(value.amount))}catch{return `${value.amount} ${value.currencyCode}`}};
   const formatDate=(value?:string|null)=>value?new Date(value).toLocaleDateString():"—";
-  const hasCustomerFilters=Boolean(search||statusFilter!=="all"||minOrders||maxOrders||minSpent||maxSpent||createdFrom||createdTo||inactiveOnly);
-  const resetFilters=()=>{setSearch("");setStatusFilter("all");setMinOrders("");setMaxOrders("");setMinSpent("");setMaxSpent("");setCreatedFrom("");setCreatedTo("");setInactiveOnly(false);setInactiveMonths("5");void loadCustomers("",null,"","")};
+  const hasCustomerFilters=Boolean(search||statusFilter!=="all"||minOrders||maxOrders||minSpent||maxSpent||createdFrom||createdTo||lastOrderFrom||lastOrderTo||inactiveOnly||segmentFilter!=="all"||loyaltyFilter!=="all"||loyaltyTierFilter!=="all"||minPoints||maxPoints||sortBy!=="recent");
+  const resetFilters=()=>{setSearch("");setStatusFilter("all");setMinOrders("");setMaxOrders("");setMinSpent("");setMaxSpent("");setCreatedFrom("");setCreatedTo("");setLastOrderFrom("");setLastOrderTo("");setInactiveOnly(false);setInactiveMonths("2");setSegmentFilter("all");setLoyaltyFilter("all");setLoyaltyTierFilter("all");setMinPoints("");setMaxPoints("");setSortBy("recent");setExpandedLoyaltyId("");void loadCustomers("",null,"","")};
   const exportCustomers=()=>{
     if(!filteredCustomers.length){setMessage("No customers match this export filter.");return}
-    const columns=["Name","First name","Last name","Email","Phone","Location","Orders","Total spent","Status","Last order","Created at","Updated at"];
+    const columns=["Name","First name","Last name","Email","Phone","Location","Orders","Total spent","Status","Segment","Loyalty member","Available points","Lifetime points","Last order","Created at","Updated at"];
     const escapeCsv=(value:string|number|null|undefined)=>`"${String(value??"").replace(/"/g,'""')}"`;
     const rows=filteredCustomers.map(customer=>[
       customer.name,
@@ -1284,6 +1407,10 @@ function Customers(){
       customer.orders,
       customer.totalSpent?`${customer.totalSpent.amount} ${customer.totalSpent.currencyCode}`:"",
       customer.status,
+      customerSegment(customer),
+      customer.loyalty.enrolled?"Yes":"No",
+      customer.loyalty.points,
+      customer.loyalty.lifetimePoints,
       customer.lastOrderAt||"",
       customer.createdAt||"",
       customer.updatedAt||"",
@@ -1309,11 +1436,98 @@ function Customers(){
       while(hasNext&&pages<100){const params=new URLSearchParams();if(search.trim())params.set("search",search.trim());if(createdFrom)params.set("createdFrom",createdFrom);if(createdTo)params.set("createdTo",createdTo);if(after)params.set("after",after);const response=await fetch(`/api/shopify/customers?${params}`,{cache:"no-store"});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to prepare the customer database export.");all.push(...(Array.isArray(data.customers)?data.customers:[]));hasNext=Boolean(data.pageInfo?.hasNextPage&&data.pageInfo?.endCursor);after=hasNext?data.pageInfo.endCursor:null;pages+=1;if(hasNext)setMessage(`Loading customers for database export... ${all.length} loaded.`)}
       if(hasNext)throw new Error("The export reached its 5,000-customer safety limit. Choose a smaller creation date range.");
       const selected=all.filter(matchesCustomer);if(!selected.length)throw new Error("No customers match this database export filter.");
-      const payload={schemaVersion:1,exportedAt:new Date().toISOString(),source:"Shopify Admin",upsertKey:"shopifyId",creationRange:{from:createdFrom||null,to:createdTo||null},customers:selected.map(customer=>({shopifyId:customer.id,name:customer.name,firstName:customer.firstName,lastName:customer.lastName,email:customer.email||null,phone:customer.phone||null,location:customer.location,orders:customer.orders,totalSpent:customer.totalSpent?Number(customer.totalSpent.amount):0,currencyCode:customer.totalSpent?.currencyCode||null,status:customer.status,lastOrderAt:customer.lastOrderAt||null,createdAt:customer.createdAt||null,updatedAt:customer.updatedAt||null}))};
+       const payload={schemaVersion:2,exportedAt:new Date().toISOString(),source:"Shopify Admin + Carter's Rewards",upsertKey:"shopifyId",creationRange:{from:createdFrom||null,to:createdTo||null},customers:selected.map(customer=>({shopifyId:customer.id,name:customer.name,firstName:customer.firstName,lastName:customer.lastName,email:customer.email||null,phone:customer.phone||null,location:customer.location,orders:customer.orders,totalSpent:customer.totalSpent?Number(customer.totalSpent.amount):0,currencyCode:customer.totalSpent?.currencyCode||null,status:customer.status,segment:customerSegment(customer),loyalty:customer.loyalty,lastOrderAt:customer.lastOrderAt||null,createdAt:customer.createdAt||null,updatedAt:customer.updatedAt||null}))};
       const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const link=document.createElement("a");link.href=url;link.download=`shopify-customers-database-${createdFrom||"beginning"}-to-${createdTo||"today"}.json`;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);setMessage(`Prepared all ${selected.length} matching customers for database upsert.`)
     }catch(error){setMessage(error instanceof Error?error.message:"Unable to prepare the customer database export.")}finally{setLoading(false)}
   };
-  return <div className={styles.content}><div className={styles.actionHeader}><div><h2>Customers</h2><p>Live Shopify customer directory.</p></div><form className={styles.customerSearch} onSubmit={event=>{event.preventDefault();void loadCustomers(search,null)}}><input className={styles.smallSearch} placeholder="Search customers" value={search} onChange={event=>setSearch(event.target.value)} /><button className={styles.primary} disabled={loading} type="submit">Search</button><button className={styles.secondary} disabled={loading||!filteredCustomers.length} type="button" onClick={exportCustomers}>Export CSV</button><button className={styles.secondary} disabled={loading} type="button" onClick={()=>void exportCustomersForDatabase()}>Database JSON</button>{hasCustomerFilters&&<button className={styles.secondary} disabled={loading} type="button" onClick={resetFilters}>Clear</button>}</form></div><div className={styles.customerFilterBar}><select className={styles.customerFilter} value={statusFilter} onChange={event=>setStatusFilter(event.target.value)}><option value="all">All statuses</option>{statusOptions.map(status=><option key={status} value={status}>{status.toLowerCase()}</option>)}</select><label>Orders from<input type="number" min="0" value={minOrders} onChange={event=>setMinOrders(event.target.value)} /></label><label>Orders to<input type="number" min="0" value={maxOrders} onChange={event=>setMaxOrders(event.target.value)} /></label><label>Spent from<input type="number" min="0" step="0.01" value={minSpent} onChange={event=>setMinSpent(event.target.value)} /></label><label>Spent to<input type="number" min="0" step="0.01" value={maxSpent} onChange={event=>setMaxSpent(event.target.value)} /></label><label>Created from<input type="date" value={createdFrom} max={createdTo||undefined} onChange={event=>setCreatedFrom(event.target.value)} /></label><label>Created to<input type="date" value={createdTo} min={createdFrom||undefined} onChange={event=>setCreatedTo(event.target.value)} /></label><label className={styles.customerCheck}><input type="checkbox" checked={inactiveOnly} onChange={event=>setInactiveOnly(event.target.checked)} />No purchase in</label><label>Months<input type="number" min="1" value={inactiveMonths} onChange={event=>setInactiveMonths(event.target.value)} /></label></div><div className={styles.segmentGrid}>{[["Profiles","Loaded from Shopify Admin",String(customers.length)],["Filtered","Matching current filter",String(filteredCustomers.length)],["Active accounts","Enabled filtered records",String(activeCount)],["Orders","From filtered customers",String(totalOrders)]].map(([title,copy,value])=><article className={styles.segment} key={title}><span>♙</span><div><strong>{title}</strong><small>{copy}</small></div><b>{value}</b></article>)}</div><section className={`${styles.card} ${styles.customerTable}`}><div className={styles.cardHead}><div><h2>Customer directory</h2><p>{message||`Showing customers after search, creation date, order, spend, and inactivity filters. Inactive means no order since ${formatDate(inactiveSince.toISOString())}.`}</p></div><i className={`${styles.tag} ${message?styles.tagGray:styles.tagGreen}`}>{loading?"Loading":message?"Notice":"Connected"}</i></div><div className={styles.dataTable}><div className={styles.tableHead}><span>Customer</span><span>Location</span><span>Orders</span><span>Status</span><span>Created</span><span>Last order</span></div>{filteredCustomers.length?filteredCustomers.map(customer=><div className={styles.customerRecord} key={customer.id}><div className={styles.tableRow}><div className={styles.customerCell}><strong>{customer.name}</strong><small>{customer.email||"No email"} · {customer.phone||"No phone"}</small><div className={styles.customerActions}><button className={styles.secondary} disabled={savingId===customer.id} onClick={()=>startEdit(customer)}>Edit</button><button className={styles.secondary} disabled={savingId===customer.id||customer.orders>0} title={customer.orders>0?"Shopify only allows deleting customers with no orders.":undefined} onClick={()=>void deleteCustomer(customer)}>Delete</button></div></div><span>{customer.location}</span><span>{customer.orders} · {formatSpent(customer.totalSpent)}</span><span><i className={`${styles.tag} ${customer.status==="ENABLED"?styles.tagGreen:styles.tagGray}`}>{customer.status.toLowerCase()}</i></span><span>{formatDate(customer.createdAt)}</span><span>{formatDate(customer.lastOrderAt)}</span></div>{editingId===customer.id&&<div className={styles.customerEditPanel}><label>First name<input value={draft.firstName} onChange={event=>setDraft(value=>({...value,firstName:event.target.value}))}/></label><label>Last name<input value={draft.lastName} onChange={event=>setDraft(value=>({...value,lastName:event.target.value}))}/></label><label>Email<input value={draft.email} onChange={event=>setDraft(value=>({...value,email:event.target.value}))}/></label><label>Phone<input value={draft.phone} onChange={event=>setDraft(value=>({...value,phone:event.target.value}))}/></label><div><button className={styles.secondary} disabled={savingId===customer.id} onClick={()=>setEditingId("")}>Cancel</button><button className={styles.primary} disabled={savingId===customer.id} onClick={saveCustomer}>{savingId===customer.id?"Saving":"Save"}</button></div></div>}</div>):<div className={styles.empty}>{loading?"Loading customers...":message||"No customers found for this filter."}</div>}</div>{pageInfo.hasNextPage&&<div className={styles.inlineActions}><button className={styles.secondary} disabled={loading} onClick={()=>loadCustomers(search,pageInfo.endCursor)}>Load more</button></div>}</section></div>
+  return (
+    <div className={`${styles.content} ${styles.customerAdvancedPage}`}>
+      <section className={styles.customerHero}>
+        <div>
+          <p>CUSTOMER RETENTION</p>
+          <h2>Customer intelligence</h2>
+          <span>Identify one-time buyers, customers at risk of churn, and loyalty opportunities using live Shopify and Carter&apos;s Rewards data.</span>
+        </div>
+        <div className={styles.customerHeroActions}>
+          <form className={styles.customerSearch} onSubmit={event=>{event.preventDefault();void loadCustomers(search,null)}}>
+            <input className={styles.smallSearch} placeholder="Search name, email, or phone" value={search} onChange={event=>setSearch(event.target.value)} />
+            <button className={styles.primary} disabled={loading} type="submit">Search</button>
+          </form>
+          <button className={styles.secondary} disabled={loading||loadedAll} type="button" onClick={()=>void loadAllCustomers()}>{loadedAll?"Full audience loaded":"Load all for analysis"}</button>
+          <button className={styles.secondary} disabled={loading||!filteredCustomers.length} type="button" onClick={exportCustomers}>Export CSV</button>
+          <button className={styles.secondary} disabled={loading} type="button" onClick={()=>void exportCustomersForDatabase()}>Database JSON</button>
+          {hasCustomerFilters&&<button className={styles.secondary} disabled={loading} type="button" onClick={resetFilters}>Reset filters</button>}
+        </div>
+      </section>
+
+      {message&&<div className={styles.customerNotice}>{message}</div>}
+
+      <section className={styles.customerSegmentGrid}>
+        {[
+          {id:"all",label:"All customers",copy:loadedAll?"Complete audience":"Currently loaded",value:customers.length,icon:"♙"},
+          {id:"one-time-year",label:"One-time buyers",copy:"Exactly 1 purchase · last 12 months",value:oneTimeCount,icon:"1"},
+          {id:"dormant-non-loyal",label:"Dormant non-loyal",copy:"No loyalty card · inactive 60+ days",value:dormantNonLoyalCount,icon:"!"},
+          {id:"loyal",label:"Loyalty customers",copy:"Members with earned points",value:loyaltyCount,icon:"★"},
+        ].map(segment=><button type="button" key={segment.id} className={`${styles.customerSegmentCard} ${segmentFilter===segment.id?styles.customerSegmentActive:""}`} onClick={()=>setSegmentFilter(segment.id)}><span>{segment.icon}</span><div><strong>{segment.label}</strong><small>{segment.copy}</small></div><b>{segment.value.toLocaleString()}</b></button>)}
+      </section>
+
+      <section className={styles.customerFilterPanel}>
+        <header>
+          <div><p>ADVANCED FILTERS</p><h3>Build a customer segment</h3><span>All filters work together and update the customer directory immediately.</span></div>
+          <div className={styles.customerFilterSummary}><strong>{filteredCustomers.length.toLocaleString()}</strong><span>matching customers</span></div>
+        </header>
+        <div className={styles.customerFilterSections}>
+          <fieldset>
+            <legend>Relationship</legend>
+            <label>Customer segment<select value={segmentFilter} onChange={event=>setSegmentFilter(event.target.value)}><option value="all">All customer segments</option><option value="one-time-year">One-time buyer in last 12 months</option><option value="dormant-non-loyal">Dormant non-loyal · 60+ days</option><option value="at-risk">Loyalty member at risk · 60+ days</option><option value="loyal">Loyalty member with earnings</option><option value="active">Active returning customer</option><option value="prospect">Registered with no purchases</option></select></label>
+            <label>Loyalty membership<select value={loyaltyFilter} onChange={event=>setLoyaltyFilter(event.target.value)}><option value="all">All loyalty statuses</option><option value="enrolled">Has loyalty card</option><option value="not-enrolled">No loyalty card</option><option value="balance">Has available points</option><option value="zero">Member with zero points</option></select></label>
+            <label>Loyalty tier<select value={loyaltyTierFilter} onChange={event=>setLoyaltyTierFilter(event.target.value)}><option value="all">All loyalty tiers</option><option value="vip">VIP</option><option value="gold">Gold</option><option value="silver">Silver</option><option value="member">Member</option><option value="none">Not enrolled</option></select></label>
+            <label>Shopify status<select value={statusFilter} onChange={event=>setStatusFilter(event.target.value)}><option value="all">All account statuses</option>{statusOptions.map(status=><option key={status} value={status}>{status.toLowerCase()}</option>)}</select></label>
+          </fieldset>
+          <fieldset>
+            <legend>Purchase behavior</legend>
+            <div className={styles.customerRange}><label>Orders from<input type="number" min="0" value={minOrders} onChange={event=>setMinOrders(event.target.value)} placeholder="0"/></label><label>Orders to<input type="number" min="0" value={maxOrders} onChange={event=>setMaxOrders(event.target.value)} placeholder="Any"/></label></div>
+            <div className={styles.customerRange}><label>Spent from<input type="number" min="0" step="0.01" value={minSpent} onChange={event=>setMinSpent(event.target.value)} placeholder="0"/></label><label>Spent to<input type="number" min="0" step="0.01" value={maxSpent} onChange={event=>setMaxSpent(event.target.value)} placeholder="Any"/></label></div>
+            <label className={styles.customerInlineCheck}><input type="checkbox" checked={inactiveOnly} onChange={event=>setInactiveOnly(event.target.checked)}/><span>Inactive for at least</span><input type="number" min="1" value={inactiveMonths} onChange={event=>setInactiveMonths(event.target.value)}/><span>months</span></label>
+          </fieldset>
+          <fieldset>
+            <legend>Loyalty points</legend>
+            <div className={styles.customerRange}><label>Available points from<input type="number" min="0" value={minPoints} onChange={event=>setMinPoints(event.target.value)} placeholder="0"/></label><label>Available points to<input type="number" min="0" value={maxPoints} onChange={event=>setMaxPoints(event.target.value)} placeholder="Any"/></label></div>
+            <label>Sort directory<select value={sortBy} onChange={event=>setSortBy(event.target.value)}><option value="recent">Most recent purchase</option><option value="oldest-order">Longest since purchase</option><option value="points">Highest available points</option><option value="lifetime-points">Highest lifetime points</option><option value="orders">Most orders</option><option value="spent">Highest spend</option></select></label>
+            <div className={styles.customerPointsSummary}><span>Points in filtered audience</span><strong>{outstandingPoints.toLocaleString()}</strong></div>
+          </fieldset>
+          <fieldset>
+            <legend>Date ranges</legend>
+            <div className={styles.customerRange}><label>Last purchase from<input type="date" value={lastOrderFrom} max={lastOrderTo||undefined} onChange={event=>setLastOrderFrom(event.target.value)}/></label><label>Last purchase to<input type="date" value={lastOrderTo} min={lastOrderFrom||undefined} onChange={event=>setLastOrderTo(event.target.value)}/></label></div>
+            <div className={styles.customerRange}><label>Customer created from<input type="date" value={createdFrom} max={createdTo||undefined} onChange={event=>setCreatedFrom(event.target.value)}/></label><label>Customer created to<input type="date" value={createdTo} min={createdFrom||undefined} onChange={event=>setCreatedTo(event.target.value)}/></label></div>
+          </fieldset>
+        </div>
+      </section>
+
+      <section className={styles.customerInsightGrid}>
+        <article><span>◎</span><div><small>Matching customers</small><strong>{filteredCustomers.length.toLocaleString()}</strong></div></article>
+        <article><span>▤</span><div><small>Total orders</small><strong>{totalOrders.toLocaleString()}</strong></div></article>
+        <article><span>★</span><div><small>Available points</small><strong>{outstandingPoints.toLocaleString()}</strong></div></article>
+        <article><span>✓</span><div><small>Enabled accounts</small><strong>{activeCount.toLocaleString()}</strong></div></article>
+      </section>
+
+      <section className={`${styles.card} ${styles.customerTable} ${styles.customerAdvancedTable}`}>
+        <div className={styles.cardHead}><div><h2>Customer directory</h2><p>{loadedAll?"Complete audience analysis":"Showing loaded Shopify customers. Load all customers for complete retention totals."}</p></div><i className={`${styles.tag} ${message?styles.tagGray:styles.tagGreen}`}>{loading?"Loading":loadedAll?"Full audience":"Live data"}</i></div>
+        <div className={styles.dataTable}>
+          <div className={styles.tableHead}><span>Customer</span><span>Relationship</span><span>Commerce</span><span>Loyalty card</span><span>Last purchase</span><span>Actions</span></div>
+          {filteredCustomers.length?filteredCustomers.map(customer=>{const segment=customerSegment(customer);return <div className={styles.customerRecord} key={customer.id}><div className={styles.tableRow}>
+            <div className={styles.customerCell}><strong>{customer.name}</strong><small>{customer.email||"No email"}</small><small>{customer.location}</small></div>
+            <div className={styles.customerRelationship}><i className={`${styles.tag} ${segmentTone(segment)}`}>{segmentLabel(segment)}</i><small>{customer.status.toLowerCase()}</small></div>
+            <div className={styles.customerCommerce}><strong>{customer.orders} order{customer.orders===1?"":"s"}</strong><small>{formatSpent(customer.totalSpent)} spent</small></div>
+            <div className={styles.customerLoyaltyCell}>{customer.loyalty.enrolled?<><strong>{customer.loyalty.points.toLocaleString()} points</strong><small>{loyaltyTier(customer).toUpperCase()} · {customer.loyalty.lifetimePoints.toLocaleString()} lifetime</small></>:<><strong className={styles.customerNoLoyalty}>Not enrolled</strong><small>No loyalty card</small></>}</div>
+            <div className={styles.customerLastOrder}><strong>{formatDate(customer.lastOrderAt)}</strong><small>{customer.lastOrderAt?Math.max(0,Math.floor((referenceTime-new Date(customer.lastOrderAt).getTime())/86400000)).toLocaleString()+" days ago":"No purchase yet"}</small></div>
+            <div className={styles.customerActions}><button className={styles.customerLoyaltyButton} onClick={()=>setExpandedLoyaltyId(current=>current===customer.id?"":customer.id)}>Loyalty</button><button className={styles.secondary} disabled={savingId===customer.id} onClick={()=>startEdit(customer)}>Edit</button><button className={styles.secondary} disabled={savingId===customer.id||customer.orders>0} title={customer.orders>0?"Shopify only allows deleting customers with no orders.":undefined} onClick={()=>void deleteCustomer(customer)}>Delete</button></div>
+          </div>{expandedLoyaltyId===customer.id&&<div className={styles.customerLoyaltyProfile}><div className={`${styles.customerLoyaltyCard} ${styles[`customerLoyaltyCard${loyaltyTier(customer)[0].toUpperCase()+loyaltyTier(customer).slice(1)}`]}`}><header><span>CARTER&apos;S REWARDS</span><b>{loyaltyTier(customer).toUpperCase()}</b></header><h3>{customer.name}</h3><p>{customer.loyalty.enrolled?`${customer.loyalty.points.toLocaleString()} available points`:"Not enrolled in the loyalty program"}</p><div className={styles.customerLoyaltyProgress}><i style={{width:`${Math.min(100,customer.loyalty.points/Math.max(1,customerLoyaltySettings.minimumRedemptionPoints)*100)}%`}}/></div><small>{customer.loyalty.enrolled?customer.loyalty.points>=customerLoyaltySettings.minimumRedemptionPoints?"Reward ready":`${(customerLoyaltySettings.minimumRedemptionPoints-customer.loyalty.points).toLocaleString()} points until next reward`:"Create a loyalty account with a manual adjustment"}</small></div><div className={styles.customerLoyaltyFacts}><article><span>Reward value</span><strong>{(customer.loyalty.points/Math.max(1,customerLoyaltySettings.pointsPerCurrencyUnit)).toFixed(2)}</strong><small>store currency units</small></article><article><span>Lifetime earned</span><strong>{customer.loyalty.lifetimePoints.toLocaleString()}</strong><small>{customer.loyalty.earnedPoints.toLocaleString()} recorded positive points</small></article><article><span>Redeemed</span><strong>{customer.loyalty.redeemedPoints.toLocaleString()}</strong><small>{customer.loyalty.transactionCount.toLocaleString()} total activities</small></article><article><span>Last activity</span><strong>{formatDate(customer.loyalty.lastActivityAt)}</strong><small>Last earned {formatDate(customer.loyalty.lastEarnedAt)}</small></article></div></div>}{editingId===customer.id&&<div className={styles.customerEditPanel}><label>First name<input value={draft.firstName} onChange={event=>setDraft(value=>({...value,firstName:event.target.value}))}/></label><label>Last name<input value={draft.lastName} onChange={event=>setDraft(value=>({...value,lastName:event.target.value}))}/></label><label>Email<input value={draft.email} onChange={event=>setDraft(value=>({...value,email:event.target.value}))}/></label><label>Phone<input value={draft.phone} onChange={event=>setDraft(value=>({...value,phone:event.target.value}))}/></label><div><button className={styles.secondary} disabled={savingId===customer.id} onClick={()=>setEditingId("")}>Cancel</button><button className={styles.primary} disabled={savingId===customer.id} onClick={saveCustomer}>{savingId===customer.id?"Saving":"Save"}</button></div></div>}</div>}):<div className={styles.customerEmpty}><span>⌕</span><strong>{loading?"Loading customers...":"No customers match this segment"}</strong><small>{message||"Adjust the advanced filters or reset the segment."}</small></div>}
+        </div>
+        {pageInfo.hasNextPage&&<div className={styles.customerTableFooter}><span>Filters currently apply to {customers.length} loaded profiles.</span><button className={styles.secondary} disabled={loading} onClick={()=>loadCustomers(search,pageInfo.endCursor)}>Load 50 more</button><button className={styles.primary} disabled={loading} onClick={()=>void loadAllCustomers()}>Load complete audience</button></div>}
+      </section>
+    </div>
+  );
 }
 
 function Team(){

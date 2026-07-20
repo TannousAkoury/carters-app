@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requirePermission } from "@/lib/shopify-admin";
+import { loyaltySnapshot, type LoyaltyAccount } from "@/lib/loyalty";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +38,20 @@ function formatLocation(address?: ShopifyCustomerNode["defaultAddress"]) {
   return [address?.city, address?.province, address?.country].filter(Boolean).join(", ") || "—";
 }
 
-function mapCustomer(node: ShopifyCustomerNode) {
+function normalizeCustomerId(value: string) {
+  return value.trim().split("/").at(-1) || "";
+}
+
+function findLoyaltyAccount(node: ShopifyCustomerNode, accounts: LoyaltyAccount[]) {
+  const customerId = normalizeCustomerId(node.id);
+  const email = (node.email || "").trim().toLowerCase();
+  return accounts.find((account) => (customerId && normalizeCustomerId(account.customerId) === customerId) || (email && account.email.trim().toLowerCase() === email));
+}
+
+function mapCustomer(node: ShopifyCustomerNode, loyaltyAccount?: LoyaltyAccount, transactions: Awaited<ReturnType<typeof loyaltySnapshot>>["transactions"] = []) {
+  const accountTransactions = loyaltyAccount ? transactions.filter((transaction) => transaction.accountId === loyaltyAccount.id) : [];
+  const earnedPoints = accountTransactions.filter((transaction) => transaction.points > 0).reduce((sum, transaction) => sum + transaction.points, 0);
+  const redeemedPoints = Math.abs(accountTransactions.filter((transaction) => transaction.type === "redemption").reduce((sum, transaction) => sum + transaction.points, 0));
   return {
     id: node.id,
     name: node.displayName || [node.firstName, node.lastName].filter(Boolean).join(" ") || "Unnamed customer",
@@ -52,6 +66,17 @@ function mapCustomer(node: ShopifyCustomerNode) {
     lastOrderAt: node.lastOrder?.processedAt || node.lastOrder?.createdAt || null,
     createdAt: node.createdAt,
     updatedAt: node.updatedAt,
+    loyalty: loyaltyAccount ? {
+      enrolled: true,
+      points: loyaltyAccount.points,
+      lifetimePoints: loyaltyAccount.lifetimePoints,
+      updatedAt: loyaltyAccount.updatedAt,
+      transactionCount: accountTransactions.length,
+      earnedPoints,
+      redeemedPoints,
+      lastActivityAt: accountTransactions[0]?.createdAt || loyaltyAccount.updatedAt,
+      lastEarnedAt: accountTransactions.find((transaction) => transaction.type === "earn")?.createdAt || null,
+    } : { enrolled: false, points: 0, lifetimePoints: 0, updatedAt: null, transactionCount: 0, earnedPoints: 0, redeemedPoints: 0, lastActivityAt: null, lastEarnedAt: null },
   };
 }
 
@@ -158,11 +183,13 @@ export async function GET(request: Request) {
   }
 
   const connection = data?.customers;
-  const customers = ((connection?.edges ?? []) as ShopifyCustomerEdge[]).map(({ node }) => mapCustomer(node));
+  const loyalty = await loyaltySnapshot();
+  const customers = ((connection?.edges ?? []) as ShopifyCustomerEdge[]).map(({ node }) => mapCustomer(node, findLoyaltyAccount(node, loyalty.accounts), loyalty.transactions));
 
   return NextResponse.json({
     configured: true,
     customers,
+    loyaltySettings: loyalty.settings,
     pageInfo: connection?.pageInfo ?? { hasNextPage: false, endCursor: null },
   });
 }
