@@ -1,5 +1,75 @@
 [
   {
+    "id": "8f2a799c-6ea7-41f0-854f-f12b4e3eeb57",
+    "createdAt": "2026-07-21T09:44:59.858Z",
+    "action": "Admin signed in",
+    "category": "access",
+    "severity": "success",
+    "actor": "admin",
+    "target": "admin",
+    "detail": "Owner session started."
+  },
+  {
+    "id": "f480bf47-29aa-46bf-a010-67df1efcbf42",
+    "createdAt": "2026-07-21T09:33:58.888Z",
+    "action": "Admin signed in",
+    "category": "access",
+    "severity": "success",
+    "actor": "admin",
+    "target": "admin",
+    "detail": "Owner session started."
+  },
+  {
+    "id": "e865864e-0016-4e22-8307-66c67b17f359",
+    "createdAt": "2026-07-21T09:33:54.424Z",
+    "action": "Admin signed out",
+    "category": "access",
+    "severity": "info",
+    "actor": "tannous.akoury@zavco.net",
+    "target": "tannous.akoury@zavco.net",
+    "detail": "Admin session ended."
+  },
+  {
+    "id": "b8d52c13-d1fb-40b9-9ce9-eab4903fdbad",
+    "createdAt": "2026-07-21T09:33:40.840Z",
+    "action": "Admin signed in",
+    "category": "access",
+    "severity": "success",
+    "actor": "tannous.akoury@zavco.net",
+    "target": "tannous.akoury@zavco.net",
+    "detail": "Marketing session started."
+  },
+  {
+    "id": "b248c1c9-1261-45ab-9085-41770e211380",
+    "createdAt": "2026-07-21T09:33:26.650Z",
+    "action": "Member activated",
+    "category": "access",
+    "severity": "success",
+    "actor": "tannous.akoury@zavco.net",
+    "target": "tannous.akoury@zavco.net",
+    "detail": "Marketing account setup completed."
+  },
+  {
+    "id": "cd3bfb7f-941c-41c4-88ff-087f3c50d5dd",
+    "createdAt": "2026-07-21T09:32:54.860Z",
+    "action": "Password setup sent",
+    "category": "security",
+    "severity": "info",
+    "actor": "admin",
+    "target": "tannous.akoury@zavco.net",
+    "detail": "A new secure password setup link was issued."
+  },
+  {
+    "id": "7da2a78d-76d3-4a8f-b6d7-4b57095f954e",
+    "createdAt": "2026-07-21T07:14:06.965Z",
+    "action": "Admin signed in",
+    "category": "access",
+    "severity": "success",
+    "actor": "admin",
+    "target": "admin",
+    "detail": "Owner session started."
+  },
+  {
     "id": "ad61d573-8b57-4d68-b89a-c87c51566604",
     "createdAt": "2026-07-20T11:41:22.581Z",
     "action": "Password setup sent",

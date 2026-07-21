@@ -13,7 +13,7 @@ type SoldLine = {
   variantTitle?: string | null;
   currentQuantity?: number;
   image?: { url?: string; altText?: string | null } | null;
-  priceAfterAllDiscountsBeforeTaxesSet?: { shopMoney?: Money | null } | null;
+  discountedUnitPriceAfterAllDiscountsSet?: { shopMoney?: Money | null } | null;
   variant?: { id?: string } | null;
 };
 type SoldOrder = {
@@ -35,6 +35,10 @@ type SoldItemAccumulator = {
   revenue: number;
   orderIds: Set<string>;
 };
+type CachedReport = { expiresAt: number; payload: Record<string, unknown> };
+
+const reportCache = new Map<string, CachedReport>();
+const reportCacheTtlMs = 30_000;
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const isoDate = (date: Date) => date.toISOString().slice(0, 10);
@@ -65,18 +69,23 @@ export async function GET(request: Request) {
   if (unauthorized) return unauthorized;
   const url = new URL(request.url);
   const grouping = url.searchParams.get("grouping") === "month" ? "month" : "day";
+  const forceFresh = url.searchParams.get("fresh") === "1";
   const fallback = defaultRange();
   const start = datePattern.test(url.searchParams.get("start") || "") ? String(url.searchParams.get("start")) : fallback.start;
   const end = datePattern.test(url.searchParams.get("end") || "") ? String(url.searchParams.get("end")) : fallback.end;
   if (start > end) return NextResponse.json({ error: "The start date must be before the end date." }, { status: 400 });
   const exclusiveEnd = new Date(`${end}T00:00:00.000Z`);
   exclusiveEnd.setUTCDate(exclusiveEnd.getUTCDate() + 1);
+  const cacheKey = `${grouping}|${start}|${end}`;
+  const cached = reportCache.get(cacheKey);
+  if (!forceFresh && cached && cached.expiresAt > Date.now()) return NextResponse.json(cached.payload, { headers: { "X-Sales-Report-Cache": "HIT" } });
+  if (cached) reportCache.delete(cacheKey);
 
   const ordersQuery = `
     query soldOrders($after: String, $query: String!) {
       shop { ianaTimezone currencyCode }
       locations(first: 50, includeInactive: false) { nodes { id name isActive } }
-      orders(first: 20, after: $after, query: $query, sortKey: PROCESSED_AT, reverse: true) {
+      orders(first: 250, after: $after, query: $query, sortKey: PROCESSED_AT, reverse: true) {
         pageInfo { hasNextPage endCursor }
         nodes {
           id createdAt processedAt cancelledAt
@@ -85,7 +94,7 @@ export async function GET(request: Request) {
             nodes {
               id name title sku variantTitle currentQuantity
               image { url altText }
-              priceAfterAllDiscountsBeforeTaxesSet { shopMoney { amount currencyCode } }
+              discountedUnitPriceAfterAllDiscountsSet { shopMoney { amount currencyCode } }
               variant { id }
             }
           }
@@ -158,9 +167,9 @@ export async function GET(request: Request) {
             orderIds: new Set<string>(),
           };
           existing.units += units;
-          existing.revenue += Number(line.priceAfterAllDiscountsBeforeTaxesSet?.shopMoney?.amount || 0);
+          existing.revenue += Number(line.discountedUnitPriceAfterAllDiscountsSet?.shopMoney?.amount || 0) * units;
           if (orderId) existing.orderIds.add(orderId);
-          currencyCode = line.priceAfterAllDiscountsBeforeTaxesSet?.shopMoney?.currencyCode || currencyCode;
+          currencyCode = line.discountedUnitPriceAfterAllDiscountsSet?.shopMoney?.currencyCode || currencyCode;
           aggregates.set(key, existing);
         }
       }
@@ -170,8 +179,8 @@ export async function GET(request: Request) {
 
     const stock = new Map<string, StockDetails>();
     const ids = [...variantIds];
-    for (let index = 0; index < ids.length; index += 50) {
-      const data = await shopifyAdminGraphql(stockQuery, { ids: ids.slice(index, index + 50) });
+    for (let index = 0; index < ids.length; index += 100) {
+      const data = await shopifyAdminGraphql(stockQuery, { ids: ids.slice(index, index + 100) });
       for (const node of data?.nodes || []) {
         if (!node?.id || !node.inventoryItem) continue;
         const levels: InventoryLevel[] = node.inventoryItem.inventoryLevels?.nodes || [];
@@ -202,7 +211,7 @@ export async function GET(request: Request) {
       return { key, label, units: items.reduce((sum, item) => sum + item.units, 0), revenue: Number(items.reduce((sum, item) => sum + item.revenue, 0).toFixed(2)), orders: periodOrderIds.size, items };
     }).filter((group) => group.items.length);
     const allItems = groups.flatMap((group) => group.items);
-    return NextResponse.json({
+    const payload = {
       grouping,
       range: { start, end },
       currencyCode,
@@ -216,7 +225,10 @@ export async function GET(request: Request) {
         variants: new Set(allItems.map((item) => item.variantId || `${item.sku}|${item.title}`)).size,
       },
       truncated: hasNextPage || lineItemsTruncated,
-    });
+    };
+    reportCache.set(cacheKey, { expiresAt: Date.now() + reportCacheTtlMs, payload });
+    if (reportCache.size > 20) reportCache.delete(reportCache.keys().next().value as string);
+    return NextResponse.json(payload, { headers: { "X-Sales-Report-Cache": "MISS" } });
   } catch (error) {
     return shopifyError(error, { groups: [], locations: [], totals: { units: 0, revenue: 0, orders: 0, variants: 0 }, truncated: false });
   }

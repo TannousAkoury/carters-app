@@ -101,9 +101,13 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const search = url.searchParams.get("search")?.trim() || "";
   const status = url.searchParams.get("status")?.trim() || "all";
+  const dateFrom = /^\d{4}-\d{2}-\d{2}$/.test(url.searchParams.get("dateFrom") || "") ? url.searchParams.get("dateFrom")! : "";
+  const dateTo = /^\d{4}-\d{2}-\d{2}$/.test(url.searchParams.get("dateTo") || "") ? url.searchParams.get("dateTo")! : "";
   const after = url.searchParams.get("after");
   const searchFilter = search ? (search.startsWith("#") ? `name:${search.slice(1)}` : search) : "";
-  const queryFilter = [status === "pending" ? "status:open" : "", searchFilter].filter(Boolean).join(" ") || null;
+  const dateToExclusive = dateTo ? new Date(`${dateTo}T00:00:00.000Z`) : null;
+  if (dateToExclusive) dateToExclusive.setUTCDate(dateToExclusive.getUTCDate() + 1);
+  const queryFilter = [status === "pending" ? "status:open" : "", searchFilter, dateFrom ? `created_at:>=${dateFrom}` : "", dateToExclusive ? `created_at:<${dateToExclusive.toISOString().slice(0,10)}` : ""].filter(Boolean).join(" ") || null;
   const query = `
     query getOrders($first: Int!, $after: String, $query: String) {
       orders(first: $first, after: $after, query: $query, sortKey: PROCESSED_AT, reverse: true) {

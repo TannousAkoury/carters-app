@@ -3,10 +3,9 @@
     "id": "c379a79c-29f7-47a6-bb14-f15921d67e9c",
     "email": "tannous.akoury@zavco.net",
     "role": "Marketing",
-    "inviteTokenHash": "7d1731a3f1cffff725121a74ee5ad3c7672df4c7aa2513c12a628da80d2c05a4",
-    "inviteExpiresAt": "2026-07-27T11:41:22.527Z",
-    "status": "invited",
+    "status": "active",
     "createdAt": "2026-07-09T13:38:38.506Z",
-    "updatedAt": "2026-07-20T11:41:22.527Z"
+    "updatedAt": "2026-07-21T09:33:26.607Z",
+    "passwordHash": "pbkdf2:120000:8b790f6a1b3e84d134cacee8bde3216b:f46238424f0e8897f198b699632bca78681b995864a182d859866d18047915bf"
   }
 ]
