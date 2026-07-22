@@ -330,16 +330,16 @@ function AgeRow({
   );
 }
 
-function ShopifyThemeSections({sections,placement,visibility,customStyles,onOpen}:{sections:HomepageThemeSection[];placement:HomepageThemeSection["placement"];visibility:Record<string,boolean>;customStyles:Record<string,string>;onOpen:(url:string)=>void}){
+function ShopifyThemeSections({sections,placement,visibility,customStyles,onOpen}:{sections:HomepageThemeSection[];placement:HomepageThemeSection["placement"];visibility:Record<string,boolean>;customStyles:Record<string,string>;onOpen:(url:string,context?:{title?:string;image?:string})=>void}){
   const visible=sections.filter(section=>section.placement===placement&&visibility[section.id]!==false);
   if(!visible.length)return null;
   return <>{visible.map(section=>{const automatic=section.mobileStyle??{};const override=parseMobileCustomCss(customStyles[section.id]);const mobile={...automatic,...override};const margin=Math.max(0,mobile.marginHorizontal??0);const candidateRatio=mobile.aspectRatio??1.55;const ratio=candidateRatio>=1&&candidateRatio<=4?candidateRatio:1.55;const imageSize={height:mobile.height??Math.min(SCREEN_W*.85,(SCREEN_W-margin*2)/ratio)};if(section.layout==="media-text"){return <View key={section.id} style={[styles.themeSection,styles.themeMediaTextSection,{marginHorizontal:margin,paddingVertical:mobile.paddingVertical??0,backgroundColor:mobile.backgroundColor}]}>
-    {section.images[0]?<TouchableOpacity activeOpacity={.86} disabled={!section.url} onPress={()=>onOpen(section.url)}><Image source={{uri:section.images[0].url}} style={[styles.themeBannerImage,imageSize,{borderRadius:mobile.imageBorderRadius??0}]} resizeMode={mobile.imageFit??"cover"}/></TouchableOpacity>:null}
-    <View style={styles.themeMediaTextContent}>{section.title?<Text style={[styles.themeMediaTextTitle,{color:mobile.textColor,textAlign:mobile.textAlign??"center"}]}>{section.title}</Text>:null}{section.subtitle?<Text style={[styles.themeMediaTextSubtitle,{color:mobile.textColor,textAlign:mobile.textAlign??"center"}]}>{section.subtitle}</Text>:null}{section.buttonLabel&&section.url?<TouchableOpacity style={styles.themeMediaTextButton} onPress={()=>onOpen(section.url)}><Text style={styles.themeMediaTextButtonText}>{section.buttonLabel}</Text></TouchableOpacity>:null}</View>
+    {section.images[0]?<TouchableOpacity activeOpacity={.86} disabled={!section.url} onPress={()=>onOpen(section.url,{title:section.title,image:section.images[0].url})}><Image source={{uri:section.images[0].url}} style={[styles.themeBannerImage,imageSize,{borderRadius:mobile.imageBorderRadius??0}]} resizeMode={mobile.imageFit??"cover"}/></TouchableOpacity>:null}
+    <View style={styles.themeMediaTextContent}>{section.title?<Text style={[styles.themeMediaTextTitle,{color:mobile.textColor,textAlign:mobile.textAlign??"center"}]}>{section.title}</Text>:null}{section.subtitle?<Text style={[styles.themeMediaTextSubtitle,{color:mobile.textColor,textAlign:mobile.textAlign??"center"}]}>{section.subtitle}</Text>:null}{section.buttonLabel&&section.url?<TouchableOpacity style={styles.themeMediaTextButton} onPress={()=>onOpen(section.url,{title:section.title,image:section.images[0]?.url})}><Text style={styles.themeMediaTextButtonText}>{section.buttonLabel}</Text></TouchableOpacity>:null}</View>
   </View>}const bannerPadding=mobile.paddingVertical??(section.layout==="banner"?0:22);return <View key={section.id} style={[styles.themeSection,{marginHorizontal:margin,paddingVertical:bannerPadding,backgroundColor:mobile.backgroundColor}]}>
     {section.title?<View style={styles.themeCustomHeader}><Text style={[styles.themeCustomTitle,{color:mobile.textColor,textAlign:mobile.textAlign}]}>{section.title}</Text>{section.subtitle?<Text style={[styles.themeSubtitle,{color:mobile.textColor,textAlign:mobile.textAlign}]}>{section.subtitle}</Text>:null}</View>:section.subtitle?<Text style={[styles.themeSubtitle,{color:mobile.textColor,textAlign:mobile.textAlign}]}>{section.subtitle}</Text>:null}
-    {section.layout==="grid"?<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.themeGrid}>{section.images.map((image,index)=><TouchableOpacity key={`${image.url}-${index}`} style={styles.themeCard} activeOpacity={.82} onPress={()=>onOpen(image.link||section.url)}><Image source={{uri:image.url}} style={[styles.themeCardImage,{borderRadius:mobile.imageBorderRadius}]} resizeMode={mobile.imageFit??"cover"}/>{image.alt&&image.alt!==section.title?<Text style={[styles.themeCardLabel,{color:mobile.textColor,textAlign:mobile.textAlign}]} numberOfLines={2}>{image.alt}</Text>:null}</TouchableOpacity>)}</ScrollView>:section.images[0]?<TouchableOpacity activeOpacity={.86} disabled={!section.url} onPress={()=>onOpen(section.url)}><Image source={{uri:section.images[0].url}} style={[styles.themeBannerImage,imageSize,{borderRadius:mobile.imageBorderRadius??0}]} resizeMode={mobile.imageFit??"cover"}/></TouchableOpacity>:null}
-    {section.buttonLabel&&section.url?<TouchableOpacity style={styles.themeButton} onPress={()=>onOpen(section.url)}><Text style={styles.themeButtonText}>{section.buttonLabel} →</Text></TouchableOpacity>:null}
+    {section.layout==="grid"?<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.themeGrid}>{section.images.map((image,index)=><TouchableOpacity key={`${image.url}-${index}`} style={styles.themeCard} activeOpacity={.82} onPress={()=>onOpen(image.link||section.url,{title:image.alt||section.title,image:image.url})}><Image source={{uri:image.url}} style={[styles.themeCardImage,{borderRadius:mobile.imageBorderRadius}]} resizeMode={mobile.imageFit??"cover"}/>{image.alt&&image.alt!==section.title?<Text style={[styles.themeCardLabel,{color:mobile.textColor,textAlign:mobile.textAlign}]} numberOfLines={2}>{image.alt}</Text>:null}</TouchableOpacity>)}</ScrollView>:section.images[0]?<TouchableOpacity activeOpacity={.86} disabled={!section.url} onPress={()=>onOpen(section.url,{title:section.title,image:section.images[0].url})}><Image source={{uri:section.images[0].url}} style={[styles.themeBannerImage,imageSize,{borderRadius:mobile.imageBorderRadius??0}]} resizeMode={mobile.imageFit??"cover"}/></TouchableOpacity>:null}
+    {section.buttonLabel&&section.url?<TouchableOpacity style={styles.themeButton} onPress={()=>onOpen(section.url,{title:section.title,image:section.images[0]?.url})}><Text style={styles.themeButtonText}>{section.buttonLabel} →</Text></TouchableOpacity>:null}
   </View>})}</>;
 }
 
@@ -1004,11 +1004,11 @@ export default function HomeScreen() {
     setIsHeaderScrolled(offsetY > 55);
   };
 
-  const showCollection = (handle?: string, title?: string) => {
+  const showCollection = (handle?: string, title?: string, bannerImage?:string) => {
     if (!handle) return;
     router.push({
       pathname: "/collection/[handle]",
-      params: { handle, title: title || "Collection" },
+      params: { handle, title: title || "Collection", ...(bannerImage?{bannerImage}:{}) },
     });
   };
 
@@ -1037,7 +1037,22 @@ export default function HomeScreen() {
       });
     }
   };
-  const openThemeUrl=(url:string)=>{if(!url)return;WebBrowser.openBrowserAsync(url.startsWith("http")?url:`https://carters.com.lb${url}`,{presentationStyle:WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,controlsColor:"#002041",toolbarColor:"#ffffff"})};
+  const openThemeUrl=(url:string,context?:{title?:string;image?:string})=>{
+    if(!url)return;
+    const absolute=url.startsWith("http")?url:`https://carters.com.lb${url.startsWith("/")?url:`/${url}`}`;
+    const sameStore=/^https?:\/\/(?:www\.)?carters\.com\.lb(?:\/|$)/i.test(absolute);
+    let path=absolute.replace(/^https?:\/\/[^/]+/i,"").split("#")[0];
+    path=path.replace(/^\/(?:[a-z]{2}(?:-[a-z]{2})?)(?=\/)/i,"");
+    const collectionMatch=path.match(/^\/collections\/([^/?]+)/i);
+    if(collectionMatch){showCollection(decodeURIComponent(collectionMatch[1]),context?.title||"Collection",context?.image);return}
+    const productMatch=path.match(/^\/products\/([^/?]+)/i);
+    if(productMatch){router.push({pathname:"/product/[handle]",params:{handle:decodeURIComponent(productMatch[1])}});return}
+    const pageMatch=path.match(/^\/pages\/([^/?]+)/i);
+    if(pageMatch&&/(sale|discount|special-price|clearance|offer|promotion)/i.test(pageMatch[1])){const handle=pageMatch[1]==="special-prices"?"special-prices":pageMatch[1];showCollection(handle,context?.title||pageMatch[1].replaceAll("-"," "),context?.image);return}
+    if(/^\/search(?:\?|$)/i.test(path)){router.push("/search");return}
+    if(sameStore&&(/^\/collections(?:\?|$)/i.test(path)||path==="/")){showCollection("all-products",context?.title||"Shop all",context?.image);return}
+    void WebBrowser.openBrowserAsync(absolute,{presentationStyle:WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,controlsColor:"#002041",toolbarColor:"#ffffff"});
+  };
 
   const handleTab = (tab: TabId) => {
     setActiveTab(tab);
@@ -1088,7 +1103,7 @@ export default function HomeScreen() {
           items={heroBanners}
           customCss={shopifyStyles.hero}
           onShopNow={(banner) =>
-            showCollection(banner.handle, banner.title)
+            showCollection(banner.handle, banner.title, banner.image)
           }
         />}
 
