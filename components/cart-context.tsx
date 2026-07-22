@@ -1,5 +1,5 @@
 import { getShopifyCart } from '@/services/shopify';
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from '@/services/storage';
 import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 
 type CartContextValue = { count: number; setCount: (count: number) => void; refresh: () => Promise<void> };

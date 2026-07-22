@@ -2,7 +2,7 @@ import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
-import * as SecureStore from "expo-secure-store";
+import * as SecureStore from "@/services/storage";
 import { createContext, PropsWithChildren, useCallback, useContext, useEffect, useState } from "react";
 import { Linking, Platform } from "react-native";
 import { adminApiUrls, fetchAdmin } from "@/services/admin-api";
@@ -38,9 +38,11 @@ type NotificationContextValue = {
 
 const NotificationContext = createContext<NotificationContextValue | null>(null);
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({ shouldPlaySound: true, shouldSetBadge: true, shouldShowBanner: true, shouldShowList: true }),
-});
+if (Platform.OS !== "web") {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({ shouldPlaySound: true, shouldSetBadge: true, shouldShowBanner: true, shouldShowList: true }),
+  });
+}
 
 export function NotificationProvider({ children }: PropsWithChildren) {
   const router = useRouter();
@@ -57,10 +59,12 @@ export function NotificationProvider({ children }: PropsWithChildren) {
     SecureStore.getItemAsync(INBOX_KEY).then((value) => {
       if (value) try { setItems(JSON.parse(value)); } catch { /* ignore invalid local data */ }
     });
+    if (Platform.OS === "web") return;
     Notifications.getPermissionsAsync().then(({ status }) => setEnabled(status === "granted"));
   }, []);
 
   useEffect(() => {
+    if (Platform.OS === "web") return;
     const received = Notifications.addNotificationReceivedListener((notification) => {
       const content = notification.request.content;
       const next: InboxNotification = {
@@ -104,7 +108,7 @@ export function NotificationProvider({ children }: PropsWithChildren) {
   }, [router]);
 
   useEffect(() => {
-    if (!__DEV__) return;
+    if (!__DEV__ || Platform.OS === "web") return;
     let active = true;
     const poll = async () => {
       try {
@@ -131,6 +135,7 @@ export function NotificationProvider({ children }: PropsWithChildren) {
   }, []);
 
   const register = async () => {
+    if (Platform.OS === "web") throw new Error("Push notifications are available in the Android and iOS app.");
     if (!Device.isDevice) throw new Error("Push notifications require a physical device or supported simulator.");
     setRegistering(true);
     try {

@@ -2,7 +2,7 @@ import { addToShopifyCart, createCheckout, getGiftOptions, getProduct, GiftChoic
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import * as SecureStore from "expo-secure-store";
+import * as SecureStore from "@/services/storage";
 import { useEffect, useMemo, useState } from "react";
 import { useCart } from "@/components/cart-context";
 import { useCurrency } from "@/components/currency-context";

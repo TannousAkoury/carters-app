@@ -1,6 +1,6 @@
 import { applyShopifyCartDiscount, attachCustomerToShopifyCart, getShopifyCart, markShopifyCartAsAppOrder, ShopifyCart, shopifyCheckoutUrlWithDiscount, updateShopifyCartLine } from '@/services/shopify';
 import { Ionicons } from '@expo/vector-icons';
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from '@/services/storage';
 import * as WebBrowser from 'expo-web-browser';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';

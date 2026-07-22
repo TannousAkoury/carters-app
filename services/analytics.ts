@@ -1,4 +1,4 @@
-import * as SecureStore from "expo-secure-store";
+import * as SecureStore from "@/services/storage";
 import { Platform } from "react-native";
 import { fetchAdmin } from "@/services/admin-api";
 

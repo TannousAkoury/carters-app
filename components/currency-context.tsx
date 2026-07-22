@@ -1,4 +1,4 @@
-import * as SecureStore from "expo-secure-store";
+import * as SecureStore from "@/services/storage";
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 
 export type DisplayCurrency = "USD" | "LBP";
