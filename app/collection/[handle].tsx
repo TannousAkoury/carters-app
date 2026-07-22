@@ -1,11 +1,14 @@
 import { getCollectionDetails, getProducts, type ShopifyCollectionDetails } from "@/services/shopify";
+import { useEvent } from "expo";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useVideoPlayer, VideoView } from "expo-video";
 import { useEffect, useState } from "react";
 import { useProductFilters } from "@/features/collection/use-product-filters";
 import { useCurrency } from "@/components/currency-context";
 import { salePercentage } from "@/utils/pricing";
-import { ActivityIndicator, FlatList, Image, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, FlatList, Image, ImageBackground, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 type Product = {
   id: string;
@@ -22,6 +25,16 @@ type Product = {
   maxPrice?: number;
 };
 
+function CollectionBannerCopy({title}:{title:string}){
+  return <View style={styles.collectionBannerContent}><Text style={styles.collectionBannerTitle}>{title.toUpperCase()}</Text><View style={styles.collectionBreadcrumb}><Text style={styles.collectionBreadcrumbHome}>Home</Text><Text style={styles.collectionBreadcrumbSlash}>/</Text><Text style={styles.collectionBreadcrumbCurrent} numberOfLines={1}>{title.toUpperCase()}</Text></View></View>;
+}
+
+function CollectionVideoBanner({uri,poster}:{uri:string;poster?:string}){
+  const player=useVideoPlayer(uri,current=>{current.loop=true;current.muted=true;current.audioMixingMode="mixWithOthers";current.play()});
+  const {status}=useEvent(player,"statusChange",{status:player.status});
+  return <View style={styles.collectionBanner}>{poster?<Image source={{uri:poster}} style={StyleSheet.absoluteFill} resizeMode="cover"/>:null}<VideoView player={player} style={[StyleSheet.absoluteFill,styles.collectionBannerVideo,status!=="readyToPlay"&&styles.collectionBannerVideoLoading]} contentFit="cover" nativeControls={false} allowsFullscreen={false} playsInline surfaceType="textureView"/></View>;
+}
+
 export default function CollectionScreen() {
   const { formatMoney } = useCurrency();
   const router = useRouter();
@@ -34,6 +47,8 @@ export default function CollectionScreen() {
   const [error, setError] = useState("");
   const [filterVisible, setFilterVisible] = useState(false);
   const { availability, setAvailability, sort, setSort, minimumPrice, setMinimumPrice, maximumPrice, setMaximumPrice, selectedBrands, selectedSizes, brands, sizes, visibleProducts, toggleBrand, toggleSize, clearFilters } = useProductFilters(products);
+  const bannerImage=collection?.bannerImage;
+  const collectionTitle=collection?.title||title||handle;
 
   useEffect(() => {
     let mounted = true;
@@ -63,9 +78,7 @@ export default function CollectionScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.collectionBanner}>
-        <Text style={styles.collectionBannerTitle}>{collection?.title || title || handle}</Text>
-      </View>
+      {collection?.bannerVideo?<CollectionVideoBanner key={collection.bannerVideo} uri={collection.bannerVideo} poster={collection.bannerVideoPoster||bannerImage}/>:bannerImage?<ImageBackground source={{uri:bannerImage}} style={styles.collectionBanner} imageStyle={styles.collectionBannerImage} resizeMode="cover"><View style={styles.collectionBannerOverlay}><CollectionBannerCopy title={collectionTitle}/></View></ImageBackground>:<LinearGradient colors={["#173b59","#0b2b48","#173a58"]} start={{x:0,y:.5}} end={{x:1,y:.5}} style={styles.collectionBanner}><View style={[styles.collectionBannerTexture,styles.collectionBannerTextureOne]}/><View style={[styles.collectionBannerTexture,styles.collectionBannerTextureTwo]}/><CollectionBannerCopy title={collectionTitle}/></LinearGradient>}
 
       {!loading && !error ? (
         <View style={styles.toolbar}>
@@ -141,8 +154,20 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingTop: 15, paddingBottom: 18, gap: 13, borderBottomWidth: 1, borderBottomColor: "#e8e8e8" },
   back: { width: 38, height: 38, backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
   toolbar: { height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 17, borderBottomWidth: 1, borderBottomColor: "#e8e8e8" },
-  collectionBanner: { minHeight: 112, paddingHorizontal: 24, paddingVertical: 28, alignItems: "center", justifyContent: "center", backgroundColor: "#eef5f8" },
-  collectionBannerTitle: { color: "#002041", fontSize: 25, lineHeight: 32, fontWeight: "900", textAlign: "center" },
+  collectionBanner:{height:190,overflow:"hidden",alignItems:"center",justifyContent:"center",backgroundColor:"#123551"},
+  collectionBannerImage:{opacity:.96},
+  collectionBannerVideo:{backgroundColor:"transparent"},
+  collectionBannerVideoLoading:{opacity:0},
+  collectionBannerOverlay:{width:"100%",height:"100%",alignItems:"center",justifyContent:"center",paddingHorizontal:22,backgroundColor:"rgba(4,31,54,.58)"},
+  collectionBannerContent:{zIndex:2,alignItems:"center",paddingHorizontal:22},
+  collectionBannerTexture:{position:"absolute",top:-45,bottom:-45,width:92,backgroundColor:"rgba(255,255,255,.018)",transform:[{rotate:"7deg"}]},
+  collectionBannerTextureOne:{left:"18%"},
+  collectionBannerTextureTwo:{right:"19%",width:130,backgroundColor:"rgba(0,18,34,.11)",transform:[{rotate:"-5deg"}]},
+  collectionBannerTitle:{maxWidth:"100%",color:"#fff",fontSize:30,lineHeight:38,fontWeight:"700",letterSpacing:.6,textAlign:"center",textShadowColor:"rgba(0,0,0,.18)",textShadowOffset:{width:0,height:1},textShadowRadius:2},
+  collectionBreadcrumb:{maxWidth:"100%",flexDirection:"row",alignItems:"center",justifyContent:"center",gap:9,marginTop:15},
+  collectionBreadcrumbHome:{color:"#fff",fontSize:12,fontWeight:"600"},
+  collectionBreadcrumbSlash:{color:"rgba(255,255,255,.7)",fontSize:14},
+  collectionBreadcrumbCurrent:{maxWidth:"72%",color:"#fff",fontSize:12,fontWeight:"800"},
   resultCount: { color: "#667085", fontSize: 10, fontWeight: "700", letterSpacing: 0.6 },
   filterLabel: { flexDirection: "row", alignItems: "center", gap: 6 },
   filterText: { color: "#002041", fontSize: 10, fontWeight: "800", letterSpacing: 0.5 },

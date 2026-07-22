@@ -1971,9 +1971,18 @@ async function getPublishedCollectionBanner(handle: string) {
     if (mainStart < 0) return {};
     const afterMain = html.slice(mainStart);
     const gridStart = afterMain.search(/id=["']shopify-section-[^"']*product-grid[^"']*["']/i);
-    const bannerHtml = gridStart >= 0 ? afterMain.slice(0, gridStart) : afterMain.slice(0, 30000);
-    const video = bannerHtml.match(/<source\b[^>]*src=["']([^"']+)["'][^>]*type=["']video\/mp4["']/i)?.[1];
-    const poster = bannerHtml.match(/<video\b[^>]*poster=["']([^"']+)["']/i)?.[1];
+    const beforeGrid = gridStart >= 0 ? afterMain.slice(0, gridStart) : afterMain.slice(0, 30000);
+    const headingStart = beforeGrid.search(/id=["']shopify-section-[^"']*(?:collection-heading|collection-banner|collection-hero)[^"']*["']/i);
+    const afterHeading = headingStart >= 0 ? beforeGrid.slice(headingStart) : beforeGrid;
+    const nextSection = headingStart >= 0 ? afterHeading.slice(1).search(/id=["']shopify-section-/i) : -1;
+    const bannerHtml = headingStart >= 0 && nextSection >= 0 ? afterHeading.slice(0, nextSection + 1) : afterHeading;
+    const sourceTags=[...bannerHtml.matchAll(/<source\b([^>]*)>/gi)].map(match=>match[1]);
+    const sourceVideo=sourceTags.map(attributes=>({url:attributes.match(/(?:src|data-src)=["']([^"']+)["']/i)?.[1],type:attributes.match(/type=["']([^"']+)["']/i)?.[1]})).find(source=>source.url&&(source.type?.startsWith("video/")||/\.(?:mp4|webm)(?:\?|$)/i.test(source.url)));
+    const videoTag=bannerHtml.match(/<video\b([^>]*)>/i)?.[1]||"";
+    const directVideo=videoTag.match(/(?:src|data-src)=["']([^"']+)["']/i)?.[1];
+    const embeddedVideo=bannerHtml.match(/["'(]((?:https?:)?\/\/[^"')\s]+\.(?:mp4|webm)(?:\?[^"')\s]*)?)/i)?.[1];
+    const video = sourceVideo?.url||directVideo||embeddedVideo;
+    const poster = videoTag.match(/(?:poster|data-poster)=["']([^"']+)["']/i)?.[1];
     if (video) {
       return { video: absoluteStorefrontUrl(video), poster: absoluteStorefrontUrl(poster) };
     }
@@ -1981,7 +1990,8 @@ async function getPublishedCollectionBanner(handle: string) {
     const image = images
       .map((match) => match[1])
       .find((url) => /\/cdn\/shop\/files\//i.test(url) && !/logo|icon|badge/i.test(url));
-    return { image: absoluteStorefrontUrl(image) };
+    const backgroundImage=[...bannerHtml.matchAll(/(?:background|background-image)\s*:[^;{}]*url\(\s*["']?([^"')]+)["']?\s*\)/gi)].map(match=>match[1]).find(url=>/\/cdn\/shop\/files\//i.test(url)&&!/logo|icon|badge/i.test(url));
+    return { image: absoluteStorefrontUrl(image||backgroundImage) };
   } catch (error) {
     console.warn(`Unable to sync published banner for ${handle}:`, error);
     return {} as { image?: string; video?: string; poster?: string };

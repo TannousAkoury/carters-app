@@ -4,3 +4,5 @@
 .brandLogo{display:block;width:220px;max-width:100%;height:auto;object-fit:contain}
 
 .loginShell{grid-template-columns:minmax(320px,430px)}
+
+.brand{width:100%;justify-content:center;text-align:center}

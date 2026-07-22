@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { requireAnyPermission, shopifyAdminGraphql } from "@/lib/shopify-admin";
 
 type Money = { amount: string; currencyCode: string };
+type LineDiscountAllocation = {
+  allocatedAmountSet?: { shopMoney?: Money | null } | null;
+  discountApplication?: { __typename?: string; code?: string | null; title?: string | null } | null;
+};
 type CommerceOrder = {
   id: string;
   processedAt: string;
@@ -13,7 +17,8 @@ type CommerceOrder = {
   displayFinancialStatus?: string | null;
   displayFulfillmentStatus?: string | null;
   sourceName?: string | null;
-  lineItems?: { nodes?: { title: string; quantity: number; discountedTotalSet?: { shopMoney?: Money | null } | null }[] } | null;
+  discountCodes?: string[] | null;
+  lineItems?: { nodes?: { id:string; title: string; variantTitle?:string|null; sku?:string|null; quantity: number; originalTotalSet?:{shopMoney?:Money|null}|null; discountedTotalSet?: { shopMoney?: Money | null } | null; discountAllocations?:LineDiscountAllocation[]|null; variant?:{id:string;price?:string|null;compareAtPrice?:string|null}|null }[] } | null;
   customer?: { id: string; email?: string | null; displayName?: string | null; state?: string | null } | null;
   email?: string | null;
 };
@@ -54,7 +59,23 @@ export async function GET(request: Request) {
           displayFinancialStatus
           displayFulfillmentStatus
           sourceName
-          lineItems(first: 50) { nodes { title quantity discountedTotalSet { shopMoney { amount currencyCode } } } }
+          discountCodes
+          lineItems(first: 50) { nodes {
+            id title variantTitle sku quantity
+            variant { id price compareAtPrice }
+            originalTotalSet { shopMoney { amount currencyCode } }
+            discountedTotalSet { shopMoney { amount currencyCode } }
+            discountAllocations {
+              allocatedAmountSet { shopMoney { amount currencyCode } }
+              discountApplication {
+                __typename
+                ... on DiscountCodeApplication { code }
+                ... on AutomaticDiscountApplication { title }
+                ... on ManualDiscountApplication { title }
+                ... on ScriptDiscountApplication { title }
+              }
+            }
+          } }
           customer { id email displayName state }
           email
         }
@@ -86,6 +107,8 @@ export async function GET(request: Request) {
     const fulfillmentMap = new Map<string, number>();
     const financialMap = new Map<string, number>();
     const sourceMap = new Map<string, number>();
+    const discountBucketMap = new Map<number, { rate:number; itemsSold:number; orders:Set<string>; products:Set<string>; grossSales:number; discountAmount:number; netSales:number }>();
+    const discountProductMap = new Map<string, { title:string; variant:string; sku:string; discountLabel:string; effectiveRate:number; quantity:number; orders:Set<string>; grossSales:number; discountAmount:number; netSales:number }>();
     let currencyCode = "USD";
     for (const order of activeOrders) {
       const customerKey = order.customer?.id || order.customer?.email || order.email || order.id;
@@ -108,6 +131,25 @@ export async function GET(request: Request) {
         item.quantity += line.quantity;
         item.sales += Number(line.discountedTotalSet?.shopMoney?.amount || 0);
         productMap.set(line.title, item);
+        const checkoutGross=Number(line.originalTotalSet?.shopMoney?.amount||0);
+        const compareAtUnit=Number(line.variant?.compareAtPrice||0);
+        const saleUnit=line.quantity>0?checkoutGross/line.quantity:Number(line.variant?.price||0);
+        const websiteMarkdown=compareAtUnit>saleUnit?Math.max(0,(compareAtUnit-saleUnit)*line.quantity):0;
+        const grossSales=websiteMarkdown>0?compareAtUnit*line.quantity:checkoutGross;
+        const allocatedDiscount=(line.discountAllocations||[]).reduce((sum,allocation)=>sum+Number(allocation.allocatedAmountSet?.shopMoney?.amount||0),0);
+        const discountAmount=websiteMarkdown+allocatedDiscount;
+        const netSales=Math.max(0,grossSales-discountAmount);
+        const websiteRate=compareAtUnit>saleUnit&&compareAtUnit>0?((compareAtUnit-saleUnit)/compareAtUnit)*100:0;
+        const effectiveRate=grossSales>0?(discountAmount/grossSales)*100:0;
+        const rateBucket=Math.round(websiteRate>0?websiteRate:effectiveRate);
+        const labels=[...new Set((line.discountAllocations||[]).map(allocation=>allocation.discountApplication?.code||allocation.discountApplication?.title||"").filter(Boolean))];
+        const allocationLabel=labels.join(" + ")||(order.discountCodes||[]).join(" + ");
+        const discountLabel=[websiteMarkdown>0?"Website sale price":"",allocationLabel].filter(Boolean).join(" + ")||(discountAmount>0?"Applied discount":"Full price");
+        const bucket=discountBucketMap.get(rateBucket)||{rate:rateBucket,itemsSold:0,orders:new Set<string>(),products:new Set<string>(),grossSales:0,discountAmount:0,netSales:0};
+        bucket.itemsSold+=line.quantity;bucket.orders.add(order.id);bucket.products.add(line.title);bucket.grossSales+=grossSales;bucket.discountAmount+=discountAmount;bucket.netSales+=netSales;discountBucketMap.set(rateBucket,bucket);
+        const productKey=`${line.title}\u0000${line.variantTitle||""}\u0000${line.sku||""}\u0000${rateBucket}\u0000${discountLabel}`;
+        const discountedProduct=discountProductMap.get(productKey)||{title:line.title,variant:line.variantTitle||"Default",sku:line.sku||"",discountLabel,effectiveRate:rateBucket,quantity:0,orders:new Set<string>(),grossSales:0,discountAmount:0,netSales:0};
+        discountedProduct.quantity+=line.quantity;discountedProduct.orders.add(order.id);discountedProduct.grossSales+=grossSales;discountedProduct.discountAmount+=discountAmount;discountedProduct.netSales+=netSales;discountProductMap.set(productKey,discountedProduct);
       }
     }
     const daily = Array.from({ length: days }, (_, index) => {
@@ -168,6 +210,10 @@ export async function GET(request: Request) {
       },
       daily,
       topProducts: [...productMap.values()].map((item) => ({ ...item, sales: Math.round(item.sales * 100) / 100 })).sort((a, b) => b.sales - a.sales || b.quantity - a.quantity).slice(0, 20),
+      discountPerformance: {
+        buckets:[...discountBucketMap.values()].map(bucket=>({rate:bucket.rate,label:bucket.rate?`${bucket.rate}% off`:"Full price",itemsSold:bucket.itemsSold,orders:bucket.orders.size,products:bucket.products.size,grossSales:Math.round(bucket.grossSales*100)/100,discountAmount:Math.round(bucket.discountAmount*100)/100,netSales:Math.round(bucket.netSales*100)/100})).sort((a,b)=>a.rate-b.rate),
+        products:[...discountProductMap.values()].map(item=>({title:item.title,variant:item.variant,sku:item.sku,discountLabel:item.discountLabel,effectiveRate:item.effectiveRate,quantity:item.quantity,orders:item.orders.size,grossSales:Math.round(item.grossSales*100)/100,discountAmount:Math.round(item.discountAmount*100)/100,netSales:Math.round(item.netSales*100)/100})).sort((a,b)=>b.discountAmount-a.discountAmount||b.quantity-a.quantity).slice(0,500),
+      },
       fulfillment: breakdown(fulfillmentMap),
       financial: breakdown(financialMap),
       sources: breakdown(sourceMap),
