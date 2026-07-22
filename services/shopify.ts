@@ -1,4 +1,5 @@
 import { createStorefrontApiClient } from "@shopify/storefront-api-client";
+import { fetchAdmin } from "@/services/admin-api";
 import Constants from "expo-constants";
 
 const extra = Constants.expoConfig?.extra;
@@ -979,9 +980,11 @@ function parseThemeSections(html: string): HomepageThemeSection[] {
   starts.forEach((start, index) => {
     const source = html.slice(start.index ?? 0, starts[index + 1]?.index ?? html.length);
     const known = THEME_SECTION_MARKERS.find((item) => source.includes(item.marker));
-    if (known && !seenKnown.has(known.key)) {
-      seenKnown.add(known.key);
-      placement = known.after;
+    if (known) {
+      if (!seenKnown.has(known.key)) {
+        seenKnown.add(known.key);
+        placement = known.after;
+      }
       return;
     }
 
@@ -1620,6 +1623,14 @@ async function getMobileHomepageFromAdmin() {
 }
 
 async function fetchWebsiteHomepageHtml() {
+  try {
+    const proxied = await fetchAdmin("/api/shopify/homepage");
+    if (proxied.ok) return proxied.text();
+  } catch {
+    // Native apps can still fetch the public storefront directly when the
+    // local admin server is unavailable.
+  }
+
   const response = await fetch(PUBLIC_SITE_URL);
 
   if (!response.ok) {

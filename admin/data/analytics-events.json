@@ -3627,5 +3627,49 @@
       "platform": "ios"
     },
     "createdAt": "2026-07-22T09:11:59.869Z"
+  },
+  {
+    "id": "a0d5fd0b-c0dc-4fd1-9e66-80bf28a99c8b",
+    "name": "screen_view",
+    "sessionId": "1784735741511-h5ednnuq0ww",
+    "deviceId": "1784735741498-dgsuibbpp4h",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-22T16:21:45.334Z"
+  },
+  {
+    "id": "e0eeb943-d603-4b62-a5e5-594d3a8cce38",
+    "name": "screen_view",
+    "sessionId": "1784735932309-p1ww9x7at1",
+    "deviceId": "1784666906896-n5hmf1ik4pr",
+    "properties": {
+      "path": "/",
+      "platform": "web"
+    },
+    "createdAt": "2026-07-22T16:24:15.142Z"
+  },
+  {
+    "id": "dcc637ab-dbe9-4d66-ad74-9b785dba12c2",
+    "name": "screen_view",
+    "sessionId": "1784735932309-p1ww9x7at1",
+    "deviceId": "1784666906896-n5hmf1ik4pr",
+    "properties": {
+      "path": "/collection/30-discount-summer-sale",
+      "platform": "web"
+    },
+    "createdAt": "2026-07-22T16:24:33.670Z"
+  },
+  {
+    "id": "ef41fb7b-fd9e-4d15-863d-7ac3706c8293",
+    "name": "screen_view",
+    "sessionId": "1784735932309-p1ww9x7at1",
+    "deviceId": "1784666906896-n5hmf1ik4pr",
+    "properties": {
+      "path": "/",
+      "platform": "web"
+    },
+    "createdAt": "2026-07-22T16:24:44.707Z"
   }
 ]
