@@ -25,8 +25,9 @@ type Product = {
   maxPrice?: number;
 };
 
-function CollectionBannerCopy({title}:{title:string}){
-  return <View style={styles.collectionBannerContent}><Text style={styles.collectionBannerTitle}>{title.toUpperCase()}</Text><View style={styles.collectionBreadcrumb}><Text style={styles.collectionBreadcrumbHome}>Home</Text><Text style={styles.collectionBreadcrumbSlash}>/</Text><Text style={styles.collectionBreadcrumbCurrent} numberOfLines={1}>{title.toUpperCase()}</Text></View></View>;
+function CollectionBannerCopy({title,compact=false}:{title:string;compact?:boolean}){
+  const longTitle=title.length>18;
+  return <View style={styles.collectionBannerContent}><Text style={[styles.collectionBannerTitle,compact&&styles.collectionBannerTitleCompact,longTitle&&compact&&styles.collectionBannerTitleLong]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={.78}>{title.toUpperCase()}</Text><View style={[styles.collectionBreadcrumb,compact&&styles.collectionBreadcrumbCompact]}><Text style={styles.collectionBreadcrumbHome}>Home</Text><Text style={styles.collectionBreadcrumbSlash}>/</Text><Text style={styles.collectionBreadcrumbCurrent} numberOfLines={1}>{title.toUpperCase()}</Text></View></View>;
 }
 
 function CollectionVideoBanner({uri,poster}:{uri:string;poster?:string}){
@@ -49,6 +50,7 @@ export default function CollectionScreen() {
   const { availability, setAvailability, sort, setSort, minimumPrice, setMinimumPrice, maximumPrice, setMaximumPrice, selectedBrands, selectedSizes, brands, sizes, visibleProducts, toggleBrand, toggleSize, clearFilters } = useProductFilters(products);
   const bannerImage=collection?.bannerImage;
   const collectionTitle=collection?.title||title||handle;
+  const fallbackBannerHeight=104;
 
   useEffect(() => {
     let mounted = true;
@@ -78,7 +80,7 @@ export default function CollectionScreen() {
         </TouchableOpacity>
       </View>
 
-      {collection?.bannerVideo?<CollectionVideoBanner key={collection.bannerVideo} uri={collection.bannerVideo} poster={collection.bannerVideoPoster||bannerImage}/>:bannerImage?<ImageBackground source={{uri:bannerImage}} style={styles.collectionBanner} imageStyle={styles.collectionBannerImage} resizeMode="cover"><View style={styles.collectionBannerOverlay}><CollectionBannerCopy title={collectionTitle}/></View></ImageBackground>:<LinearGradient colors={["#173b59","#0b2b48","#173a58"]} start={{x:0,y:.5}} end={{x:1,y:.5}} style={styles.collectionBanner}><View style={[styles.collectionBannerTexture,styles.collectionBannerTextureOne]}/><View style={[styles.collectionBannerTexture,styles.collectionBannerTextureTwo]}/><CollectionBannerCopy title={collectionTitle}/></LinearGradient>}
+      {collection?.bannerVideo?<CollectionVideoBanner key={collection.bannerVideo} uri={collection.bannerVideo} poster={collection.bannerVideoPoster||bannerImage}/>:bannerImage?<ImageBackground source={{uri:bannerImage}} style={styles.collectionBanner} imageStyle={styles.collectionBannerImage} resizeMode="cover"><View style={styles.collectionBannerOverlay}><CollectionBannerCopy title={collectionTitle}/></View></ImageBackground>:<LinearGradient colors={["#173b59","#0b2b48","#173a58"]} start={{x:0,y:.5}} end={{x:1,y:.5}} style={[styles.collectionBanner,{height:fallbackBannerHeight}]}><View style={[styles.collectionBannerTexture,styles.collectionBannerTextureOne]}/><View style={[styles.collectionBannerTexture,styles.collectionBannerTextureTwo]}/><CollectionBannerCopy title={collectionTitle} compact/></LinearGradient>}
 
       {!loading && !error ? (
         <View style={styles.toolbar}>
@@ -164,7 +166,10 @@ const styles = StyleSheet.create({
   collectionBannerTextureOne:{left:"18%"},
   collectionBannerTextureTwo:{right:"19%",width:130,backgroundColor:"rgba(0,18,34,.11)",transform:[{rotate:"-5deg"}]},
   collectionBannerTitle:{maxWidth:"100%",color:"#fff",fontSize:30,lineHeight:38,fontWeight:"700",letterSpacing:.6,textAlign:"center",textShadowColor:"rgba(0,0,0,.18)",textShadowOffset:{width:0,height:1},textShadowRadius:2},
+  collectionBannerTitleCompact:{fontSize:24,lineHeight:28,letterSpacing:.4},
+  collectionBannerTitleLong:{fontSize:20,lineHeight:24},
   collectionBreadcrumb:{maxWidth:"100%",flexDirection:"row",alignItems:"center",justifyContent:"center",gap:9,marginTop:15},
+  collectionBreadcrumbCompact:{marginTop:5},
   collectionBreadcrumbHome:{color:"#fff",fontSize:12,fontWeight:"600"},
   collectionBreadcrumbSlash:{color:"rgba(255,255,255,.7)",fontSize:14},
   collectionBreadcrumbCurrent:{maxWidth:"72%",color:"#fff",fontSize:12,fontWeight:"800"},

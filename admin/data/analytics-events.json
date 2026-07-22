@@ -3671,5 +3671,258 @@
       "platform": "web"
     },
     "createdAt": "2026-07-22T16:24:44.707Z"
+  },
+  {
+    "id": "aabf7370-fce0-4953-b0f3-68cc07483029",
+    "name": "screen_view",
+    "sessionId": "1784735741511-h5ednnuq0ww",
+    "deviceId": "1784735741498-dgsuibbpp4h",
+    "properties": {
+      "path": "/collection/bodysuits",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-22T16:27:15.063Z"
+  },
+  {
+    "id": "9f32f689-9f3e-488d-b419-07ae5916ecfa",
+    "name": "screen_view",
+    "sessionId": "1784735741511-h5ednnuq0ww",
+    "deviceId": "1784735741498-dgsuibbpp4h",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-22T16:27:16.465Z"
+  },
+  {
+    "id": "1d0fd7d9-e5c0-4637-ba95-236f3687f2aa",
+    "name": "screen_view",
+    "sessionId": "1784735741511-h5ednnuq0ww",
+    "deviceId": "1784735741498-dgsuibbpp4h",
+    "properties": {
+      "path": "/collection/all-products",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-22T16:27:19.396Z"
+  },
+  {
+    "id": "a09df66a-c5a0-4456-8c52-4dfa55d8eb7e",
+    "name": "screen_view",
+    "sessionId": "1784735932309-p1ww9x7at1",
+    "deviceId": "1784666906896-n5hmf1ik4pr",
+    "properties": {
+      "path": "/collection/all-products",
+      "platform": "web"
+    },
+    "createdAt": "2026-07-22T16:27:28.783Z"
+  },
+  {
+    "id": "f2e8c469-7441-452d-95df-10330d64228a",
+    "name": "screen_view",
+    "sessionId": "1784735932309-p1ww9x7at1",
+    "deviceId": "1784666906896-n5hmf1ik4pr",
+    "properties": {
+      "path": "/",
+      "platform": "web"
+    },
+    "createdAt": "2026-07-22T16:31:24.678Z"
+  },
+  {
+    "id": "dfac308e-e925-4892-a075-2bb335c70d3d",
+    "name": "screen_view",
+    "sessionId": "1784735741511-h5ednnuq0ww",
+    "deviceId": "1784735741498-dgsuibbpp4h",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-22T16:53:31.571Z"
+  },
+  {
+    "id": "3f1e062a-6183-4935-a919-c1c2cfbe11af",
+    "name": "screen_view",
+    "sessionId": "1784735741511-h5ednnuq0ww",
+    "deviceId": "1784735741498-dgsuibbpp4h",
+    "properties": {
+      "path": "/collection/all-products",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-22T16:53:40.935Z"
+  },
+  {
+    "id": "618a9671-5501-4cda-b23e-4474bfd87799",
+    "name": "screen_view",
+    "sessionId": "1784735932309-p1ww9x7at1",
+    "deviceId": "1784666906896-n5hmf1ik4pr",
+    "properties": {
+      "path": "/collection/all-products",
+      "platform": "web"
+    },
+    "createdAt": "2026-07-22T16:54:06.537Z"
+  },
+  {
+    "id": "0ed63aa0-3cbf-43e6-ab97-7069a2a350ce",
+    "name": "screen_view",
+    "sessionId": "1784735741511-h5ednnuq0ww",
+    "deviceId": "1784735741498-dgsuibbpp4h",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-22T16:56:24.731Z"
+  },
+  {
+    "id": "e1341398-1dcb-4f87-a042-2963a20d2b11",
+    "name": "screen_view",
+    "sessionId": "1784735741511-h5ednnuq0ww",
+    "deviceId": "1784735741498-dgsuibbpp4h",
+    "properties": {
+      "path": "/collection/all-products",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-22T16:56:27.759Z"
+  },
+  {
+    "id": "278596ac-1499-4d9a-8c57-dc419b87e68a",
+    "name": "screen_view",
+    "sessionId": "1784735741511-h5ednnuq0ww",
+    "deviceId": "1784735741498-dgsuibbpp4h",
+    "properties": {
+      "path": "/cart",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-22T16:56:28.550Z"
+  },
+  {
+    "id": "beb72912-f0a9-4925-9b67-5e5efadf6ac0",
+    "name": "screen_view",
+    "sessionId": "1784735741511-h5ednnuq0ww",
+    "deviceId": "1784735741498-dgsuibbpp4h",
+    "properties": {
+      "path": "/notifications",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-22T16:56:29.658Z"
+  },
+  {
+    "id": "43012231-4e88-4f9a-b8d6-e29fa8582868",
+    "name": "screen_view",
+    "sessionId": "1784735741511-h5ednnuq0ww",
+    "deviceId": "1784735741498-dgsuibbpp4h",
+    "properties": {
+      "path": "/account",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-22T16:56:30.804Z"
+  },
+  {
+    "id": "01e7f5cd-ba54-4715-918e-b9534b5f702d",
+    "name": "screen_view",
+    "sessionId": "1784735741511-h5ednnuq0ww",
+    "deviceId": "1784735741498-dgsuibbpp4h",
+    "properties": {
+      "path": "/notifications",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-22T16:56:32.443Z"
+  },
+  {
+    "id": "07df8ad7-fa71-4b49-8ad8-d8c872fd8c91",
+    "name": "screen_view",
+    "sessionId": "1784735741511-h5ednnuq0ww",
+    "deviceId": "1784735741498-dgsuibbpp4h",
+    "properties": {
+      "path": "/cart",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-22T16:56:33.041Z"
+  },
+  {
+    "id": "00f38bc3-179a-4779-8c2a-a44a0d63e117",
+    "name": "screen_view",
+    "sessionId": "1784735741511-h5ednnuq0ww",
+    "deviceId": "1784735741498-dgsuibbpp4h",
+    "properties": {
+      "path": "/collection/all-products",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-22T16:56:33.769Z"
+  },
+  {
+    "id": "9b23d278-c777-4a02-afec-59a927938c82",
+    "name": "screen_view",
+    "sessionId": "1784735741511-h5ednnuq0ww",
+    "deviceId": "1784735741498-dgsuibbpp4h",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-22T16:56:34.728Z"
+  },
+  {
+    "id": "fe73d87f-3c5c-4094-ad65-47f9184bf58c",
+    "name": "screen_view",
+    "sessionId": "1784735741511-h5ednnuq0ww",
+    "deviceId": "1784735741498-dgsuibbpp4h",
+    "properties": {
+      "path": "/collection/little-baby-girl-basics",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-22T16:56:38.352Z"
+  },
+  {
+    "id": "a1711684-2dcd-4811-add7-e361127003e8",
+    "name": "screen_view",
+    "sessionId": "1784735741511-h5ednnuq0ww",
+    "deviceId": "1784735741498-dgsuibbpp4h",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-22T16:58:22.259Z"
+  },
+  {
+    "id": "260700b6-71c9-4bdc-b4ba-76ea6091eb1e",
+    "name": "screen_view",
+    "sessionId": "1784735741511-h5ednnuq0ww",
+    "deviceId": "1784735741498-dgsuibbpp4h",
+    "properties": {
+      "path": "/collection/all-products",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-22T16:58:23.743Z"
+  },
+  {
+    "id": "d5020ded-78dc-4ede-a0f9-5cf0832d1e8e",
+    "name": "screen_view",
+    "sessionId": "1784735741511-h5ednnuq0ww",
+    "deviceId": "1784735741498-dgsuibbpp4h",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-22T16:58:31.318Z"
+  },
+  {
+    "id": "79482336-2877-44bd-b200-cb3243ac2a48",
+    "name": "screen_view",
+    "sessionId": "1784735741511-h5ednnuq0ww",
+    "deviceId": "1784735741498-dgsuibbpp4h",
+    "properties": {
+      "path": "/collection/baby-girl-pyjamas",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-22T16:58:33.738Z"
+  },
+  {
+    "id": "2ee33c91-115c-44c9-acf2-09ff0d415386",
+    "name": "screen_view",
+    "sessionId": "1784735741511-h5ednnuq0ww",
+    "deviceId": "1784735741498-dgsuibbpp4h",
+    "properties": {
+      "path": "/",
+      "platform": "ios"
+    },
+    "createdAt": "2026-07-22T16:58:37.423Z"
   }
 ]
