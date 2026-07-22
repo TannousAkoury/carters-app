@@ -9,6 +9,8 @@ import { useProductFilters } from "@/features/collection/use-product-filters";
 import { useCurrency } from "@/components/currency-context";
 import { salePercentage } from "@/utils/pricing";
 import { ActivityIndicator, FlatList, Image, ImageBackground, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { useLocalization } from "@/components/localization-context";
+import { hasArabicText } from "@/services/locale";
 
 type Product = {
   id: string;
@@ -26,8 +28,9 @@ type Product = {
 };
 
 function CollectionBannerCopy({title,compact=false}:{title:string;compact?:boolean}){
+  const { t } = useLocalization();
   const longTitle=title.length>18;
-  return <View style={styles.collectionBannerContent}><Text style={[styles.collectionBannerTitle,compact&&styles.collectionBannerTitleCompact,longTitle&&compact&&styles.collectionBannerTitleLong]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={.78}>{title.toUpperCase()}</Text><View style={[styles.collectionBreadcrumb,compact&&styles.collectionBreadcrumbCompact]}><Text style={styles.collectionBreadcrumbHome}>Home</Text><Text style={styles.collectionBreadcrumbSlash}>/</Text><Text style={styles.collectionBreadcrumbCurrent} numberOfLines={1}>{title.toUpperCase()}</Text></View></View>;
+  return <View style={styles.collectionBannerContent}><Text style={[styles.collectionBannerTitle,compact&&styles.collectionBannerTitleCompact,longTitle&&compact&&styles.collectionBannerTitleLong,hasArabicText(title)&&styles.arabicText]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={.78}>{title.toUpperCase()}</Text><View style={[styles.collectionBreadcrumb,compact&&styles.collectionBreadcrumbCompact]}><Text style={styles.collectionBreadcrumbHome}>{t("common.home")}</Text><Text style={styles.collectionBreadcrumbSlash}>/</Text><Text style={[styles.collectionBreadcrumbCurrent,hasArabicText(title)&&styles.arabicText]} numberOfLines={1}>{title.toUpperCase()}</Text></View></View>;
 }
 
 function CollectionVideoBanner({uri,poster}:{uri:string;poster?:string}){
@@ -37,6 +40,7 @@ function CollectionVideoBanner({uri,poster}:{uri:string;poster?:string}){
 }
 
 export default function CollectionScreen() {
+  const { locale, t } = useLocalization();
   const { formatMoney } = useCurrency();
   const router = useRouter();
   const params = useLocalSearchParams<{ handle: string; title?: string }>();
@@ -65,11 +69,11 @@ export default function CollectionScreen() {
       .then(([items, details]) => {
         if (mounted) { setProducts(items); setCollection(details); }
       })
-      .catch(() => mounted && setError("Unable to load this collection right now."))
+      .catch(() => mounted && setError(t("collection.loadError")))
       .finally(() => mounted && setLoading(false));
 
     return () => { mounted = false; };
-  }, [handle]);
+  }, [handle, locale, t]);
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -84,10 +88,10 @@ export default function CollectionScreen() {
 
       {!loading && !error ? (
         <View style={styles.toolbar}>
-          <Text style={styles.resultCount}>{visibleProducts.length} PRODUCTS</Text>
+          <Text style={styles.resultCount}>{t("collection.products", { count: visibleProducts.length })}</Text>
           <TouchableOpacity style={styles.filterLabel} onPress={() => setFilterVisible(true)}>
             <Ionicons name="options-outline" size={17} color="#002041" />
-            <Text style={styles.filterText}>FILTER & SORT</Text>
+            <Text style={styles.filterText}>{t("collection.filterSort")}</Text>
           </TouchableOpacity>
         </View>
       ) : null}
@@ -95,7 +99,7 @@ export default function CollectionScreen() {
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#06A2E4" />
-          <Text style={styles.status}>Loading products…</Text>
+          <Text style={styles.status}>{t("collection.loading")}</Text>
         </View>
       ) : error ? (
         <View style={styles.center}><Text style={styles.error}>{error}</Text></View>
@@ -106,7 +110,7 @@ export default function CollectionScreen() {
           numColumns={2}
           contentContainerStyle={styles.grid}
           columnWrapperStyle={styles.row}
-          ListEmptyComponent={<Text style={styles.empty}>No products found in this collection.</Text>}
+          ListEmptyComponent={<Text style={styles.empty}>{t("collection.empty")}</Text>}
           renderItem={({ item }) => {
             const discount = salePercentage(item.minPrice ?? item.price, item.oldPrice);
             return (
@@ -117,9 +121,9 @@ export default function CollectionScreen() {
               >
                 <View style={styles.imageWrap}>
                   <Image source={{ uri: item.image }} style={styles.image} resizeMode="cover" />
-                  {discount ? <Text style={[styles.tag, styles.saleTag]}>-{discount}%</Text> : item.tag === "NEW" ? <Text style={styles.tag}>NEW</Text> : null}
+                  {discount ? <Text style={[styles.tag, styles.saleTag]}>-{discount}%</Text> : item.tag === "NEW" ? <Text style={styles.tag}>{t("collection.new")}</Text> : null}
                 </View>
-                <Text style={styles.productTitle} numberOfLines={2}>{item.title}</Text>
+                <Text style={[styles.productTitle, hasArabicText(item.title) && styles.arabicText]} numberOfLines={2}>{item.title}</Text>
                 <View style={styles.priceRow}>
                   <Text style={styles.price}>{formatMoney({ amount: String(item.minPrice ?? Number(item.price.replace(/[^0-9.]/g, ""))), currencyCode: "USD" })}</Text>
                   {item.oldPrice ? <Text style={styles.oldPrice}>{formatMoney({ amount: String(Number(item.oldPrice.replace(/[^0-9.]/g, ""))), currencyCode: "USD" })}</Text> : null}
@@ -132,18 +136,18 @@ export default function CollectionScreen() {
       <Modal visible={filterVisible} transparent animationType="slide" onRequestClose={() => setFilterVisible(false)}>
         <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setFilterVisible(false)}>
           <View style={styles.filterSheet} onStartShouldSetResponder={() => true}>
-            <View style={styles.sheetHeader}><Text style={styles.sheetTitle}>Filter & Sort</Text><TouchableOpacity onPress={() => setFilterVisible(false)}><Ionicons name="close" size={25} color="#26364d" /></TouchableOpacity></View>
+            <View style={styles.sheetHeader}><Text style={styles.sheetTitle}>{t("collection.filterSort")}</Text><TouchableOpacity onPress={() => setFilterVisible(false)}><Ionicons name="close" size={25} color="#26364d" /></TouchableOpacity></View>
             <ScrollView showsVerticalScrollIndicator={false}>
-            <Text style={styles.optionHeading}>Availability</Text>
-            <View style={styles.optionRow}>{([['all', 'All products'], ['in-stock', 'In stock']] as const).map(([value, label]) => <TouchableOpacity key={value} style={[styles.chip, availability === value && styles.chipActive]} onPress={() => setAvailability(value)}><Text style={[styles.chipText, availability === value && styles.chipTextActive]}>{label}</Text></TouchableOpacity>)}</View>
-            <Text style={styles.optionHeading}>Price range</Text>
-            <View style={styles.priceInputs}><View style={styles.priceInputWrap}><Text style={styles.currency}>$</Text><TextInput style={styles.priceInput} placeholder="Min" keyboardType="decimal-pad" value={minimumPrice} onChangeText={(value) => setMinimumPrice(value.replace(/[^0-9.]/g, ""))} /></View><Text style={styles.priceDash}>—</Text><View style={styles.priceInputWrap}><Text style={styles.currency}>$</Text><TextInput style={styles.priceInput} placeholder="Max" keyboardType="decimal-pad" value={maximumPrice} onChangeText={(value) => setMaximumPrice(value.replace(/[^0-9.]/g, ""))} /></View></View>
-            {brands.length ? <><Text style={styles.optionHeading}>Brand</Text><View style={styles.wrapOptions}>{brands.map((brand) => <TouchableOpacity key={brand} style={[styles.chip, selectedBrands.includes(brand) && styles.chipActive]} onPress={() => toggleBrand(brand)}><Text style={[styles.chipText, selectedBrands.includes(brand) && styles.chipTextActive]}>{brand}</Text></TouchableOpacity>)}</View></> : null}
-            {sizes.length ? <><Text style={styles.optionHeading}>Size</Text><View style={styles.wrapOptions}>{sizes.map((size) => <TouchableOpacity key={size} style={[styles.sizeChip, selectedSizes.includes(size) && styles.chipActive]} onPress={() => toggleSize(size)}><Text style={[styles.chipText, selectedSizes.includes(size) && styles.chipTextActive]}>{size}</Text></TouchableOpacity>)}</View></> : null}
-            <Text style={styles.optionHeading}>Sort by</Text>
-            {([['featured', 'Featured'], ['price-low', 'Price: low to high'], ['price-high', 'Price: high to low'], ['az', 'Name: A–Z']] as const).map(([value, label]) => <TouchableOpacity key={value} style={styles.sortOption} onPress={() => setSort(value)}><Text style={[styles.sortText, sort === value && styles.sortTextActive]}>{label}</Text>{sort === value ? <Ionicons name="checkmark-circle" size={21} color="#002041" /> : null}</TouchableOpacity>)}
+            <Text style={styles.optionHeading}>{t("collection.availability")}</Text>
+            <View style={styles.optionRow}>{([['all', t("collection.allProducts")], ['in-stock', t("collection.inStock")]] as const).map(([value, label]) => <TouchableOpacity key={value} style={[styles.chip, availability === value && styles.chipActive]} onPress={() => setAvailability(value)}><Text style={[styles.chipText, availability === value && styles.chipTextActive]}>{label}</Text></TouchableOpacity>)}</View>
+            <Text style={styles.optionHeading}>{t("collection.priceRange")}</Text>
+            <View style={styles.priceInputs}><View style={styles.priceInputWrap}><Text style={styles.currency}>$</Text><TextInput style={styles.priceInput} placeholder={t("collection.minimum")} keyboardType="decimal-pad" value={minimumPrice} onChangeText={(value) => setMinimumPrice(value.replace(/[^0-9.]/g, ""))} /></View><Text style={styles.priceDash}>—</Text><View style={styles.priceInputWrap}><Text style={styles.currency}>$</Text><TextInput style={styles.priceInput} placeholder={t("collection.maximum")} keyboardType="decimal-pad" value={maximumPrice} onChangeText={(value) => setMaximumPrice(value.replace(/[^0-9.]/g, ""))} /></View></View>
+            {brands.length ? <><Text style={styles.optionHeading}>{t("collection.brand")}</Text><View style={styles.wrapOptions}>{brands.map((brand) => <TouchableOpacity key={brand} style={[styles.chip, selectedBrands.includes(brand) && styles.chipActive]} onPress={() => toggleBrand(brand)}><Text style={[styles.chipText, selectedBrands.includes(brand) && styles.chipTextActive]}>{brand}</Text></TouchableOpacity>)}</View></> : null}
+            {sizes.length ? <><Text style={styles.optionHeading}>{t("collection.size")}</Text><View style={styles.wrapOptions}>{sizes.map((size) => <TouchableOpacity key={size} style={[styles.sizeChip, selectedSizes.includes(size) && styles.chipActive]} onPress={() => toggleSize(size)}><Text style={[styles.chipText, selectedSizes.includes(size) && styles.chipTextActive]}>{size}</Text></TouchableOpacity>)}</View></> : null}
+            <Text style={styles.optionHeading}>{t("collection.sortBy")}</Text>
+            {([['featured', t("collection.featured")], ['price-low', t("collection.priceLow")], ['price-high', t("collection.priceHigh")], ['az', t("collection.nameAz")]] as const).map(([value, label]) => <TouchableOpacity key={value} style={styles.sortOption} onPress={() => setSort(value)}><Text style={[styles.sortText, sort === value && styles.sortTextActive]}>{label}</Text>{sort === value ? <Ionicons name="checkmark-circle" size={21} color="#002041" /> : null}</TouchableOpacity>)}
             </ScrollView>
-            <View style={styles.sheetActions}><TouchableOpacity style={styles.clearButton} onPress={clearFilters}><Text style={styles.clearText}>Clear</Text></TouchableOpacity><TouchableOpacity style={styles.applyButton} onPress={() => setFilterVisible(false)}><Text style={styles.applyText}>Show {visibleProducts.length}</Text></TouchableOpacity></View>
+            <View style={styles.sheetActions}><TouchableOpacity style={styles.clearButton} onPress={clearFilters}><Text style={styles.clearText}>{t("common.clear")}</Text></TouchableOpacity><TouchableOpacity style={styles.applyButton} onPress={() => setFilterVisible(false)}><Text style={styles.applyText}>{t("collection.showCount", { count: visibleProducts.length })}</Text></TouchableOpacity></View>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -153,6 +157,7 @@ export default function CollectionScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#fff" },
+  arabicText: { writingDirection: "rtl" },
   header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingTop: 15, paddingBottom: 18, gap: 13, borderBottomWidth: 1, borderBottomColor: "#e8e8e8" },
   back: { width: 38, height: 38, backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
   toolbar: { height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 17, borderBottomWidth: 1, borderBottomColor: "#e8e8e8" },

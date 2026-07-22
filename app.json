@@ -41,8 +41,9 @@
       ],
       "expo-font",
       "expo-video",
-      "expo-secure-store"
-      ,"expo-notifications"
+      "expo-secure-store",
+      "expo-notifications",
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true,

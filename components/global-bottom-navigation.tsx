@@ -3,6 +3,7 @@ import { useNotifications } from "@/components/notification-context";
 import { Ionicons } from "@expo/vector-icons";
 import { usePathname, useRouter } from "expo-router";
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useLocalization } from "@/components/localization-context";
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -11,16 +12,17 @@ export function GlobalBottomNavigation() {
   const router = useRouter();
   const { count: cartCount } = useCart();
   const { unread } = useNotifications();
+  const { t } = useLocalization();
 
   // The home screen already renders this same navigation inside its bounded layout.
   if (pathname === "/" || pathname === "/index" || pathname.startsWith("/(tabs)")) return null;
 
   const items: { id: string; label: string; icon: IconName; activeIcon: IconName; active: boolean; onPress: () => void }[] = [
-    { id: "home", label: "Home", icon: "home-outline", activeIcon: "home", active: false, onPress: () => router.navigate("/") },
-    { id: "shop", label: "Shop", icon: "bag-handle-outline", activeIcon: "bag-handle", active: pathname.startsWith("/collection/") || pathname.startsWith("/product/") || pathname === "/search", onPress: () => router.navigate({ pathname: "/collection/[handle]", params: { handle: "all-products", title: "All Products" } }) },
-    { id: "cart", label: "Cart", icon: "cart-outline", activeIcon: "cart", active: pathname === "/cart", onPress: () => router.navigate("/cart") },
-    { id: "notifications", label: "Notifications", icon: "notifications-outline", activeIcon: "notifications", active: pathname === "/notifications", onPress: () => router.navigate("/notifications") },
-    { id: "account", label: "Account", icon: "person-outline", activeIcon: "person", active: pathname === "/account", onPress: () => router.navigate("/account") },
+    { id: "home", label: t("navigation.home"), icon: "home-outline", activeIcon: "home", active: false, onPress: () => router.navigate("/") },
+    { id: "shop", label: t("navigation.shop"), icon: "bag-handle-outline", activeIcon: "bag-handle", active: pathname.startsWith("/collection/") || pathname.startsWith("/product/") || pathname === "/search", onPress: () => router.navigate({ pathname: "/collection/[handle]", params: { handle: "all-products", title: t("home.allProducts") } }) },
+    { id: "cart", label: t("navigation.cart"), icon: "cart-outline", activeIcon: "cart", active: pathname === "/cart", onPress: () => router.navigate("/cart") },
+    { id: "notifications", label: t("navigation.notifications"), icon: "notifications-outline", activeIcon: "notifications", active: pathname === "/notifications", onPress: () => router.navigate("/notifications") },
+    { id: "account", label: t("navigation.account"), icon: "person-outline", activeIcon: "person", active: pathname === "/account", onPress: () => router.navigate("/account") },
   ];
 
   return (
@@ -32,7 +34,7 @@ export function GlobalBottomNavigation() {
           onPress={item.onPress}
           accessibilityRole="tab"
           accessibilityState={{ selected: item.active }}
-          accessibilityLabel={item.id === "notifications" ? `Notifications, ${unread} unread` : item.id === "cart" ? `Cart, ${cartCount} items` : item.label}
+          accessibilityLabel={item.id === "notifications" ? t("navigation.notificationsAccessibility", { count: unread }) : item.id === "cart" ? t("navigation.cartAccessibility", { count: cartCount }) : item.label}
         >
           <View>
             <Ionicons name={item.active ? item.activeIcon : item.icon} size={22} color={item.active ? "#397ab5" : "#778491"} />

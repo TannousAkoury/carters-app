@@ -7,6 +7,9 @@ import { salePercentage } from "@/utils/pricing";
 import { useWishlist } from "@/components/wishlist-context";
 import { useAppSettings } from "@/components/app-settings-context";
 import { useNotifications } from "@/components/notification-context";
+import { LanguageButton, LanguageSelector } from "@/components/language-selector";
+import { useLocalization } from "@/components/localization-context";
+import { hasArabicText } from "@/services/locale";
 import type { AgeCategory, ExploreStyle, HeroBannerItem, HomeProduct as Product, OurBrand, PromoFeature, ShopCategory, TinyEssential } from "@/features/home/types";
 import { Ionicons } from "@expo/vector-icons";
 import { Image as ExpoImage } from "expo-image";
@@ -73,6 +76,7 @@ type HeaderProps = {
   onCart?: () => void;
   onWishlist?: () => void;
   onMenu?: () => void;
+  onLanguage?: () => void;
 };
 
 function Header({
@@ -84,11 +88,14 @@ function Header({
   onCart,
   onWishlist,
   onMenu,
+  onLanguage,
 }: HeaderProps) {
+  const { t } = useLocalization();
+  const compact = DEVICE_WIDTH < 420;
   return (
     <View style={[styles.header, isScrolled && styles.headerScrolled]}>
-      <View style={styles.headerMain}>
-       <View style={styles.headerLeft}>
+      <View style={[styles.headerMain, compact && styles.headerMainCompact]}>
+       <View style={[styles.headerLeft, compact && styles.headerLeftCompact]}>
         <TouchableOpacity
           style={[
             styles.headerCircleBtn,
@@ -97,24 +104,25 @@ function Header({
           activeOpacity={0.75}
           onPress={onMenu}
           accessibilityRole="button"
-          accessibilityLabel="Open shop menu"
+          accessibilityLabel={t("navigation.openMenu")}
         >
           <Ionicons name="menu-outline" size={24} color={COLORS.blue} />
         </TouchableOpacity>
 
         <Image
           source={{ uri: "https://carters.com.lb/cdn/shop/files/logo1.png?v=1707301645&width=330" }}
-          style={styles.headerLogoImage}
+          style={[styles.headerLogoImage, compact && styles.headerLogoImageCompact]}
           resizeMode="contain"
         />
        </View>
 
-      <View style={styles.headerRight}>
+      <View style={[styles.headerRight, compact && styles.headerRightCompact]}>
+        {onLanguage ? <LanguageButton onPress={onLanguage} /> : null}
         <TouchableOpacity
           style={styles.headerCurrencyBtn}
           onPress={onCurrency}
           accessibilityRole="button"
-          accessibilityLabel={`Currency is ${currency}. Switch to ${currency === "USD" ? "LBP" : "USD"}`}
+          accessibilityLabel={t("navigation.currency", { currency })}
           activeOpacity={0.75}
         >
           <Text style={styles.headerCurrencyText}>{currency}</Text>
@@ -128,7 +136,7 @@ function Header({
           ]}
           onPress={onSearch}
           accessibilityRole="button"
-          accessibilityLabel="Search products"
+          accessibilityLabel={t("navigation.search")}
           activeOpacity={0.75}
         >
           <Ionicons name="search-outline" size={21} color={COLORS.blue} />
@@ -141,7 +149,7 @@ function Header({
           ]}
           onPress={onWishlist}
           accessibilityRole="button"
-          accessibilityLabel="Open wishlist"
+          accessibilityLabel={t("navigation.wishlist")}
           activeOpacity={0.75}
         >
           <Ionicons name="heart-outline" size={22} color={COLORS.blue} />
@@ -154,7 +162,7 @@ function Header({
           ]}
           onPress={onCart}
           accessibilityRole="button"
-          accessibilityLabel={`Open shopping bag, ${cartCount} items`}
+          accessibilityLabel={t("navigation.shoppingBag", { count: cartCount })}
           activeOpacity={0.75}
         >
           <View>
@@ -208,11 +216,12 @@ function SectionHeader({
   subtitle: string;
   right?: React.ReactNode;
 }) {
+  const { isArabic } = useLocalization();
   return (
     <View style={styles.sectionHeader}>
       <View>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        <Text style={styles.sectionSubtitle}>{subtitle}</Text>
+        <Text style={[styles.sectionTitle, isArabic && styles.arabicText]}>{title}</Text>
+        <Text style={[styles.sectionSubtitle, isArabic && styles.arabicText]}>{subtitle}</Text>
       </View>
 
       {right}
@@ -244,7 +253,7 @@ function PromoStrip({
               color={COLORS.blue}
             />
           </View>
-          <Text style={styles.promoText} numberOfLines={2}>
+          <Text style={[styles.promoText, hasArabicText(item.title) && styles.arabicText]} numberOfLines={2}>
             {item.title}
           </Text>
         </View>
@@ -260,6 +269,7 @@ function HomepageStatus({
   loading: boolean;
   error: string | null;
 }) {
+  const { t } = useLocalization();
   if (!loading && !error) return null;
 
   return (
@@ -276,7 +286,7 @@ function HomepageStatus({
           error ? styles.homepageStatusError : null,
         ]}
       >
-        {loading ? "Updating storefront content..." : error}
+        {loading ? t("home.updating") : error}
       </Text>
     </View>
   );
@@ -289,11 +299,12 @@ function AgeRow({
   categories: AgeCategory[];
   onPress?: (category: AgeCategory) => void;
 }) {
+  const { t } = useLocalization();
   return (
     <View style={styles.sectionBlock}>
       <SectionHeader
-        title="Shop by Age"
-        subtitle="Choose the right age range"
+        title={t("home.shopByAge")}
+        subtitle={t("home.shopByAgeSubtitle")}
       />
 
       <ScrollView
@@ -335,9 +346,9 @@ function ShopifyThemeSections({sections,placement,visibility,customStyles,onOpen
   if(!visible.length)return null;
   return <>{visible.map(section=>{const automatic=section.mobileStyle??{};const override=parseMobileCustomCss(customStyles[section.id]);const mobile={...automatic,...override};const margin=Math.max(0,mobile.marginHorizontal??0);const candidateRatio=mobile.aspectRatio??1.55;const ratio=candidateRatio>=1&&candidateRatio<=4?candidateRatio:1.55;const imageSize={height:mobile.height??Math.min(SCREEN_W*.85,(SCREEN_W-margin*2)/ratio)};if(section.layout==="media-text"){return <View key={section.id} style={[styles.themeSection,styles.themeMediaTextSection,{marginHorizontal:margin,paddingVertical:mobile.paddingVertical??0,backgroundColor:mobile.backgroundColor}]}>
     {section.images[0]?<TouchableOpacity activeOpacity={.86} disabled={!section.url} onPress={()=>onOpen(section.url,{title:section.title,image:section.images[0].url})}><Image source={{uri:section.images[0].url}} style={[styles.themeBannerImage,imageSize,{borderRadius:mobile.imageBorderRadius??0}]} resizeMode={mobile.imageFit??"cover"}/></TouchableOpacity>:null}
-    <View style={styles.themeMediaTextContent}>{section.title?<Text style={[styles.themeMediaTextTitle,{color:mobile.textColor,textAlign:mobile.textAlign??"center"}]}>{section.title}</Text>:null}{section.subtitle?<Text style={[styles.themeMediaTextSubtitle,{color:mobile.textColor,textAlign:mobile.textAlign??"center"}]}>{section.subtitle}</Text>:null}{section.buttonLabel&&section.url?<TouchableOpacity style={styles.themeMediaTextButton} onPress={()=>onOpen(section.url,{title:section.title,image:section.images[0]?.url})}><Text style={styles.themeMediaTextButtonText}>{section.buttonLabel}</Text></TouchableOpacity>:null}</View>
+    <View style={styles.themeMediaTextContent}>{section.title?<Text style={[styles.themeMediaTextTitle,hasArabicText(section.title)&&styles.arabicText,{color:mobile.textColor,textAlign:mobile.textAlign??"center"}]}>{section.title}</Text>:null}{section.subtitle?<Text style={[styles.themeMediaTextSubtitle,hasArabicText(section.subtitle)&&styles.arabicText,{color:mobile.textColor,textAlign:mobile.textAlign??"center"}]}>{section.subtitle}</Text>:null}{section.buttonLabel&&section.url?<TouchableOpacity style={styles.themeMediaTextButton} onPress={()=>onOpen(section.url,{title:section.title,image:section.images[0]?.url})}><Text style={[styles.themeMediaTextButtonText,hasArabicText(section.buttonLabel)&&styles.arabicText]}>{section.buttonLabel}</Text></TouchableOpacity>:null}</View>
   </View>}const bannerPadding=mobile.paddingVertical??(section.layout==="banner"?0:22);return <View key={section.id} style={[styles.themeSection,{marginHorizontal:margin,paddingVertical:bannerPadding,backgroundColor:mobile.backgroundColor}]}>
-    {section.title?<View style={styles.themeCustomHeader}><Text style={[styles.themeCustomTitle,{color:mobile.textColor,textAlign:mobile.textAlign}]}>{section.title}</Text>{section.subtitle?<Text style={[styles.themeSubtitle,{color:mobile.textColor,textAlign:mobile.textAlign}]}>{section.subtitle}</Text>:null}</View>:section.subtitle?<Text style={[styles.themeSubtitle,{color:mobile.textColor,textAlign:mobile.textAlign}]}>{section.subtitle}</Text>:null}
+    {section.title?<View style={styles.themeCustomHeader}><Text style={[styles.themeCustomTitle,hasArabicText(section.title)&&styles.arabicText,{color:mobile.textColor,textAlign:mobile.textAlign}]}>{section.title}</Text>{section.subtitle?<Text style={[styles.themeSubtitle,hasArabicText(section.subtitle)&&styles.arabicText,{color:mobile.textColor,textAlign:mobile.textAlign}]}>{section.subtitle}</Text>:null}</View>:section.subtitle?<Text style={[styles.themeSubtitle,hasArabicText(section.subtitle)&&styles.arabicText,{color:mobile.textColor,textAlign:mobile.textAlign}]}>{section.subtitle}</Text>:null}
     {section.layout==="grid"?<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.themeGrid}>{section.images.map((image,index)=><TouchableOpacity key={`${image.url}-${index}`} style={styles.themeCard} activeOpacity={.82} onPress={()=>onOpen(image.link||section.url,{title:image.alt||section.title,image:image.url})}><Image source={{uri:image.url}} style={[styles.themeCardImage,{borderRadius:mobile.imageBorderRadius}]} resizeMode={mobile.imageFit??"cover"}/>{image.alt&&image.alt!==section.title?<Text style={[styles.themeCardLabel,{color:mobile.textColor,textAlign:mobile.textAlign}]} numberOfLines={2}>{image.alt}</Text>:null}</TouchableOpacity>)}</ScrollView>:section.images[0]?<TouchableOpacity activeOpacity={.86} disabled={!section.url} onPress={()=>onOpen(section.url,{title:section.title,image:section.images[0].url})}><Image source={{uri:section.images[0].url}} style={[styles.themeBannerImage,imageSize,{borderRadius:mobile.imageBorderRadius??0}]} resizeMode={mobile.imageFit??"cover"}/></TouchableOpacity>:null}
     {section.buttonLabel&&section.url?<TouchableOpacity style={styles.themeButton} onPress={()=>onOpen(section.url,{title:section.title,image:section.images[0]?.url})}><Text style={styles.themeButtonText}>{section.buttonLabel} →</Text></TouchableOpacity>:null}
   </View>})}</>;
@@ -350,6 +361,7 @@ function ProductCard({
   item: Product;
   onPress?: (product: Product) => void;
 }) {
+  const { t } = useLocalization();
   const { formatMoney } = useCurrency();
   const { settings: appSettings } = useAppSettings();
   const { has, toggle } = useWishlist();
@@ -385,7 +397,7 @@ function ProductCard({
               discount ? styles.tagSale : styles.tagNew,
             ]}
           >
-            <Text style={styles.productTagText}>{discount ? `-${discount}%` : "NEW"}</Text>
+            <Text style={styles.productTagText}>{discount ? `-${discount}%` : t("collection.new")}</Text>
           </View>
         )}
 
@@ -404,14 +416,14 @@ function ProductCard({
       </View>
 
       <View style={styles.productInfo}>
-        <Text style={styles.productTitle} numberOfLines={2}>
+        <Text style={[styles.productTitle, hasArabicText(item.title) && styles.arabicText]} numberOfLines={2}>
           {item.title}
         </Text>
 
         <View style={styles.ratingRow}>
           <Ionicons name="star" size={11} color={COLORS.orange} />
           <Text style={styles.ratingText}>4.8</Text>
-          <Text style={styles.ratingMuted}>Carter&apos;s pick</Text>
+          <Text style={styles.ratingMuted}>{t("home.cartersPick")}</Text>
         </View>
 
         <View style={styles.priceRow}>
@@ -442,14 +454,15 @@ function TopPicksSection({
   onSeeAll?: () => void;
   onProductPress?: (product: Product) => void;
 }) {
+  const { t } = useLocalization();
   return (
     <View style={styles.sectionBlock}>
       <SectionHeader
-        title="Top Picks For You"
-        subtitle="Fresh styles parents love"
+        title={t("home.topPicks")}
+        subtitle={t("home.topPicksSubtitle")}
         right={
           <TouchableOpacity style={styles.seeAllBtn} onPress={onSeeAll}>
-            <Text style={styles.seeAll}>See All</Text>
+            <Text style={styles.seeAll}>{t("common.seeAll")}</Text>
             <Ionicons name="chevron-forward" size={14} color={COLORS.blue} />
           </TouchableOpacity>
         }
@@ -479,11 +492,12 @@ function ShopCategorySection({
   categories: ShopCategory[];
   onPress?: (category: ShopCategory) => void;
 }) {
+  const { t } = useLocalization();
   return (
     <View style={styles.categorySectionBlock}>
       <SectionHeader
-        title="Shop by Category"
-        subtitle="Curated outfits, essentials & favorites"
+        title={t("home.shopByCategory")}
+        subtitle={t("home.shopByCategorySubtitle")}
       />
 
       {categories.map((category, index) => (
@@ -506,16 +520,16 @@ function ShopCategorySection({
 
           <View style={styles.categoryFeatureContent}>
             <View style={styles.categoryFeatureTextWrap}>
-              <Text style={styles.categoryEyebrow}>
-                {category.eyebrow ?? (index === 0 ? "Featured category" : "Shop category")}
+              <Text style={[styles.categoryEyebrow, hasArabicText(category.eyebrow ?? (index === 0 ? t("home.featuredCategory") : t("home.shopCategory"))) && styles.arabicText]}>
+                {category.eyebrow ?? (index === 0 ? t("home.featuredCategory") : t("home.shopCategory"))}
               </Text>
-              <Text style={styles.categoryFeatureTitle} numberOfLines={1}>{category.label}</Text>
-              <Text style={styles.categoryFeatureSub} numberOfLines={2}>
-                {category.subtitle ?? "Easy matching looks made for everyday comfort."}
+              <Text style={[styles.categoryFeatureTitle, hasArabicText(category.label) && styles.arabicText]} numberOfLines={1}>{category.label}</Text>
+              <Text style={[styles.categoryFeatureSub, hasArabicText(category.subtitle ?? t("home.categoryComfort")) && styles.arabicText]} numberOfLines={2}>
+                {category.subtitle ?? t("home.categoryComfort")}
               </Text>
             </View>
             <View style={styles.categoryFeatureAction}>
-              <Text style={styles.categoryFeatureActionText}>{category.cta ?? "Shop"}</Text>
+              <Text style={styles.categoryFeatureActionText}>{category.cta ?? t("common.shop")}</Text>
               <Ionicons name="arrow-forward" size={13} color={COLORS.white} />
             </View>
           </View>
@@ -532,11 +546,12 @@ function ExploreStylesSection({
   items: ExploreStyle[];
   onPress?: (style: ExploreStyle) => void;
 }) {
+  const { t } = useLocalization();
   return (
     <View style={styles.sectionBlock}>
       <SectionHeader
-        title="Explore Styles"
-        subtitle="Shop the looks kids love"
+        title={t("home.exploreStyles")}
+        subtitle={t("home.exploreStylesSubtitle")}
       />
 
       <ScrollView
@@ -570,7 +585,7 @@ function ExploreStylesSection({
               </Text>
 
               <View style={styles.exploreCta}>
-                <Text style={styles.exploreCtaText}>Shop now</Text>
+                <Text style={styles.exploreCtaText}>{t("common.shopNow")}</Text>
                 <Ionicons name="arrow-forward" size={12} color={COLORS.white} />
               </View>
             </View>
@@ -588,17 +603,18 @@ function TinyEssentialsSection({
   items: TinyEssential[];
   onPress?: (item: TinyEssential) => void;
 }) {
+  const { t } = useLocalization();
   const badgeColor = items[0]?.accentColor ?? COLORS.blue;
 
   return (
     <View style={styles.sectionBlock}>
       <SectionHeader
-        title="Tiny Essentials"
-        subtitle="Soft newborn must-haves"
+        title={t("home.tinyEssentials")}
+        subtitle={t("home.tinyEssentialsSubtitle")}
         right={
           <View style={[styles.tinyHeaderBadge, { backgroundColor: colorWithOpacity(badgeColor, 0.16) }]}>
             <Ionicons name="sparkles-outline" size={13} color={badgeColor} />
-            <Text style={[styles.tinyHeaderBadgeText, { color: badgeColor }]}>Shopify picks</Text>
+            <Text style={[styles.tinyHeaderBadgeText, { color: badgeColor }]}>{t("home.shopifyPicks")}</Text>
           </View>
         }
       />
@@ -651,11 +667,12 @@ function OurBrandsSection({
   brands: OurBrand[];
   onPress?: (brand: OurBrand) => void;
 }) {
+  const { t } = useLocalization();
   return (
     <View style={styles.sectionBlock}>
       <SectionHeader
-        title="Our Brands"
-        subtitle="Discover the Carter's family of brands"
+        title={t("home.ourBrands")}
+        subtitle={t("home.ourBrandsSubtitle")}
       />
 
       <ScrollView
@@ -702,7 +719,7 @@ function OurBrandsSection({
                   </Text>
                 </View>
 
-                <Text style={styles.brandCollectionHint}>Baby & kids</Text>
+                <Text style={styles.brandCollectionHint}>{t("home.babyAndKids")}</Text>
               </View>
             </View>
           </TouchableOpacity>
@@ -721,14 +738,15 @@ function LatestCollectionSection({
   onSeeAll?: () => void;
   onProductPress?: (product: Product) => void;
 }) {
+  const { t } = useLocalization();
   return (
     <View style={styles.latestSection}>
       <SectionHeader
-        title="Latest Collection"
-        subtitle="New arrivals just landed"
+        title={t("home.latestCollection")}
+        subtitle={t("home.latestCollectionSubtitle")}
         right={
           <TouchableOpacity style={styles.latestSeeAllBtn} onPress={onSeeAll}>
-            <Text style={styles.latestSeeAllText}>View all</Text>
+            <Text style={styles.latestSeeAllText}>{t("common.viewAll")}</Text>
             <Ionicons name="chevron-forward" size={14} color={COLORS.white} />
           </TouchableOpacity>
         }
@@ -770,12 +788,13 @@ function BottomNavigation({
   cartCount: number;
   notificationCount: number;
 }) {
+  const { t } = useLocalization();
   const items: { id: string; label: string; icon: IconName; activeIcon: IconName; onPress: () => void }[] = [
-    { id: "home", label: "Home", icon: "home-outline", activeIcon: "home", onPress: onHome },
-    { id: "shop", label: "Shop", icon: "bag-handle-outline", activeIcon: "bag-handle", onPress: onShop },
-    { id: "cart", label: "Cart", icon: "cart-outline", activeIcon: "cart", onPress: onCart },
-    { id: "notifications", label: "Notifications", icon: "notifications-outline", activeIcon: "notifications", onPress: onNotifications },
-    { id: "account", label: "Account", icon: "person-outline", activeIcon: "person", onPress: onAccount },
+    { id: "home", label: t("navigation.home"), icon: "home-outline", activeIcon: "home", onPress: onHome },
+    { id: "shop", label: t("navigation.shop"), icon: "bag-handle-outline", activeIcon: "bag-handle", onPress: onShop },
+    { id: "cart", label: t("navigation.cart"), icon: "cart-outline", activeIcon: "cart", onPress: onCart },
+    { id: "notifications", label: t("navigation.notifications"), icon: "notifications-outline", activeIcon: "notifications", onPress: onNotifications },
+    { id: "account", label: t("navigation.account"), icon: "person-outline", activeIcon: "person", onPress: onAccount },
   ];
   return (
     <View style={styles.bottomNavigation}>
@@ -807,6 +826,7 @@ function NavigationMenu({
   shopifyMenu: StorefrontMenuItem[];
   onMenuItem: (item: StorefrontMenuItem) => void;
 }) {
+  const { t } = useLocalization();
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const orderedMenu = [...shopifyMenu].sort((a, b) => {
@@ -820,19 +840,19 @@ function NavigationMenu({
       <TouchableOpacity style={styles.menuBackdrop} activeOpacity={1} onPress={onClose}>
         <View style={styles.navigationMenu} onStartShouldSetResponder={() => true}>
           <View style={styles.menuHeader}>
-            <Text style={styles.menuTitle}>Menu</Text>
-            <TouchableOpacity onPress={onClose} style={styles.menuClose} accessibilityLabel="Close menu">
+            <Text style={styles.menuTitle}>{t("common.menu")}</Text>
+            <TouchableOpacity onPress={onClose} style={styles.menuClose} accessibilityLabel={t("navigation.closeMenu")}>
               <Ionicons name="close" size={25} color={COLORS.textDark} />
             </TouchableOpacity>
           </View>
           <TouchableOpacity style={[styles.menuItem, active === "home" && styles.menuItemActive]} onPress={() => { onClose(); onTab("home"); }}>
             <Ionicons name={active === "home" ? "home" : "home-outline"} size={22} color={COLORS.blue} />
-            <Text style={[styles.menuLabel, active === "home" && styles.menuLabelActive]}>Home</Text>
+            <Text style={[styles.menuLabel, active === "home" && styles.menuLabelActive]}>{t("navigation.home")}</Text>
             <Ionicons name="chevron-forward" size={18} color={COLORS.textLight} />
           </TouchableOpacity>
           <TouchableOpacity style={[styles.menuItem, active === "categories" && styles.menuItemActive]} onPress={() => setCategoriesOpen((open) => !open)}>
             <Ionicons name={categoriesOpen ? "grid" : "grid-outline"} size={22} color={COLORS.blue} />
-            <Text style={[styles.menuLabel, active === "categories" && styles.menuLabelActive]}>Categories</Text>
+            <Text style={[styles.menuLabel, active === "categories" && styles.menuLabelActive]}>{t("common.categories")}</Text>
             <Ionicons name={categoriesOpen ? "chevron-up" : "chevron-down"} size={18} color={COLORS.textLight} />
           </TouchableOpacity>
           {categoriesOpen ? (
@@ -848,7 +868,7 @@ function NavigationMenu({
                             {group.image ? (
                               <ExpoImage source={{ uri: group.image }} style={styles.navigationBrandLogo} contentFit="contain" accessibilityLabel={group.title} />
                             ) : (
-                              <Text style={[styles.categoryGroupText, group.title.toLowerCase().includes("special") && styles.specialMenuText]}>{group.title}</Text>
+                              <Text style={[styles.categoryGroupText, group.title.toLowerCase().includes("special") && styles.specialMenuText, hasArabicText(group.title) && styles.arabicText]}>{group.title}</Text>
                             )}
                             {subtitle ? <Text style={styles.categoryAgeText}>{subtitle}</Text> : null}
                           </View>
@@ -859,12 +879,12 @@ function NavigationMenu({
                             {group.items.map((section) => (
                               <View key={section.id}>
                                 <TouchableOpacity style={styles.categoryDropdownItem} onPress={() => onMenuItem(section)}>
-                                  <Text style={styles.categorySectionText}>{section.title}</Text>
+                                  <Text style={[styles.categorySectionText, hasArabicText(section.title) && styles.arabicText]}>{section.title}</Text>
                                   <Ionicons name="chevron-forward" size={14} color={COLORS.textLight} />
                                 </TouchableOpacity>
                                 {section.items.map((item) => (
                                   <TouchableOpacity key={item.id} style={styles.categoryLeafItem} onPress={() => onMenuItem(item)}>
-                                    <Text style={styles.categoryDropdownText}>{item.title}</Text>
+                                    <Text style={[styles.categoryDropdownText, hasArabicText(item.title) && styles.arabicText]}>{item.title}</Text>
                                   </TouchableOpacity>
                                 ))}
                               </View>
@@ -878,12 +898,12 @@ function NavigationMenu({
           ) : null}
           <TouchableOpacity style={[styles.menuItem, active === "shop" && styles.menuItemActive]} onPress={() => { onClose(); onTab("shop"); }}>
             <Ionicons name={active === "shop" ? "bag" : "bag-outline"} size={22} color={COLORS.blue} />
-            <Text style={[styles.menuLabel, active === "shop" && styles.menuLabelActive]}>Shop</Text>
+            <Text style={[styles.menuLabel, active === "shop" && styles.menuLabelActive]}>{t("navigation.shop")}</Text>
             <Ionicons name="chevron-forward" size={18} color={COLORS.textLight} />
           </TouchableOpacity>
           <TouchableOpacity style={[styles.menuItem, active === "account" && styles.menuItemActive]} onPress={() => { onClose(); onTab("account"); }}>
             <Ionicons name={active === "account" ? "person" : "person-outline"} size={22} color={COLORS.blue} />
-            <Text style={[styles.menuLabel, active === "account" && styles.menuLabelActive]}>Account</Text>
+            <Text style={[styles.menuLabel, active === "account" && styles.menuLabelActive]}>{t("navigation.account")}</Text>
             <Ionicons name="chevron-forward" size={18} color={COLORS.textLight} />
           </TouchableOpacity>
         </View>
@@ -893,6 +913,7 @@ function NavigationMenu({
 }
 
 export default function HomeScreen() {
+  const { locale, t } = useLocalization();
   const { count: cartCount } = useCart();
   const { currency, toggleCurrency } = useCurrency();
   const { settings: appSettings } = useAppSettings();
@@ -901,6 +922,7 @@ export default function HomeScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const [activeTab, setActiveTab] = useState<TabId>("home");
   const [menuVisible, setMenuVisible] = useState(false);
+  const [languageVisible, setLanguageVisible] = useState(false);
   const [shopifyMenu, setShopifyMenu] = useState<StorefrontMenuItem[]>([]);
   const [isHeaderScrolled, setIsHeaderScrolled] = useState(false);
   const [homepageError, setHomepageError] = useState<string | null>(null);
@@ -971,7 +993,7 @@ export default function HomeScreen() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [locale]);
 
   useEffect(() => {
     let mounted = true;
@@ -980,7 +1002,7 @@ export default function HomeScreen() {
       if (mounted) setShopifyMenu(items);
     });
     return () => { mounted = false; };
-  }, []);
+  }, [locale]);
 
   useFocusEffect(
     useCallback(() => {
@@ -1008,7 +1030,7 @@ export default function HomeScreen() {
     if (!handle) return;
     router.push({
       pathname: "/collection/[handle]",
-      params: { handle, title: title || "Collection", ...(bannerImage?{bannerImage}:{}) },
+      params: { handle, title: title || t("home.collection"), ...(bannerImage?{bannerImage}:{}) },
     });
   };
 
@@ -1021,7 +1043,7 @@ export default function HomeScreen() {
   const openShopifyMenuItem = (item: StorefrontMenuItem) => {
     setMenuVisible(false);
     if (item.title.trim().toLowerCase() === "special prices") {
-      showCollection("special-prices", "Special Prices");
+      showCollection("special-prices", t("home.specialPrices"));
       return;
     }
     if (item.handle) {
@@ -1058,7 +1080,7 @@ export default function HomeScreen() {
     setActiveTab(tab);
     if (tab === "home") scrollRef.current?.scrollTo({ y: 0, animated: true });
     if (tab === "categories") setMenuVisible(true);
-    if (tab === "shop") showCollection("all-products", "All Products");
+    if (tab === "shop") showCollection("all-products", t("home.allProducts"));
     if (tab === "account") router.push("/account");
   };
 
@@ -1079,6 +1101,7 @@ export default function HomeScreen() {
         onCart={openCart}
         onWishlist={appSettings.wishlist ? () => router.push("/wishlist") : undefined}
         onMenu={() => setMenuVisible(true)}
+        onLanguage={() => setLanguageVisible(true)}
       />
 
       <ScrollView
@@ -1199,6 +1222,7 @@ export default function HomeScreen() {
         shopifyMenu={shopifyMenu}
         onMenuItem={openShopifyMenuItem}
       />
+      <LanguageSelector visible={languageVisible} onClose={() => setLanguageVisible(false)} />
       <BottomNavigation
         active={activeTab}
         onHome={() => handleTab("home")}
@@ -1214,6 +1238,7 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  arabicText: { writingDirection: "rtl" },
   screen: {
     flex: 1,
     width: "100%",
@@ -1249,18 +1274,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 13,
   },
+  headerMainCompact: { paddingHorizontal: 8 },
   headerLeft: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
   },
+  headerLeftCompact: { gap: 4 },
   headerRight: {
     flexDirection: "row",
     justifyContent: "flex-end",
     alignItems: "center",
     gap: 7,
   },
+  headerRightCompact: { gap: 2 },
   headerCircleBtn: {
     width: 34,
     height: 38,
@@ -1295,6 +1323,7 @@ const styles = StyleSheet.create({
     width: 122,
     height: 31,
   },
+  headerLogoImageCompact: { width: 100 },
   headerLogo: {
     fontSize: 22,
     fontWeight: "900",
