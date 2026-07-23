@@ -1,6 +1,5 @@
 import * as SecureStore from "@/services/storage";
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
-import { useLocalization } from "@/components/localization-context";
 
 export type DisplayCurrency = "USD" | "LBP";
 
@@ -23,7 +22,6 @@ const CurrencyContext = createContext<CurrencyContextValue>({
 });
 
 export function CurrencyProvider({ children }: { children: ReactNode }) {
-  const { numericLocaleTag } = useLocalization();
   const [currency, setCurrencyState] = useState<DisplayCurrency>("USD");
 
   useEffect(() => {
@@ -41,8 +39,8 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
     if (!money) return "";
     const amount = Number(money.amount);
     const usdAmount = money.currencyCode === "LBP" ? amount / LBP_PER_USD : amount;
-    if (currency === "LBP") return new Intl.NumberFormat(numericLocaleTag, { style: "currency", currency: "LBP", maximumFractionDigits: 0 }).format(Math.round(usdAmount * LBP_PER_USD));
-    return new Intl.NumberFormat(numericLocaleTag, { style: "currency", currency: "USD" }).format(usdAmount);
+    if (currency === "LBP") return `${Math.round(usdAmount * LBP_PER_USD).toLocaleString("en-US")} LBP`;
+    return `$${usdAmount.toFixed(2)}`;
   };
 
   return (

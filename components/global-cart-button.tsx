@@ -2,16 +2,14 @@ import { useCart } from '@/components/cart-context';
 import { Ionicons } from '@expo/vector-icons';
 import { usePathname, useRouter } from 'expo-router';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useLocalization } from '@/components/localization-context';
 
 export function GlobalCartButton() {
   const pathname = usePathname();
   const router = useRouter();
   const { count } = useCart();
-  const { t } = useLocalization();
   if (pathname === '/' || pathname === '/index' || pathname.startsWith('/(tabs)') || pathname === '/account' || pathname === '/cart') return null;
   return (
-    <TouchableOpacity style={styles.button} onPress={() => router.push('/cart')} accessibilityLabel={t("navigation.cartAccessibility", { count })}>
+    <TouchableOpacity style={styles.button} onPress={() => router.push('/cart')} accessibilityLabel={`Cart, ${count} items`}>
       <Ionicons name="cart-outline" size={24} color="#002041" />
       {count > 0 ? <View style={styles.badge}><Text style={styles.badgeText}>{count > 99 ? '99+' : count}</Text></View> : null}
     </TouchableOpacity>

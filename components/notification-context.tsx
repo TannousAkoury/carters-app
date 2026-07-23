@@ -7,7 +7,6 @@ import { createContext, PropsWithChildren, useCallback, useContext, useEffect, u
 import { Linking, Platform } from "react-native";
 import { adminApiUrls, fetchAdmin } from "@/services/admin-api";
 import { trackEvent } from "@/services/analytics";
-import { useLocalization } from "@/components/localization-context";
 
 const INBOX_KEY = "notification_inbox";
 const TEST_PUSH_CURSOR_KEY = "test_push_cursor";
@@ -47,7 +46,6 @@ if (Platform.OS !== "web") {
 
 export function NotificationProvider({ children }: PropsWithChildren) {
   const router = useRouter();
-  const { t } = useLocalization();
   const [items, setItems] = useState<InboxNotification[]>([]);
   const [enabled, setEnabled] = useState(false);
   const [registering, setRegistering] = useState(false);
@@ -137,14 +135,14 @@ export function NotificationProvider({ children }: PropsWithChildren) {
   }, []);
 
   const register = async () => {
-    if (Platform.OS === "web") throw new Error(t("notifications.webUnavailable"));
-    if (!Device.isDevice) throw new Error(t("notifications.physicalDevice"));
+    if (Platform.OS === "web") throw new Error("Push notifications are available in the Android and iOS app.");
+    if (!Device.isDevice) throw new Error("Push notifications require a physical device or supported simulator.");
     setRegistering(true);
     try {
-      if (Platform.OS === "android") await Notifications.setNotificationChannelAsync("default", { name: t("notifications.channelName"), importance: Notifications.AndroidImportance.HIGH });
+      if (Platform.OS === "android") await Notifications.setNotificationChannelAsync("default", { name: "Store updates", importance: Notifications.AndroidImportance.HIGH });
       let permission = await Notifications.getPermissionsAsync();
       if (permission.status !== "granted") permission = await Notifications.requestPermissionsAsync();
-      if (permission.status !== "granted") throw new Error(t("notifications.permissionDenied"));
+      if (permission.status !== "granted") throw new Error("Notification permission was not granted.");
       setEnabled(true);
       const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
       // Expo Go cannot receive remote push notifications on current Android SDKs.
@@ -152,7 +150,7 @@ export function NotificationProvider({ children }: PropsWithChildren) {
       // campaigns into local notifications while the app is running.
       if (!projectId) {
         if (__DEV__) return null;
-        throw new Error(t("notifications.productionNotConfigured"));
+        throw new Error("Push notifications are not configured for this production build.");
       }
       const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
       await SecureStore.setItemAsync(EXPO_PUSH_TOKEN_KEY, token);
@@ -160,7 +158,7 @@ export function NotificationProvider({ children }: PropsWithChildren) {
         const customerEmail = await SecureStore.getItemAsync(CUSTOMER_EMAIL_KEY);
         const customerPhone = await SecureStore.getItemAsync(CUSTOMER_PHONE_KEY);
         const response = await fetchAdmin("/api/push/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, platform: Platform.OS, customerEmail, customerPhone }) });
-        if (!response.ok) throw new Error(t("notifications.deviceSaveError"));
+        if (!response.ok) throw new Error("The admin server could not save this device.");
       }
       return token;
     } finally { setRegistering(false); }

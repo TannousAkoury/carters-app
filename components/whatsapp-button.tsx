@@ -1,13 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { usePathname } from "expo-router";
 import { Linking, Platform, StyleSheet, TouchableOpacity } from "react-native";
-import { useLocalization } from "@/components/localization-context";
 
 const WHATSAPP_URL = `https://wa.me/96171555886?text=${encodeURIComponent("Hello Carter's customer service, I need some help with my order.")}`;
 
 export function WhatsAppButton() {
   const pathname = usePathname();
-  const { t } = useLocalization();
   const hasCheckoutFooter = pathname === "/cart" || pathname.startsWith("/product/");
 
   const openChat = () => {
@@ -20,7 +18,7 @@ export function WhatsAppButton() {
       onPress={openChat}
       activeOpacity={0.85}
       accessibilityRole="link"
-      accessibilityLabel={t("navigation.whatsapp")}
+      accessibilityLabel="Chat with customer service on WhatsApp"
     >
       <Ionicons name="logo-whatsapp" size={29} color="#fff" />
     </TouchableOpacity>

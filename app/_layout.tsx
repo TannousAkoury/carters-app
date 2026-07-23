@@ -17,7 +17,6 @@ import { GlobalBottomNavigation } from "@/components/global-bottom-navigation";
 import { AnalyticsTracker } from "@/components/analytics-tracker";
 import { WishlistProvider } from "@/components/wishlist-context";
 import { AppGate, AppSettingsProvider, useAppSettings } from "@/components/app-settings-context";
-import { LocalizationProvider, useLocalization } from "@/components/localization-context";
 
 export const unstable_settings = {
   anchor: "(tabs)",
@@ -26,7 +25,6 @@ export const unstable_settings = {
 function AppContent() {
   const colorScheme = useColorScheme();
   const { settings } = useAppSettings();
-  const { t } = useLocalization();
 
   return (
     <AppGate><ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
@@ -41,7 +39,7 @@ function AppContent() {
             name="account"
             options={{
               presentation: "modal",
-              title: t("account.title"),
+              title: "Carter's Account",
               headerTitle: () => <ExpoImage source={{ uri: "https://carters.com.lb/cdn/shop/files/logo1.png?v=1707301645&width=330" }} style={{ width: 132, height: 38 }} contentFit="contain" accessibilityLabel="Carter's" />,
             }}
           />
@@ -58,5 +56,5 @@ function AppContent() {
 }
 
 export default function RootLayout() {
-  return <LocalizationProvider><AppSettingsProvider><AppContent /></AppSettingsProvider></LocalizationProvider>;
+  return <AppSettingsProvider><AppContent /></AppSettingsProvider>;
 }

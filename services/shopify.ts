@@ -1,6 +1,5 @@
 import { createStorefrontApiClient } from "@shopify/storefront-api-client";
 import { fetchAdmin } from "@/services/admin-api";
-import { getActiveLocale, SHOPIFY_LANGUAGE_CODES } from "@/services/locale";
 import Constants from "expo-constants";
 
 const extra = Constants.expoConfig?.extra;
@@ -1392,15 +1391,8 @@ async function getCollectionsByHandles(handles: string[], productsFirst = 1) {
 }
 
 async function requestStorefront<T>(query: string, variables?: Record<string, unknown>) {
-  const language = SHOPIFY_LANGUAGE_CODES[getActiveLocale()];
-  const localizedQuery = query.includes("@inContext")
-    ? query
-    : query.replace(
-        /^(\s*(?:query|mutation)\s+[A-Za-z_][A-Za-z0-9_]*(?:\s*\([^)]*\))?)(\s*\{)/,
-        `$1 @inContext(language: ${language})$2`,
-      );
   const response = await shopifyClient.request(
-    localizedQuery,
+    query,
     variables ? { variables } : undefined,
   );
 
@@ -1863,41 +1855,6 @@ async function getHomepageContentFromStorefront(): Promise<HomepageContent> {
 
 export async function getHomepageContent(): Promise<HomepageContent> {
   const adminContent = await getMobileHomepageFromAdmin();
-
-  // Catalog fields come from the localized Storefront API. Visual theme
-  // sections still come from the public storefront HTML because Shopify does
-  // not expose blocks such as the social/follow section in this API response.
-  // If Shopify has no translated text, retaining the default-language section
-  // is preferable to removing the section from the localized homepage.
-  if (getActiveLocale() !== "en") {
-    const localized = await getHomepageContentFromStorefront();
-    try {
-      const html = await fetchWebsiteHomepageHtml();
-      const heroBanners = parseHero(html);
-      const themeSections = parseThemeSections(html);
-      return adminContent
-        ? {
-            ...adminContent,
-            heroBanners: heroBanners.length > 0 ? heroBanners : adminContent.heroBanners,
-            themeSections,
-            topPicksProducts: localized.topPicksProducts,
-            latestCollectionProducts: localized.latestCollectionProducts,
-          }
-        : {
-            ...localized,
-            heroBanners: heroBanners.length > 0 ? heroBanners : localized.heroBanners,
-            themeSections,
-          };
-    } catch {
-      return adminContent
-        ? {
-            ...adminContent,
-            topPicksProducts: localized.topPicksProducts,
-            latestCollectionProducts: localized.latestCollectionProducts,
-          }
-        : localized;
-    }
-  }
 
   try {
     const html = await fetchWebsiteHomepageHtml();
