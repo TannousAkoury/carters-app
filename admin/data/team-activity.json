@@ -1,5 +1,15 @@
 [
   {
+    "id": "78836c54-c02d-4020-ac72-78b2c69ca693",
+    "createdAt": "2026-07-23T07:30:12.876Z",
+    "action": "Admin signed in",
+    "category": "access",
+    "severity": "success",
+    "actor": "admin",
+    "target": "admin",
+    "detail": "Owner session started."
+  },
+  {
     "id": "f6a2de94-30b6-4624-86af-7c6334137ed2",
     "createdAt": "2026-07-22T07:30:50.529Z",
     "action": "Admin signed in",

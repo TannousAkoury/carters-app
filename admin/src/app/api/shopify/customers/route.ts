@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requirePermission } from "@/lib/shopify-admin";
 import { loyaltySnapshot, type LoyaltyAccount } from "@/lib/loyalty";
+import { listCustomerBlocks, matchesCustomerBlock, type CustomerBlock } from "@/lib/customer-blocks";
 
 export const dynamic = "force-dynamic";
 
@@ -48,10 +49,11 @@ function findLoyaltyAccount(node: ShopifyCustomerNode, accounts: LoyaltyAccount[
   return accounts.find((account) => (customerId && normalizeCustomerId(account.customerId) === customerId) || (email && account.email.trim().toLowerCase() === email));
 }
 
-function mapCustomer(node: ShopifyCustomerNode, loyaltyAccount?: LoyaltyAccount, transactions: Awaited<ReturnType<typeof loyaltySnapshot>>["transactions"] = []) {
+function mapCustomer(node: ShopifyCustomerNode, loyaltyAccount?: LoyaltyAccount, transactions: Awaited<ReturnType<typeof loyaltySnapshot>>["transactions"] = [], blocks: CustomerBlock[] = []) {
   const accountTransactions = loyaltyAccount ? transactions.filter((transaction) => transaction.accountId === loyaltyAccount.id) : [];
   const earnedPoints = accountTransactions.filter((transaction) => transaction.points > 0).reduce((sum, transaction) => sum + transaction.points, 0);
   const redeemedPoints = Math.abs(accountTransactions.filter((transaction) => transaction.type === "redemption").reduce((sum, transaction) => sum + transaction.points, 0));
+  const block = blocks.find((item) => matchesCustomerBlock(item, { customerId: node.id, email: node.email, phone: node.phone }));
   return {
     id: node.id,
     name: node.displayName || [node.firstName, node.lastName].filter(Boolean).join(" ") || "Unnamed customer",
@@ -66,6 +68,7 @@ function mapCustomer(node: ShopifyCustomerNode, loyaltyAccount?: LoyaltyAccount,
     lastOrderAt: node.lastOrder?.processedAt || node.lastOrder?.createdAt || null,
     createdAt: node.createdAt,
     updatedAt: node.updatedAt,
+    block: block ? { isBlocked: true, reason: block.reason, note: block.note, blockedAt: block.blockedAt, blockedBy: block.blockedBy } : { isBlocked: false, reason: "", note: "", blockedAt: null, blockedBy: "" },
     loyalty: loyaltyAccount ? {
       enrolled: true,
       points: loyaltyAccount.points,
@@ -183,8 +186,8 @@ export async function GET(request: Request) {
   }
 
   const connection = data?.customers;
-  const loyalty = await loyaltySnapshot();
-  const customers = ((connection?.edges ?? []) as ShopifyCustomerEdge[]).map(({ node }) => mapCustomer(node, findLoyaltyAccount(node, loyalty.accounts), loyalty.transactions));
+  const [loyalty, blocks] = await Promise.all([loyaltySnapshot(), listCustomerBlocks()]);
+  const customers = ((connection?.edges ?? []) as ShopifyCustomerEdge[]).map(({ node }) => mapCustomer(node, findLoyaltyAccount(node, loyalty.accounts), loyalty.transactions, blocks));
 
   return NextResponse.json({
     configured: true,

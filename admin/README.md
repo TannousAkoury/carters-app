@@ -16,6 +16,17 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## AI product copy
+
+The inventory product editor can generate draft descriptions, SEO copy, and tags with OpenAI. Add these server-only variables to `.env.local` and restart the admin server:
+
+```env
+OPENAI_API_KEY=your_openai_api_key
+OPENAI_MODEL=gpt-5.6
+```
+
+Never prefix the API key with `NEXT_PUBLIC_`. Open a product under **Inventory**, select **Generate with AI**, review the generated fields, and press **Save** only when the copy is ready to publish to Shopify.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

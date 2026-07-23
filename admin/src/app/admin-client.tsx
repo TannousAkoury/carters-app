@@ -38,7 +38,7 @@ type Placement = "before-hero" | "after-hero" | "after-promos" | "after-ages" | 
 type AdminRole = { id: string; name: string; scope: string; description: string; permissions: string[]; builtIn: boolean; createdAt: string };
 type StaffUser = { id: string; email: string; role: string; status: "invited" | "active"; inviteExpiresAt?: string; createdAt: string; updatedAt: string };
 type TeamActivity = { id:string; action:string; category:"access"|"member"|"role"|"security"; severity:"info"|"success"|"warning"; actor:string; target:string; detail:string; createdAt:string };
-type AdminCustomer = { id:string; name:string; firstName:string; lastName:string; email:string; phone:string; location:string; orders:number; totalSpent?:{amount:string;currencyCode:string}|null; status:string; lastOrderAt?:string|null; createdAt?:string|null; updatedAt?:string|null; loyalty:{enrolled:boolean;points:number;lifetimePoints:number;updatedAt?:string|null;transactionCount:number;earnedPoints:number;redeemedPoints:number;lastActivityAt?:string|null;lastEarnedAt?:string|null} };
+type AdminCustomer = { id:string; name:string; firstName:string; lastName:string; email:string; phone:string; location:string; orders:number; totalSpent?:{amount:string;currencyCode:string}|null; status:string; lastOrderAt?:string|null; createdAt?:string|null; updatedAt?:string|null; block:{isBlocked:boolean;reason:string;note:string;blockedAt:string|null;blockedBy:string}; loyalty:{enrolled:boolean;points:number;lifetimePoints:number;updatedAt?:string|null;transactionCount:number;earnedPoints:number;redeemedPoints:number;lastActivityAt?:string|null;lastEarnedAt?:string|null} };
 type CustomerLoyaltySettings = {enabled:boolean;programName:string;pointsPerItem:number;pointsPerCurrencyUnit:number;minimumRedemptionPoints:number;rewardExpiryDays:number;silverTierPoints:number;goldTierPoints:number;vipTierPoints:number};
 type OrderAddress = { firstName:string; lastName:string; address1:string; address2:string; city:string; province:string; zip:string; country:string; phone:string };
 type OrderLineItem = { name:string; quantity:number; sku?:string|null; variantTitle?:string|null; image?:{url?:string|null;altText?:string|null}|null };
@@ -630,6 +630,7 @@ function Inventory({initialSearch="",initialStockFilter="all"}:{initialSearch?:s
   const [productDraft,setProductDraft]=useState<ProductDraft|null>(null);
   const [productSaving,setProductSaving]=useState(false);
   const [productDeleting,setProductDeleting]=useState(false);
+  const [aiGenerating,setAiGenerating]=useState(false);
   const [productImage,setProductImage]=useState<File|null>(null);
   const [productImageAlt,setProductImageAlt]=useState("");
   const [bulkEditor,setBulkEditor]=useState(false);
@@ -705,6 +706,16 @@ function Inventory({initialSearch="",initialStockFilter="all"}:{initialSearch?:s
       closeProduct();await load(search,null);setMessage(`${productDraft.title} was updated in Shopify.`)
     }catch(error){setMessage(error instanceof Error?error.message:"Unable to update product.")}finally{setProductSaving(false)}
   };
+  const generateProductCopy=async()=>{
+    if(!productDraft?.title.trim()){setMessage("Add a product title before generating copy.");return}
+    setAiGenerating(true);setMessage("Creating an AI product-copy draft...");
+    try{
+      const response=await fetch("/api/ai/product-copy",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({title:productDraft.title,vendor:productDraft.vendor,productType:productDraft.productType,existingDescription:productDraft.descriptionHtml,existingTags:productDraft.tags.split(",").map(tag=>tag.trim()).filter(Boolean),options:productDraft.options})});
+      const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to generate product copy.");
+      setProductDraft(current=>current?{...current,descriptionHtml:data.descriptionHtml||current.descriptionHtml,seoTitle:data.seoTitle||current.seoTitle,seoDescription:data.seoDescription||current.seoDescription,tags:Array.isArray(data.tags)?data.tags.join(", "):current.tags}:current);
+      setMessage("AI draft added. Review every field, then press Save when you are ready to publish it to Shopify.");
+    }catch(error){setMessage(error instanceof Error?error.message:"Unable to generate product copy.")}finally{setAiGenerating(false)}
+  };
   const deleteProduct=async()=>{
     if(!editing)return;
     const productName=editing.product;
@@ -722,15 +733,16 @@ function Inventory({initialSearch="",initialStockFilter="all"}:{initialSearch?:s
         <i className={`${styles.tag} ${productDraft.status==="ACTIVE"?styles.tagGreen:styles.tagGray}`}>{productDraft.status.toLowerCase()}</i>
       </div>
       <div className={styles.productWorkspaceActions}>
-        <button className={styles.secondary} type="button" disabled={productSaving||productDeleting} onClick={closeProduct}>Discard</button>
-        <button className={styles.primary} type="button" disabled={productSaving||productDeleting} onClick={()=>void saveProduct()}>{productSaving?"Saving...":"Save"}</button>
+        <button className={styles.secondary} type="button" disabled={productSaving||productDeleting||aiGenerating} onClick={closeProduct}>Discard</button>
+        <button className={styles.productAiButton} type="button" disabled={productSaving||productDeleting||aiGenerating} onClick={()=>void generateProductCopy()}>{aiGenerating?"Generating...":"✦ Generate with AI"}</button>
+        <button className={styles.primary} type="button" disabled={productSaving||productDeleting||aiGenerating} onClick={()=>void saveProduct()}>{productSaving?"Saving...":"Save"}</button>
       </div>
     </header>
     {message&&<div className={styles.productWorkspaceMessage}>{message}</div>}
     <div className={styles.productWorkspaceBody}>
       <main className={styles.productWorkspaceMain}>
         <section className={styles.productWorkspaceCard}>
-          <div className={styles.productCardHeading}><div><h3>Product details</h3><p>The title and publishing status customers see in Shopify.</p></div></div>
+          <div className={styles.productCardHeading}><div><h3>Product details</h3><p>The title and publishing status customers see in Shopify.</p></div><span className={styles.productAiBadge}>AI ASSISTED</span></div>
           <div className={styles.productDetailsLead}>
             <InventoryProductImage item={editing} large/>
             <label>Title<input value={productDraft.title} onChange={event=>setProductDraft(current=>current&&({...current,title:event.target.value}))}/></label>
@@ -1435,6 +1447,9 @@ function Customers({initialSearch=""}:{initialSearch?:string}){
   const [message,setMessage]=useState("");
   const [editingId,setEditingId]=useState("");
   const [savingId,setSavingId]=useState("");
+  const [blockingId,setBlockingId]=useState("");
+  const [blockReason,setBlockReason]=useState("Spam");
+  const [blockNote,setBlockNote]=useState("");
   const [draft,setDraft]=useState<CustomerDraft>({firstName:"",lastName:"",email:"",phone:""});
   const [pageInfo,setPageInfo]=useState<{hasNextPage:boolean;endCursor:string|null}>({hasNextPage:false,endCursor:null});
   const loadCustomers=async(nextSearch=search,after?:string|null,nextCreatedFrom=createdFrom,nextCreatedTo=createdTo)=>{
@@ -1462,7 +1477,7 @@ function Customers({initialSearch=""}:{initialSearch?:string}){
       const response=await fetch("/api/shopify/customers",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:editingId,...draft})});
       const data=await response.json();
       if(!response.ok)throw new Error(data.error||"Unable to update customer.");
-       setCustomers(items=>items.map(item=>item.id===editingId?{...data.customer,loyalty:item.loyalty}:item));
+       setCustomers(items=>items.map(item=>item.id===editingId?{...data.customer,block:item.block,loyalty:item.loyalty}:item));
       setEditingId("");setMessage("Customer updated.");
     }catch(error){setMessage(error instanceof Error?error.message:"Unable to update customer.")}
     finally{setSavingId("")}
@@ -1512,6 +1527,19 @@ function Customers({initialSearch=""}:{initialSearch?:string}){
     if(customer.orders===0)return "prospect";
     return "active";
   };
+  const beginBlock=(customer:AdminCustomer)=>{setBlockingId(customer.id);setBlockReason("Spam");setBlockNote("");setEditingId("");setExpandedLoyaltyId("");setMessage("")};
+  const changeBlockStatus=async(customer:AdminCustomer,action:"block"|"unblock")=>{
+    if(action==="unblock"&&!window.confirm(`Restore Carter-managed access for ${customer.name}?`))return;
+    if(action==="block"&&blockReason==="Other"&&!blockNote.trim()){setMessage("Add a note when using the Other reason.");return}
+    setSavingId(customer.id);setMessage(action==="block"?"Blocking customer...":"Restoring customer access...");
+    try{
+      const response=await fetch("/api/shopify/customers/block",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,customerId:customer.id,customerName:customer.name,email:customer.email,phone:customer.phone,reason:blockReason,note:blockNote})});
+      const data=await response.json();
+      if(!response.ok)throw new Error(data.error||`Unable to ${action} customer.`);
+      setCustomers(items=>items.map(item=>item.id===customer.id?{...item,block:action==="block"?{isBlocked:true,reason:data.block.reason,note:data.block.note,blockedAt:data.block.blockedAt,blockedBy:data.block.blockedBy}:{isBlocked:false,reason:"",note:"",blockedAt:null,blockedBy:""}}:item));
+      setBlockingId("");setBlockNote("");setMessage(action==="block"?"Customer blocked. Loyalty and push access have been restricted.":"Customer unblocked. Carter-managed access has been restored.");
+    }catch(error){setMessage(error instanceof Error?error.message:`Unable to ${action} customer.`)}finally{setSavingId("")}
+  };
   const loadAllCustomers=async()=>{
     setLoading(true);setMessage("Loading the complete customer audience...");
     try{
@@ -1524,7 +1552,7 @@ function Customers({initialSearch=""}:{initialSearch?:string}){
   const matchesCustomer=(customer:AdminCustomer)=>{
     const spent=amountValue(customer);
     const lastOrderDate=customer.lastOrderAt?new Date(customer.lastOrderAt):null;
-    return (statusFilter==="all"||customer.status===statusFilter)
+    return (statusFilter==="all"||(statusFilter==="blocked"?customer.block.isBlocked:customer.status===statusFilter))
       && (minOrderValue===null||customer.orders>=minOrderValue)
       && (maxOrderValue===null||customer.orders<=maxOrderValue)
       && (minSpentValue===null||spent>=minSpentValue)
@@ -1541,8 +1569,10 @@ function Customers({initialSearch=""}:{initialSearch?:string}){
       && (maxPointsValue===null||customer.loyalty.points<=maxPointsValue);
   };
   const filteredCustomers=customers.filter(matchesCustomer).sort((a,b)=>sortBy==="points"?b.loyalty.points-a.loyalty.points:sortBy==="lifetime-points"?b.loyalty.lifetimePoints-a.loyalty.lifetimePoints:sortBy==="orders"?b.orders-a.orders:sortBy==="spent"?amountValue(b)-amountValue(a):sortBy==="oldest-order"?String(a.lastOrderAt||"").localeCompare(String(b.lastOrderAt||"")):String(b.lastOrderAt||"").localeCompare(String(a.lastOrderAt||"")));
+  const blockingCustomer=customers.find(customer=>customer.id===blockingId);
   const totalOrders=filteredCustomers.reduce((sum,customer)=>sum+customer.orders,0);
-  const activeCount=filteredCustomers.filter(customer=>customer.status==="ENABLED").length;
+  const activeCount=filteredCustomers.filter(customer=>customer.status==="ENABLED"&&!customer.block.isBlocked).length;
+  const blockedCount=filteredCustomers.filter(customer=>customer.block.isBlocked).length;
   const oneTimeCount=customers.filter(customer=>customerSegment(customer)==="one-time-year").length;
   const dormantNonLoyalCount=customers.filter(customer=>customerSegment(customer)==="dormant-non-loyal").length;
   const loyaltyCount=customers.filter(customer=>customer.loyalty.enrolled).length;
@@ -1555,7 +1585,7 @@ function Customers({initialSearch=""}:{initialSearch?:string}){
   const resetFilters=()=>{setSearch("");setStatusFilter("all");setMinOrders("");setMaxOrders("");setMinSpent("");setMaxSpent("");setCreatedFrom("");setCreatedTo("");setLastOrderFrom("");setLastOrderTo("");setInactiveOnly(false);setInactiveMonths("2");setSegmentFilter("all");setLoyaltyFilter("all");setLoyaltyTierFilter("all");setMinPoints("");setMaxPoints("");setSortBy("recent");setExpandedLoyaltyId("");void loadCustomers("",null,"","")};
   const exportCustomers=()=>{
     if(!filteredCustomers.length){setMessage("No customers match this export filter.");return}
-    const columns=["Name","First name","Last name","Email","Phone","Location","Orders","Total spent","Status","Segment","Loyalty member","Available points","Lifetime points","Last order","Created at","Updated at"];
+    const columns=["Name","First name","Last name","Email","Phone","Location","Orders","Total spent","Status","Blocked","Block reason","Block note","Blocked at","Blocked by","Segment","Loyalty member","Available points","Lifetime points","Last order","Created at","Updated at"];
     const escapeCsv=(value:string|number|null|undefined)=>`"${String(value??"").replace(/"/g,'""')}"`;
     const rows=filteredCustomers.map(customer=>[
       customer.name,
@@ -1567,6 +1597,11 @@ function Customers({initialSearch=""}:{initialSearch?:string}){
       customer.orders,
       customer.totalSpent?`${customer.totalSpent.amount} ${customer.totalSpent.currencyCode}`:"",
       customer.status,
+      customer.block.isBlocked?"Yes":"No",
+      customer.block.reason,
+      customer.block.note,
+      customer.block.blockedAt,
+      customer.block.blockedBy,
       customerSegment(customer),
       customer.loyalty.enrolled?"Yes":"No",
       customer.loyalty.points,
@@ -1596,7 +1631,7 @@ function Customers({initialSearch=""}:{initialSearch?:string}){
       while(hasNext&&pages<100){const params=new URLSearchParams();if(search.trim())params.set("search",search.trim());if(createdFrom)params.set("createdFrom",createdFrom);if(createdTo)params.set("createdTo",createdTo);if(after)params.set("after",after);const response=await fetch(`/api/shopify/customers?${params}`,{cache:"no-store"});const data=await response.json();if(!response.ok)throw new Error(data.error||"Unable to prepare the customer database export.");all.push(...(Array.isArray(data.customers)?data.customers:[]));hasNext=Boolean(data.pageInfo?.hasNextPage&&data.pageInfo?.endCursor);after=hasNext?data.pageInfo.endCursor:null;pages+=1;if(hasNext)setMessage(`Loading customers for database export... ${all.length} loaded.`)}
       if(hasNext)throw new Error("The export reached its 5,000-customer safety limit. Choose a smaller creation date range.");
       const selected=all.filter(matchesCustomer);if(!selected.length)throw new Error("No customers match this database export filter.");
-       const payload={schemaVersion:2,exportedAt:new Date().toISOString(),source:"Shopify Admin + Carter's Rewards",upsertKey:"shopifyId",creationRange:{from:createdFrom||null,to:createdTo||null},customers:selected.map(customer=>({shopifyId:customer.id,name:customer.name,firstName:customer.firstName,lastName:customer.lastName,email:customer.email||null,phone:customer.phone||null,location:customer.location,orders:customer.orders,totalSpent:customer.totalSpent?Number(customer.totalSpent.amount):0,currencyCode:customer.totalSpent?.currencyCode||null,status:customer.status,segment:customerSegment(customer),loyalty:customer.loyalty,lastOrderAt:customer.lastOrderAt||null,createdAt:customer.createdAt||null,updatedAt:customer.updatedAt||null}))};
+       const payload={schemaVersion:3,exportedAt:new Date().toISOString(),source:"Shopify Admin + Carter's Rewards",upsertKey:"shopifyId",creationRange:{from:createdFrom||null,to:createdTo||null},customers:selected.map(customer=>({shopifyId:customer.id,name:customer.name,firstName:customer.firstName,lastName:customer.lastName,email:customer.email||null,phone:customer.phone||null,location:customer.location,orders:customer.orders,totalSpent:customer.totalSpent?Number(customer.totalSpent.amount):0,currencyCode:customer.totalSpent?.currencyCode||null,status:customer.status,block:customer.block,segment:customerSegment(customer),loyalty:customer.loyalty,lastOrderAt:customer.lastOrderAt||null,createdAt:customer.createdAt||null,updatedAt:customer.updatedAt||null}))};
       const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const link=document.createElement("a");link.href=url;link.download=`shopify-customers-database-${createdFrom||"beginning"}-to-${createdTo||"today"}.json`;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);setMessage(`Prepared all ${selected.length} matching customers for database upsert.`)
     }catch(error){setMessage(error instanceof Error?error.message:"Unable to prepare the customer database export.")}finally{setLoading(false)}
   };
@@ -1642,7 +1677,7 @@ function Customers({initialSearch=""}:{initialSearch?:string}){
             <label>Customer segment<select value={segmentFilter} onChange={event=>setSegmentFilter(event.target.value)}><option value="all">All customer segments</option><option value="one-time-year">One-time buyer in last 12 months</option><option value="dormant-non-loyal">Dormant non-loyal · 60+ days</option><option value="at-risk">Loyalty member at risk · 60+ days</option><option value="loyal">Loyalty member with earnings</option><option value="active">Active returning customer</option><option value="prospect">Registered with no purchases</option></select></label>
             <label>Loyalty membership<select value={loyaltyFilter} onChange={event=>setLoyaltyFilter(event.target.value)}><option value="all">All loyalty statuses</option><option value="enrolled">Has loyalty card</option><option value="not-enrolled">No loyalty card</option><option value="balance">Has available points</option><option value="zero">Member with zero points</option></select></label>
             <label>Loyalty tier<select value={loyaltyTierFilter} onChange={event=>setLoyaltyTierFilter(event.target.value)}><option value="all">All loyalty tiers</option><option value="vip">VIP</option><option value="gold">Gold</option><option value="silver">Silver</option><option value="member">Member</option><option value="none">Not enrolled</option></select></label>
-            <label>Shopify status<select value={statusFilter} onChange={event=>setStatusFilter(event.target.value)}><option value="all">All account statuses</option>{statusOptions.map(status=><option key={status} value={status}>{status.toLowerCase()}</option>)}</select></label>
+            <label>Account status<select value={statusFilter} onChange={event=>setStatusFilter(event.target.value)}><option value="all">All account statuses</option><option value="blocked">Blocked in Carter</option>{statusOptions.map(status=><option key={status} value={status}>{status.toLowerCase()}</option>)}</select></label>
           </fieldset>
           <fieldset>
             <legend>Purchase behavior</legend>
@@ -1669,6 +1704,7 @@ function Customers({initialSearch=""}:{initialSearch?:string}){
         <article><span>▤</span><div><small>Total orders</small><strong>{totalOrders.toLocaleString()}</strong></div></article>
         <article><span>★</span><div><small>Available points</small><strong>{outstandingPoints.toLocaleString()}</strong></div></article>
         <article><span>✓</span><div><small>Enabled accounts</small><strong>{activeCount.toLocaleString()}</strong></div></article>
+        <article className={styles.customerBlockedInsight}><span>!</span><div><small>Blocked customers</small><strong>{blockedCount.toLocaleString()}</strong></div></article>
       </section>
 
       <section className={`${styles.card} ${styles.customerTable} ${styles.customerAdvancedTable}`}>
@@ -1677,15 +1713,16 @@ function Customers({initialSearch=""}:{initialSearch?:string}){
           <div className={styles.tableHead}><span>Customer</span><span>Relationship</span><span>Commerce</span><span>Loyalty card</span><span>Last purchase</span><span>Actions</span></div>
           {filteredCustomers.length?filteredCustomers.map(customer=>{const segment=customerSegment(customer);return <div className={styles.customerRecord} key={customer.id}><div className={styles.tableRow}>
             <div className={styles.customerCell}><strong>{customer.name}</strong><small>{customer.email||"No email"}</small><small>{customer.location}</small></div>
-            <div className={styles.customerRelationship}><i className={`${styles.tag} ${segmentTone(segment)}`}>{segmentLabel(segment)}</i><small>{customer.status.toLowerCase()}</small></div>
+            <div className={styles.customerRelationship} title={customer.block.isBlocked?`${customer.block.reason}${customer.block.note?`: ${customer.block.note}`:""} · Blocked by ${customer.block.blockedBy}`:undefined}>{customer.block.isBlocked?<i className={`${styles.tag} ${styles.customerBlockedTag}`}>Blocked · {customer.block.reason}</i>:<i className={`${styles.tag} ${segmentTone(segment)}`}>{segmentLabel(segment)}</i>}<small>{customer.block.isBlocked&&customer.block.blockedAt?`Since ${formatDate(customer.block.blockedAt)}`:customer.status.toLowerCase()}</small></div>
             <div className={styles.customerCommerce}><strong>{customer.orders} order{customer.orders===1?"":"s"}</strong><small>{formatSpent(customer.totalSpent)} spent</small></div>
             <div className={styles.customerLoyaltyCell}>{customer.loyalty.enrolled?<><strong>{customer.loyalty.points.toLocaleString()} points</strong><small>{loyaltyTier(customer).toUpperCase()} · {customer.loyalty.lifetimePoints.toLocaleString()} lifetime</small></>:<><strong className={styles.customerNoLoyalty}>Not enrolled</strong><small>No loyalty card</small></>}</div>
             <div className={styles.customerLastOrder}><strong>{formatDate(customer.lastOrderAt)}</strong><small>{customer.lastOrderAt?Math.max(0,Math.floor((referenceTime-new Date(customer.lastOrderAt).getTime())/86400000)).toLocaleString()+" days ago":"No purchase yet"}</small></div>
-            <div className={styles.customerActions}><button className={styles.customerLoyaltyButton} onClick={()=>setExpandedLoyaltyId(current=>current===customer.id?"":customer.id)}>Loyalty</button><button className={styles.secondary} disabled={savingId===customer.id} onClick={()=>startEdit(customer)}>Edit</button><button className={styles.secondary} disabled={savingId===customer.id||customer.orders>0} title={customer.orders>0?"Shopify only allows deleting customers with no orders.":undefined} onClick={()=>void deleteCustomer(customer)}>Delete</button></div>
+            <div className={styles.customerActions}><button className={styles.customerLoyaltyButton} onClick={()=>setExpandedLoyaltyId(current=>current===customer.id?"":customer.id)}>Loyalty</button><button className={styles.secondary} disabled={savingId===customer.id||customer.block.isBlocked} onClick={()=>startEdit(customer)}>Edit</button>{customer.block.isBlocked?<button className={styles.customerUnblockButton} disabled={savingId===customer.id} onClick={()=>void changeBlockStatus(customer,"unblock")}>{savingId===customer.id?"Working...":"Unblock"}</button>:<button className={styles.customerBlockButton} disabled={savingId===customer.id} onClick={()=>beginBlock(customer)}>Block</button>}<button className={styles.secondary} disabled={savingId===customer.id||customer.orders>0} title={customer.orders>0?"Shopify only allows deleting customers with no orders.":undefined} onClick={()=>void deleteCustomer(customer)}>Delete</button></div>
           </div>{expandedLoyaltyId===customer.id&&<div className={styles.customerLoyaltyProfile}><div className={`${styles.customerLoyaltyCard} ${styles[`customerLoyaltyCard${loyaltyTier(customer)[0].toUpperCase()+loyaltyTier(customer).slice(1)}`]}`}><header><span>CARTER&apos;S REWARDS</span><b>{loyaltyTier(customer).toUpperCase()}</b></header><h3>{customer.name}</h3><p>{customer.loyalty.enrolled?`${customer.loyalty.points.toLocaleString()} available points`:"Not enrolled in the loyalty program"}</p><div className={styles.customerLoyaltyProgress}><i style={{width:`${Math.min(100,customer.loyalty.points/Math.max(1,customerLoyaltySettings.minimumRedemptionPoints)*100)}%`}}/></div><small>{customer.loyalty.enrolled?customer.loyalty.points>=customerLoyaltySettings.minimumRedemptionPoints?"Reward ready":`${(customerLoyaltySettings.minimumRedemptionPoints-customer.loyalty.points).toLocaleString()} points until next reward`:"Create a loyalty account with a manual adjustment"}</small></div><div className={styles.customerLoyaltyFacts}><article><span>Reward value</span><strong>{(customer.loyalty.points/Math.max(1,customerLoyaltySettings.pointsPerCurrencyUnit)).toFixed(2)}</strong><small>store currency units</small></article><article><span>Lifetime earned</span><strong>{customer.loyalty.lifetimePoints.toLocaleString()}</strong><small>{customer.loyalty.earnedPoints.toLocaleString()} recorded positive points</small></article><article><span>Redeemed</span><strong>{customer.loyalty.redeemedPoints.toLocaleString()}</strong><small>{customer.loyalty.transactionCount.toLocaleString()} total activities</small></article><article><span>Last activity</span><strong>{formatDate(customer.loyalty.lastActivityAt)}</strong><small>Last earned {formatDate(customer.loyalty.lastEarnedAt)}</small></article></div></div>}{editingId===customer.id&&<div className={styles.customerEditPanel}><label>First name<input value={draft.firstName} onChange={event=>setDraft(value=>({...value,firstName:event.target.value}))}/></label><label>Last name<input value={draft.lastName} onChange={event=>setDraft(value=>({...value,lastName:event.target.value}))}/></label><label>Email<input value={draft.email} onChange={event=>setDraft(value=>({...value,email:event.target.value}))}/></label><label>Phone<input value={draft.phone} onChange={event=>setDraft(value=>({...value,phone:event.target.value}))}/></label><div><button className={styles.secondary} disabled={savingId===customer.id} onClick={()=>setEditingId("")}>Cancel</button><button className={styles.primary} disabled={savingId===customer.id} onClick={saveCustomer}>{savingId===customer.id?"Saving":"Save"}</button></div></div>}</div>}):<div className={styles.customerEmpty}><span>⌕</span><strong>{loading?"Loading customers...":"No customers match this segment"}</strong><small>{message||"Adjust the advanced filters or reset the segment."}</small></div>}
         </div>
         {pageInfo.hasNextPage&&<div className={styles.customerTableFooter}><span>Filters currently apply to {customers.length} loaded profiles.</span><button className={styles.secondary} disabled={loading} onClick={()=>loadCustomers(search,pageInfo.endCursor)}>Load 50 more</button><button className={styles.primary} disabled={loading} onClick={()=>void loadAllCustomers()}>Load complete audience</button></div>}
       </section>
+      {blockingCustomer&&<div className={styles.customerBlockBackdrop} role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget&&savingId!==blockingCustomer.id)setBlockingId("")}}><section className={styles.customerBlockDialog} role="dialog" aria-modal="true" aria-labelledby="customer-block-title"><header><span>!</span><div><p>ACCOUNT RESTRICTION</p><h2 id="customer-block-title">Block {blockingCustomer.name}</h2></div></header><div className={styles.customerBlockWarning}><strong>What this action does</strong><p>Removes registered push devices and restricts Carter-managed loyalty access. Shopify orders and customer history remain intact.</p></div><label>Reason<select autoFocus value={blockReason} onChange={event=>setBlockReason(event.target.value)}><option>Spam</option><option>Suspected fraud</option><option>Abuse or harassment</option><option>Policy violation</option><option>Other</option></select></label><label>Internal note {blockReason==="Other"?"(required)":"(optional)"}<textarea rows={4} maxLength={500} value={blockNote} onChange={event=>setBlockNote(event.target.value)} placeholder="Add context for the audit trail"/><small>{blockNote.length}/500 · Visible to administrators only</small></label><footer><button className={styles.secondary} disabled={savingId===blockingCustomer.id} onClick={()=>setBlockingId("")}>Cancel</button><button className={styles.customerBlockConfirm} disabled={savingId===blockingCustomer.id} onClick={()=>void changeBlockStatus(blockingCustomer,"block")}>{savingId===blockingCustomer.id?"Blocking...":"Confirm block"}</button></footer></section></div>}
     </div>
   );
 }

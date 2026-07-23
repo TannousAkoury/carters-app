@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { updateJson } from "@/lib/json-store";
 import type { PushDevice } from "@/lib/push";
 import { requestClientKey, takeRateLimit } from "@/lib/rate-limit";
+import { findActiveCustomerBlock } from "@/lib/customer-blocks";
 
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type" };
 export async function POST(request: Request) {
@@ -12,6 +13,8 @@ export async function POST(request: Request) {
   const customerEmail = typeof body.customerEmail === "string" ? body.customerEmail.trim().toLowerCase().slice(0, 160) : undefined;
   const customerPhone = typeof body.customerPhone === "string" ? body.customerPhone.trim().slice(0, 40) : undefined;
   const platform = body.platform === "ios" || body.platform === "android" ? body.platform : undefined;
+  if (await findActiveCustomerBlock({ email: customerEmail, phone: customerPhone })) return NextResponse.json({ error: "This customer account is restricted." }, { status: 403, headers: cors });
+  await updateJson<string[]>("blocked-push-tokens.json", [], (tokens) => tokens.filter((token) => token !== body.token));
   await updateJson<PushDevice[]>("push-devices.json", [], (devices) => [
     { token: body.token, platform, customerEmail, customerPhone, updatedAt: new Date().toISOString() },
     ...devices.filter((item) => item.token !== body.token),
